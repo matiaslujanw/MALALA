@@ -1,5 +1,5 @@
 /**
- * Tipos de dominio MALALA. Espejados al schema Drizzle de Fase 1 (§6 del prompt inicial).
+ * Tipos de dominio MALALA. Espejados al schema Drizzle de Fase 1 (Â§6 del prompt inicial).
  * Cuando migremos a Drizzle, estos tipos se reemplazan por InferSelectModel sin cambiar la forma.
  */
 
@@ -100,7 +100,7 @@ export interface Servicio {
 export interface HorarioSucursal {
   id: ID;
   sucursal_id: ID;
-  dia_semana: number; // 0 domingo ... 6 sábado
+  dia_semana: number; // 0 domingo ... 6 sÃ¡bado
   apertura: string; // HH:mm
   cierre: string; // HH:mm
 }

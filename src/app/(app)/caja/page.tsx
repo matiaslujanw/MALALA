@@ -66,7 +66,7 @@ export default async function CajaPage({
             Caja
           </h1>
           <p className="text-sm text-muted-foreground">
-            {sucursal.nombre} · Cierre diario por sucursal
+            {sucursal.nombre} Â· Cierre diario por sucursal
           </p>
         </div>
 
@@ -185,7 +185,7 @@ export default async function CajaPage({
           </table>
         </div>
         <p className="text-xs text-muted-foreground">
-          {resumen.cantIngresos} ticket{resumen.cantIngresos !== 1 ? "s" : ""} ·{" "}
+          {resumen.cantIngresos} ticket{resumen.cantIngresos !== 1 ? "s" : ""} Â·{" "}
           {resumen.cantEgresos} egreso{resumen.cantEgresos !== 1 ? "s" : ""} hoy.
         </p>
       </section>

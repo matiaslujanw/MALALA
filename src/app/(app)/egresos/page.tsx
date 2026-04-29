@@ -86,8 +86,8 @@ export default async function EgresosPage({
             Egresos
           </h1>
           <p className="text-sm text-muted-foreground">
-            {sucursal.nombre} ·{" "}
-            {RANGOS.find((item) => item.value === rango)?.label.toLowerCase()} ·{" "}
+            {sucursal.nombre} Â·{" "}
+            {RANGOS.find((item) => item.value === rango)?.label.toLowerCase()} Â·{" "}
             {totales.cantidad} movimiento{totales.cantidad !== 1 ? "s" : ""}
           </p>
         </div>
@@ -168,7 +168,7 @@ export default async function EgresosPage({
             <option value="">Todos</option>
             {rubros.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.subrubro ? `${item.rubro} · ${item.subrubro}` : item.rubro}
+                {item.subrubro ? `${item.rubro} Â· ${item.subrubro}` : item.rubro}
               </option>
             ))}
           </select>
@@ -243,9 +243,9 @@ export default async function EgresosPage({
                   <td className="px-4 py-3">
                     {row.rubro
                       ? row.rubro.subrubro
-                        ? `${row.rubro.rubro} · ${row.rubro.subrubro}`
+                        ? `${row.rubro.rubro} Â· ${row.rubro.subrubro}`
                         : row.rubro.rubro
-                      : "—"}
+                      : "â€”"}
                   </td>
                   <td className="px-4 py-3">
                     {row.insumo ? (
@@ -263,14 +263,14 @@ export default async function EgresosPage({
                         {row.egreso.observacion}
                       </span>
                     ) : (
-                      <span className="italic text-muted-foreground">—</span>
+                      <span className="italic text-muted-foreground">â€”</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {row.proveedor?.nombre ?? "—"}
+                    {row.proveedor?.nombre ?? "â€”"}
                   </td>
                   <td className="px-4 py-3 text-xs uppercase text-muted-foreground">
-                    {row.mp?.codigo ?? "—"}
+                    {row.mp?.codigo ?? "â€”"}
                   </td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums">
                     {formatARS(row.egreso.valor)}

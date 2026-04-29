@@ -54,7 +54,7 @@ export default async function DashboardPage({
             Dashboard
           </h1>
           <p className="text-sm text-muted-foreground">
-            Hola {user.nombre} · rango{" "}
+            Hola {user.nombre} Â· rango{" "}
             {formatLongDate(`${analytics.filters.desde}T12:00:00`)} a{" "}
             {formatLongDate(`${analytics.filters.hasta}T12:00:00`)}
           </p>
