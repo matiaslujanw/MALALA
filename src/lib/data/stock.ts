@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { id, store } from "@/lib/mock/store";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   ajusteManualSchema,
   transferenciaSchema,
@@ -24,6 +25,11 @@ export type StockRow = {
 export async function listStockBySucursal(
   sucursalId: string,
 ): Promise<StockRow[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerStock || !isSucursalAllowed(scope, sucursalId)) {
+    return [];
+  }
   const insumos = store.insumos.filter((i) => i.activo);
   return insumos
     .map((insumo) => {
@@ -170,10 +176,14 @@ export async function listMovimientos(opts?: {
   insumoId?: string;
   limit?: number;
 }): Promise<MovimientoConDetalle[]> {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerStock) return [];
 
   let arr = [...store.movimientosStock];
+  arr = arr.filter((m) => scope.sucursalIdsPermitidas.includes(m.sucursal_id));
   if (opts?.sucursalId) {
+    if (!isSucursalAllowed(scope, opts.sucursalId)) return [];
     arr = arr.filter((m) => m.sucursal_id === opts.sucursalId);
   }
   if (opts?.insumoId) {

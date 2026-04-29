@@ -5,7 +5,7 @@ const PUBLIC_PATHS = ["/dev/login", "/dev/styleguide"];
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Permitir home y rutas públicas dev
+  // Permitir home y rutas publicas dev
   if (pathname === "/" || PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
@@ -21,6 +21,6 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Excluir _next, archivos estáticos y API routes
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|brand|api).*)"],
+  // Excluir _next, assets de public (cualquier path con extension) y API routes
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|.*\\.[^/]+$).*)"],
 };

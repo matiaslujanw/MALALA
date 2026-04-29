@@ -1,16 +1,19 @@
 import Link from "next/link";
+import type { ComponentType } from "react";
 import {
+  BarChart3,
+  BookOpen,
+  CalendarDays,
   LayoutDashboard,
-  ShoppingBag,
-  Wallet,
+  LogOut,
   Package,
   Receipt,
-  BookOpen,
-  BarChart3,
-  LogOut,
+  ShoppingBag,
+  Wallet,
 } from "lucide-react";
 import { logout } from "@/lib/auth/actions";
-import type { Usuario } from "@/lib/types";
+import { buildAccessScope } from "@/lib/auth/access";
+import type { AccessScope, Usuario } from "@/lib/types";
 
 const ROL_LABEL: Record<string, string> = {
   admin: "Admin",
@@ -21,22 +24,24 @@ const ROL_LABEL: Record<string, string> = {
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  roles: Usuario["rol"][];
+  icon: ComponentType<{ className?: string }>;
+  visible: (scope: AccessScope) => boolean;
 }
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "encargada", "empleado"] },
-  { href: "/ventas", label: "Ventas", icon: ShoppingBag, roles: ["admin", "encargada", "empleado"] },
-  { href: "/caja", label: "Caja", icon: Wallet, roles: ["admin", "encargada"] },
-  { href: "/stock", label: "Stock", icon: Package, roles: ["admin", "encargada"] },
-  { href: "/egresos", label: "Egresos", icon: Receipt, roles: ["admin", "encargada"] },
-  { href: "/catalogos", label: "Catálogos", icon: BookOpen, roles: ["admin", "encargada"] },
-  { href: "/reportes", label: "Reportes", icon: BarChart3, roles: ["admin", "encargada"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, visible: () => true },
+  { href: "/ventas", label: "Ventas", icon: ShoppingBag, visible: () => true },
+  { href: "/turnos", label: "Turnos", icon: CalendarDays, visible: () => true },
+  { href: "/caja", label: "Caja", icon: Wallet, visible: (scope) => scope.puedeVerCaja },
+  { href: "/stock", label: "Stock", icon: Package, visible: (scope) => scope.puedeVerStock },
+  { href: "/egresos", label: "Egresos", icon: Receipt, visible: (scope) => scope.rol !== "empleado" },
+  { href: "/catalogos", label: "Catalogos", icon: BookOpen, visible: (scope) => scope.puedeVerCatalogos },
+  { href: "/reportes", label: "Reportes", icon: BarChart3, visible: (scope) => scope.puedeVerReportes },
 ];
 
 export function AppSidebar({ user }: { user: Usuario }) {
-  const items = NAV.filter((n) => n.roles.includes(user.rol));
+  const scope = buildAccessScope(user);
+  const items = NAV.filter((item) => item.visible(scope));
 
   return (
     <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col">
@@ -68,9 +73,7 @@ export function AppSidebar({ user }: { user: Usuario }) {
       <div className="p-3 border-t border-border space-y-2">
         <div className="px-3 py-2">
           <p className="text-sm font-medium truncate">{user.nombre}</p>
-          <p className="text-xs text-muted-foreground">
-            {ROL_LABEL[user.rol]}
-          </p>
+          <p className="text-xs text-muted-foreground">{ROL_LABEL[user.rol]}</p>
         </div>
         <form action={logout}>
           <button

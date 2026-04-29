@@ -8,6 +8,23 @@ export type ID = string;
 export type Rol = "admin" | "encargada" | "empleado";
 export type TipoComision = "porcentaje" | "mixto" | "sueldo_fijo";
 export type UnidadMedida = "ud" | "ml" | "g" | "aplicacion";
+export type TurnoEstado =
+  | "pendiente"
+  | "confirmado"
+  | "en_curso"
+  | "completado"
+  | "cancelado"
+  | "ausente";
+export type TurnoCanal = "web" | "recepcion";
+export type TurnoEventoTipo =
+  | "creado"
+  | "pendiente"
+  | "confirmado"
+  | "reprogramado"
+  | "cancelado"
+  | "ausente"
+  | "completado"
+  | "en_curso";
 export type TipoMovimientoStock =
   | "compra"
   | "venta"
@@ -19,6 +36,14 @@ export interface Sucursal {
   id: ID;
   nombre: string;
   activo: boolean;
+  slug?: string;
+  direccion?: string;
+  telefono?: string;
+  horario_resumen?: string;
+  rating?: number;
+  reviews?: number;
+  mapa_url?: string;
+  descripcion_corta?: string;
 }
 
 export interface Usuario {
@@ -27,6 +52,7 @@ export interface Usuario {
   nombre: string;
   rol: Rol;
   sucursal_default_id: ID;
+  empleado_id?: ID;
   activo: boolean;
 }
 
@@ -66,6 +92,60 @@ export interface Servicio {
   precio_efectivo: number;
   comision_default_pct: number; // 0-100
   activo: boolean;
+  duracion_min?: number;
+  descripcion_corta?: string;
+  destacado_pct?: number;
+}
+
+export interface HorarioSucursal {
+  id: ID;
+  sucursal_id: ID;
+  dia_semana: number; // 0 domingo ... 6 sábado
+  apertura: string; // HH:mm
+  cierre: string; // HH:mm
+}
+
+export interface ProfesionalAgenda {
+  id: ID;
+  empleado_id: ID;
+  sucursal_id: ID;
+  especialidad: string;
+  avatar_url: string;
+  color: string;
+  bio?: string;
+  prioridad: number;
+  activo_publico: boolean;
+}
+
+export interface Turno {
+  id: ID;
+  sucursal_id: ID;
+  servicio_id: ID;
+  profesional_id: ID;
+  cliente_nombre: string;
+  cliente_telefono: string;
+  cliente_email?: string;
+  fecha_turno: string; // YYYY-MM-DD
+  hora: string; // HH:mm
+  duracion_min: number;
+  estado: TurnoEstado;
+  canal: TurnoCanal;
+  observacion?: string;
+  creado_en: string; // ISO
+  creado_por_usuario_id?: ID;
+  actualizado_en?: string;
+  actualizado_por_usuario_id?: ID;
+  origen: "publico" | "interno";
+  sin_preferencia: boolean;
+}
+
+export interface TurnoEvento {
+  id: ID;
+  turno_id: ID;
+  tipo: TurnoEventoTipo;
+  actor_usuario_id?: ID;
+  fecha: string; // ISO
+  detalle?: string;
 }
 
 export interface Insumo {
@@ -190,4 +270,17 @@ export interface CierreCaja {
   observacion?: string;
   cerrado_por: ID;
   fecha_cierre: string;
+}
+
+export interface AccessScope {
+  rol: Rol;
+  sucursalIdsPermitidas: ID[];
+  empleadoId?: ID;
+  puedeVerGlobal: boolean;
+  puedeAdministrarTurnos: boolean;
+  puedeVerStock: boolean;
+  puedeGestionarStock: boolean;
+  puedeVerReportes: boolean;
+  puedeVerCaja: boolean;
+  puedeVerCatalogos: boolean;
 }
