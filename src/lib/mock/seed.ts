@@ -5,42 +5,118 @@ import type { Store } from "./store";
 
 const uid = () => crypto.randomUUID();
 
-export function seed(): Store {
-  // Sucursales
-  const sucYB = { id: uid(), nombre: "Yerba Buena", activo: true };
-  const sucBN = { id: uid(), nombre: "Barrio Norte", activo: true };
+function addDays(base: Date, days: number) {
+  const next = new Date(base);
+  next.setDate(next.getDate() + days);
+  return next;
+}
 
-  // Usuarios (auth stub: el id se usa como sesión)
+function toIsoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function toIsoDateTime(date: Date, hour: number, minute = 0) {
+  const next = new Date(date);
+  next.setHours(hour, minute, 0, 0);
+  return next.toISOString();
+}
+
+export function seed(): Store {
+  const today = new Date();
+
+  // Sucursales
+  const sucCentro = {
+    id: uid(),
+    nombre: "Malala Centro",
+    activo: true,
+    slug: "centro",
+    direccion: "Corrientes 1677, San Miguel de Tucuman",
+    telefono: "+54 9 381 555-4101",
+    horario_resumen: "Lunes a sabados de 9 a 20 hs",
+    rating: 4.9,
+    reviews: 288,
+    mapa_url: "https://maps.google.com/?q=Corrientes+1677+San+Miguel+de+Tucuman",
+    descripcion_corta: "Nails, cejas, facial y peluqueria en pleno centro.",
+  };
+  const sucBarrioNorte = {
+    id: uid(),
+    nombre: "Malala Barrio Norte",
+    activo: true,
+    slug: "barrio-norte",
+    direccion: "25 de Mayo 745, San Miguel de Tucuman",
+    telefono: "+54 9 381 555-4102",
+    horario_resumen: "Lunes a sabados de 10 a 19:30 hs",
+    rating: 4.8,
+    reviews: 174,
+    mapa_url: "https://maps.google.com/?q=25+de+Mayo+745+San+Miguel+de+Tucuman",
+    descripcion_corta: "Servicios express y agenda flexible para la zona norte.",
+  };
+
+  const horariosSucursal = [
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 1, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 2, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 3, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 4, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 5, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucCentro.id, dia_semana: 6, apertura: "09:00", cierre: "20:00" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 1, apertura: "10:00", cierre: "19:30" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 2, apertura: "10:00", cierre: "19:30" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 3, apertura: "10:00", cierre: "19:30" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 4, apertura: "10:00", cierre: "19:30" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 5, apertura: "10:00", cierre: "19:30" },
+    { id: uid(), sucursal_id: sucBarrioNorte.id, dia_semana: 6, apertura: "10:00", cierre: "19:30" },
+  ];
+
+  // Usuarios (auth stub: el id se usa como sesion)
   const userAdmin = {
     id: uid(),
     email: "admin@malala.com",
     nombre: "Admin",
     rol: "admin" as const,
-    sucursal_default_id: sucYB.id,
+    sucursal_default_id: sucCentro.id,
     activo: true,
   };
-  const userEncargadaYB = {
+  const userEncargadaCentro: Store["usuarios"][number] = {
     id: uid(),
-    email: "encargada.yb@malala.com",
-    nombre: "Carolina (Encargada YB)",
+    email: "encargada.centro@malala.com",
+    nombre: "Carolina (Encargada Centro)",
     rol: "encargada" as const,
-    sucursal_default_id: sucYB.id,
+    sucursal_default_id: sucCentro.id,
+    empleado_id: undefined,
     activo: true,
   };
-  const userEmpleadoYB = {
+  const userEmpleadoCentro: Store["usuarios"][number] = {
     id: uid(),
     email: "anita@malala.com",
     nombre: "Anita Juarez",
     rol: "empleado" as const,
-    sucursal_default_id: sucYB.id,
+    sucursal_default_id: sucCentro.id,
+    empleado_id: undefined,
+    activo: true,
+  };
+  const userEncargadaNorte: Store["usuarios"][number] = {
+    id: uid(),
+    email: "encargada.norte@malala.com",
+    nombre: "Micaela (Encargada Norte)",
+    rol: "encargada" as const,
+    sucursal_default_id: sucBarrioNorte.id,
+    activo: true,
+  };
+  const userEmpleadoNorte: Store["usuarios"][number] = {
+    id: uid(),
+    email: "eliana@malala.com",
+    nombre: "Eliana Monroy",
+    rol: "empleado" as const,
+    sucursal_default_id: sucBarrioNorte.id,
+    empleado_id: undefined,
     activo: true,
   };
 
   // Medios de pago
   const mpEF = { id: uid(), codigo: "EF", nombre: "Efectivo", activo: true };
   const mpTR = { id: uid(), codigo: "TR", nombre: "Transferencia", activo: true };
-  const mpTC = { id: uid(), codigo: "TC", nombre: "Tarjeta crédito", activo: true };
-  const mpTD = { id: uid(), codigo: "TD", nombre: "Tarjeta débito", activo: true };
+  const mpTC = { id: uid(), codigo: "TC", nombre: "Tarjeta credito", activo: true };
+  const mpTD = { id: uid(), codigo: "TD", nombre: "Tarjeta debito", activo: true };
   const mpMP = { id: uid(), codigo: "MP", nombre: "Mercado Pago", activo: true };
 
   // Rubros de gasto
@@ -59,51 +135,98 @@ export function seed(): Store {
     id: uid(),
     nombre: "Anita Juarez",
     activo: true,
-    sucursal_principal_id: sucYB.id,
+    sucursal_principal_id: sucCentro.id,
     tipo_comision: "mixto" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 800000,
-    observacion: "Peluquera",
+    observacion: "Color y brushing",
   };
   const empCamila = {
     id: uid(),
     nombre: "Camila Moreno",
     activo: true,
-    sucursal_principal_id: sucYB.id,
+    sucursal_principal_id: sucCentro.id,
     tipo_comision: "porcentaje" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 500000,
-    observacion: "Manicurista",
+    observacion: "Nails artist",
   };
   const empEliana = {
     id: uid(),
     nombre: "Eliana Monroy",
     activo: true,
-    sucursal_principal_id: sucBN.id,
+    sucursal_principal_id: sucBarrioNorte.id,
     tipo_comision: "porcentaje" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 500000,
-    observacion: "Manicurista",
+    observacion: "Nails y pedicuria",
   };
   const empCarolina = {
     id: uid(),
     nombre: "Carolina Rodriguez",
     activo: true,
-    sucursal_principal_id: sucYB.id,
+    sucursal_principal_id: sucCentro.id,
     tipo_comision: "sueldo_fijo" as const,
     porcentaje_default: 10,
     sueldo_asegurado: 1150000,
-    observacion: "Encargada",
+    observacion: "Encargada y cejas",
   };
 
-  // Vinculo el usuario "empleado" con su registro Empleado para
-  // que la UI pueda filtrar a su propia data.
-  (userEmpleadoYB as { empleado_id?: string }).empleado_id = empAnita.id;
+  userEncargadaCentro.empleado_id = empCarolina.id;
+  userEmpleadoCentro.empleado_id = empAnita.id;
+  userEmpleadoNorte.empleado_id = empEliana.id;
+
+  const profesionalesAgenda = [
+    {
+      id: uid(),
+      empleado_id: empAnita.id,
+      sucursal_id: sucCentro.id,
+      especialidad: "Color y peluqueria",
+      avatar_url: "/professionals/anita.png",
+      color: "#3f5f5c",
+      bio: "Especialista en color, corte y nutricion capilar.",
+      prioridad: 1,
+      activo_publico: true,
+    },
+    {
+      id: uid(),
+      empleado_id: empCamila.id,
+      sucursal_id: sucCentro.id,
+      especialidad: "Manos y softgel",
+      avatar_url: "/professionals/camila.png",
+      color: "#8f6b7d",
+      bio: "DiseÃ±os delicados, semi y esculpidas.",
+      prioridad: 2,
+      activo_publico: true,
+    },
+    {
+      id: uid(),
+      empleado_id: empCarolina.id,
+      sucursal_id: sucCentro.id,
+      especialidad: "Cejas y recepcion premium",
+      avatar_url: "/professionals/carolina.png",
+      color: "#a98b58",
+      bio: "DiseÃ±o de cejas y experiencia de bienvenida.",
+      prioridad: 3,
+      activo_publico: true,
+    },
+    {
+      id: uid(),
+      empleado_id: empEliana.id,
+      sucursal_id: sucBarrioNorte.id,
+      especialidad: "Nails y pedicuria",
+      avatar_url: "/professionals/eliana.png",
+      color: "#627f6e",
+      bio: "Agenda flexible para servicios express.",
+      prioridad: 1,
+      activo_publico: true,
+    },
+  ];
 
   // Clientes
-  const cliMaria = { id: uid(), nombre: "María Pérez", telefono: "+5493815552001", activo: true, saldo_cc: 0 };
-  const cliLucia = { id: uid(), nombre: "Lucía Gómez", telefono: "+5493815552002", activo: true, saldo_cc: 0 };
-  const cliSofia = { id: uid(), nombre: "Sofía López", telefono: "+5493815552003", activo: true, saldo_cc: 0 };
+  const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0 };
+  const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0 };
+  const cliSofia = { id: uid(), nombre: "Sofia Lopez", telefono: "+5493815552003", activo: true, saldo_cc: 0 };
   const cliConsumidor = { id: uid(), nombre: "Consumidor Final", activo: true, saldo_cc: 0 };
 
   // Servicios
@@ -115,6 +238,8 @@ export function seed(): Store {
     precio_efectivo: 22000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 50,
+    descripcion_corta: "Asesoria y terminacion personalizada.",
   };
   const servBrushing = {
     id: uid(),
@@ -124,60 +249,113 @@ export function seed(): Store {
     precio_efectivo: 16000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 45,
+    descripcion_corta: "Peinado con movimiento y brushing final.",
   };
   const servColorRaiz = {
     id: uid(),
     rubro: "SERVICIOS DE PELUQUERIA",
-    nombre: "Color raíz",
+    nombre: "Color raiz",
     precio_lista: 45000,
     precio_efectivo: 40000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 90,
+    descripcion_corta: "Cobertura de crecimiento y brillo.",
+    destacado_pct: 15,
   };
   const servManosEsmaltado = {
     id: uid(),
-    rubro: "SERVICIOS NAILS",
-    nombre: "Manos esmaltado tradicional",
+    rubro: "BELLEZA DE MANOS Y PIES",
+    nombre: "Esmalte comun - Manos",
     precio_lista: 12000,
     precio_efectivo: 10000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 45,
+    descripcion_corta: "Manicuria tradicional con color.",
+    destacado_pct: 20,
   };
   const servManosSemi = {
     id: uid(),
-    rubro: "SERVICIOS NAILS",
-    nombre: "Manos semipermanente",
+    rubro: "BELLEZA DE MANOS Y PIES",
+    nombre: "Esmaltado Semi (manos o pies)",
     precio_lista: 18000,
     precio_efectivo: 15000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 45,
+    descripcion_corta: "Duracion extendida y brillo espejo.",
+    destacado_pct: 20,
   };
   const servPiesSemi = {
     id: uid(),
-    rubro: "SERVICIOS NAILS",
-    nombre: "Pies semipermanente",
+    rubro: "BELLEZA DE MANOS Y PIES",
+    nombre: "Podo + semi o tradicional",
     precio_lista: 20000,
     precio_efectivo: 17000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 75,
+    descripcion_corta: "Spa rapido para pies con esmaltado.",
+    destacado_pct: 20,
+  };
+  const servEsculpidas = {
+    id: uid(),
+    rubro: "BELLEZA DE MANOS Y PIES",
+    nombre: "Esculpidas / softgel",
+    precio_lista: 31000,
+    precio_efectivo: 25000,
+    comision_default_pct: 30,
+    activo: true,
+    duracion_min: 75,
+    descripcion_corta: "Extension con acabado natural.",
+    destacado_pct: 20,
   };
   const servCejas = {
     id: uid(),
-    rubro: "CEJAS & PESTAÑAS",
-    nombre: "Diseño de cejas",
+    rubro: "CEJAS Y PESTANAS",
+    nombre: "Diseno de cejas",
     precio_lista: 10000,
     precio_efectivo: 8000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 30,
+    descripcion_corta: "Diseno y perfilado segun visagismo.",
+  };
+  const servLaminado = {
+    id: uid(),
+    rubro: "CEJAS Y PESTANAS",
+    nombre: "Laminado de cejas",
+    precio_lista: 18000,
+    precio_efectivo: 15000,
+    comision_default_pct: 30,
+    activo: true,
+    duracion_min: 45,
+    descripcion_corta: "Definicion y fijacion de cejas.",
   };
   const servFacial = {
     id: uid(),
     rubro: "FACIAL",
-    nombre: "Limpieza facial básica",
+    nombre: "Limpieza facial basica",
     precio_lista: 30000,
     precio_efectivo: 26000,
     comision_default_pct: 30,
     activo: true,
+    duracion_min: 60,
+    descripcion_corta: "Limpieza profunda y mascara final.",
+  };
+  const servPromoHair = {
+    id: uid(),
+    rubro: "PROMO HAIR",
+    nombre: "Nutricion + brushing",
+    precio_lista: 36000,
+    precio_efectivo: 32000,
+    comision_default_pct: 30,
+    activo: true,
+    duracion_min: 75,
+    descripcion_corta: "Tratamiento express con peinado.",
+    destacado_pct: 10,
   };
 
   // Insumos
@@ -194,7 +372,7 @@ export function seed(): Store {
   };
   const insTinturaCastano = {
     id: uid(),
-    nombre: "Tintura castaño 60g",
+    nombre: "Tintura castano 60g",
     proveedor_id: provKeraplus.id,
     unidad_medida: "g" as const,
     tamano_envase: 60,
@@ -227,7 +405,7 @@ export function seed(): Store {
   };
   const insAlgodonDisco = {
     id: uid(),
-    nombre: "Disco algodón",
+    nombre: "Disco algodon",
     proveedor_id: provVlinda.id,
     unidad_medida: "ud" as const,
     tamano_envase: 100,
@@ -259,7 +437,7 @@ export function seed(): Store {
     activo: true,
   };
 
-  // Recetas (servicio → insumo, cantidad)
+  // Recetas
   const recetas = [
     { id: uid(), servicio_id: servCorteMujer.id, insumo_id: insShampoo.id, cantidad: 30 },
     { id: uid(), servicio_id: servBrushing.id, insumo_id: insShampoo.id, cantidad: 20 },
@@ -273,25 +451,26 @@ export function seed(): Store {
     { id: uid(), servicio_id: servFacial.id, insumo_id: insMascarillaFacial.id, cantidad: 1 },
   ];
 
-  // Stock inicial: stock razonable en YB, mitad en BN
   const insumos = [
-    insShampoo, insTinturaCastano, insOxidante20, insEsmalteSemi,
-    insAlgodonDisco, insAcetona, insMascarillaFacial,
+    insShampoo,
+    insTinturaCastano,
+    insOxidante20,
+    insEsmalteSemi,
+    insAlgodonDisco,
+    insAcetona,
+    insMascarillaFacial,
   ];
   const stockSucursal = insumos.flatMap((i) => [
-    { id: uid(), insumo_id: i.id, sucursal_id: sucYB.id, cantidad: i.umbral_stock_bajo * 3 },
-    { id: uid(), insumo_id: i.id, sucursal_id: sucBN.id, cantidad: i.umbral_stock_bajo * 1.5 },
+    { id: uid(), insumo_id: i.id, sucursal_id: sucCentro.id, cantidad: i.umbral_stock_bajo * 3 },
+    { id: uid(), insumo_id: i.id, sucursal_id: sucBarrioNorte.id, cantidad: i.umbral_stock_bajo * 1.5 },
   ]);
 
-  // Ventas / ingresos de muestra (5 tickets recientes)
-  const ingresos: ReturnType<typeof seed>["ingresos"] = [];
-  const ingresoLineas: ReturnType<typeof seed>["ingresoLineas"] = [];
+  // Ventas / ingresos de muestra
+  const ingresos: Store["ingresos"] = [];
+  const ingresoLineas: Store["ingresoLineas"] = [];
 
-  function fechaHaceDias(dias: number, hora = 14): string {
-    const d = new Date();
-    d.setDate(d.getDate() - dias);
-    d.setHours(hora, 0, 0, 0);
-    return d.toISOString();
+  function fechaHaceDias(dias: number, hora = 14) {
+    return toIsoDateTime(addDays(today, -dias), hora);
   }
 
   function crearTicket(args: {
@@ -331,7 +510,7 @@ export function seed(): Store {
       mp2_id: args.mp2Id,
       valor2: args.valor2,
       observacion: args.observacion,
-      usuario_id: userEncargadaYB.id,
+      usuario_id: userEncargadaCentro.id,
       anulado: false,
     });
 
@@ -351,10 +530,9 @@ export function seed(): Store {
     }
   }
 
-  // Ticket 1: hoy YB — María, 2 servicios con Anita
   crearTicket({
     fecha: fechaHaceDias(0, 11),
-    sucursalId: sucYB.id,
+    sucursalId: sucCentro.id,
     clienteId: cliMaria.id,
     lineas: [
       { servicioId: servColorRaiz.id, empleadoId: empAnita.id, precio: 40000 },
@@ -363,10 +541,9 @@ export function seed(): Store {
     mp1Id: mpEF.id,
   });
 
-  // Ticket 2: hoy YB — Lucía, manicura + pedicura con Camila
   crearTicket({
     fecha: fechaHaceDias(0, 13),
-    sucursalId: sucYB.id,
+    sucursalId: sucCentro.id,
     clienteId: cliLucia.id,
     lineas: [
       { servicioId: servManosSemi.id, empleadoId: empCamila.id, precio: 15000 },
@@ -376,18 +553,13 @@ export function seed(): Store {
     valor1: 32000,
   });
 
-  // Ticket 3: hoy YB — Sofía, corte con Anita + manicura con Camila (2 empleados)
   crearTicket({
     fecha: fechaHaceDias(0, 16),
-    sucursalId: sucYB.id,
+    sucursalId: sucCentro.id,
     clienteId: cliSofia.id,
     lineas: [
       { servicioId: servCorteMujer.id, empleadoId: empAnita.id, precio: 22000 },
-      {
-        servicioId: servManosEsmaltado.id,
-        empleadoId: empCamila.id,
-        precio: 10000,
-      },
+      { servicioId: servManosEsmaltado.id, empleadoId: empCamila.id, precio: 10000 },
     ],
     mp1Id: mpEF.id,
     valor1: 20000,
@@ -395,36 +567,25 @@ export function seed(): Store {
     valor2: 12000,
   });
 
-  // Ticket 4: hoy BN — María, manicura con Eliana
   crearTicket({
     fecha: fechaHaceDias(0, 15),
-    sucursalId: sucBN.id,
+    sucursalId: sucBarrioNorte.id,
     clienteId: cliMaria.id,
-    lineas: [
-      {
-        servicioId: servManosSemi.id,
-        empleadoId: empEliana.id,
-        precio: 15000,
-      },
-    ],
+    lineas: [{ servicioId: servManosSemi.id, empleadoId: empEliana.id, precio: 15000 }],
     mp1Id: mpEF.id,
   });
 
-  // Ticket 5: ayer YB — Consumidor Final, cejas con Anita
   crearTicket({
     fecha: fechaHaceDias(1, 17),
-    sucursalId: sucYB.id,
+    sucursalId: sucCentro.id,
     clienteId: cliConsumidor.id,
-    lineas: [
-      { servicioId: servCejas.id, empleadoId: empAnita.id, precio: 8000 },
-    ],
+    lineas: [{ servicioId: servCejas.id, empleadoId: empCarolina.id, precio: 8000 }],
     mp1Id: mpEF.id,
   });
 
-  // Ticket 6: hace 3 días YB — Lucía, ticket grande con descuento
   crearTicket({
     fecha: fechaHaceDias(3, 12),
-    sucursalId: sucYB.id,
+    sucursalId: sucCentro.id,
     clienteId: cliLucia.id,
     lineas: [
       { servicioId: servCorteMujer.id, empleadoId: empAnita.id, precio: 22000 },
@@ -435,16 +596,244 @@ export function seed(): Store {
     observacion: "Cliente frecuente",
   });
 
+  const turnos: Store["turnos"] = [
+    {
+      id: uid(),
+      sucursal_id: sucCentro.id,
+      servicio_id: servManosSemi.id,
+      profesional_id: empCamila.id,
+      cliente_nombre: "Valentina Gomez",
+      cliente_telefono: "+5493815557771",
+      fecha_turno: toIsoDate(today),
+      hora: "10:00",
+      duracion_min: 45,
+      estado: "confirmado",
+      canal: "web",
+      observacion: "Quiere tono nude.",
+      creado_en: toIsoDateTime(addDays(today, -2), 18, 30),
+      creado_por_usuario_id: userEmpleadoCentro.id,
+      actualizado_en: toIsoDateTime(addDays(today, -1), 9, 15),
+      actualizado_por_usuario_id: userEncargadaCentro.id,
+      origen: "publico",
+      sin_preferencia: false,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucCentro.id,
+      servicio_id: servColorRaiz.id,
+      profesional_id: empAnita.id,
+      cliente_nombre: "Julieta Sosa",
+      cliente_telefono: "+5493815557772",
+      fecha_turno: toIsoDate(today),
+      hora: "11:30",
+      duracion_min: 90,
+      estado: "pendiente",
+      canal: "web",
+      creado_en: toIsoDateTime(addDays(today, -1), 21, 0),
+      creado_por_usuario_id: userAdmin.id,
+      origen: "publico",
+      sin_preferencia: true,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucCentro.id,
+      servicio_id: servCejas.id,
+      profesional_id: empCarolina.id,
+      cliente_nombre: "Rocio Ferreyra",
+      cliente_telefono: "+5493815557773",
+      fecha_turno: toIsoDate(today),
+      hora: "15:00",
+      duracion_min: 30,
+      estado: "en_curso",
+      canal: "recepcion",
+      creado_en: toIsoDateTime(today, 9, 45),
+      creado_por_usuario_id: userEncargadaCentro.id,
+      actualizado_en: toIsoDateTime(today, 15, 5),
+      actualizado_por_usuario_id: userEncargadaCentro.id,
+      origen: "interno",
+      sin_preferencia: false,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucBarrioNorte.id,
+      servicio_id: servPiesSemi.id,
+      profesional_id: empEliana.id,
+      cliente_nombre: "Daniela Ruiz",
+      cliente_telefono: "+5493815557774",
+      fecha_turno: toIsoDate(today),
+      hora: "16:15",
+      duracion_min: 75,
+      estado: "confirmado",
+      canal: "web",
+      creado_en: toIsoDateTime(addDays(today, -3), 13, 15),
+      creado_por_usuario_id: userEncargadaNorte.id,
+      origen: "publico",
+      sin_preferencia: true,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucCentro.id,
+      servicio_id: servFacial.id,
+      profesional_id: empCarolina.id,
+      cliente_nombre: "Martina Lobo",
+      cliente_telefono: "+5493815557775",
+      fecha_turno: toIsoDate(addDays(today, 1)),
+      hora: "12:15",
+      duracion_min: 60,
+      estado: "confirmado",
+      canal: "web",
+      creado_en: toIsoDateTime(addDays(today, -1), 10, 0),
+      creado_por_usuario_id: userAdmin.id,
+      origen: "publico",
+      sin_preferencia: false,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucCentro.id,
+      servicio_id: servEsculpidas.id,
+      profesional_id: empCamila.id,
+      cliente_nombre: "Agustina Vera",
+      cliente_telefono: "+5493815557776",
+      fecha_turno: toIsoDate(addDays(today, 2)),
+      hora: "17:30",
+      duracion_min: 75,
+      estado: "pendiente",
+      canal: "web",
+      creado_en: toIsoDateTime(addDays(today, -1), 19, 15),
+      creado_por_usuario_id: userAdmin.id,
+      origen: "publico",
+      sin_preferencia: false,
+    },
+    {
+      id: uid(),
+      sucursal_id: sucBarrioNorte.id,
+      servicio_id: servManosEsmaltado.id,
+      profesional_id: empEliana.id,
+      cliente_nombre: "Paula Diaz",
+      cliente_telefono: "+5493815557777",
+      fecha_turno: toIsoDate(addDays(today, 3)),
+      hora: "10:45",
+      duracion_min: 45,
+      estado: "cancelado",
+      canal: "web",
+      creado_en: toIsoDateTime(addDays(today, -4), 17, 5),
+      creado_por_usuario_id: userEncargadaNorte.id,
+      actualizado_en: toIsoDateTime(addDays(today, -2), 10, 30),
+      actualizado_por_usuario_id: userEncargadaNorte.id,
+      origen: "publico",
+      sin_preferencia: true,
+    },
+  ];
+
+  const turnoEventos: Store["turnoEventos"] = turnos.flatMap((turno) => {
+    const eventos: Store["turnoEventos"] = [
+      {
+        id: uid(),
+        turno_id: turno.id,
+        tipo: "creado" as const,
+        actor_usuario_id: turno.creado_por_usuario_id,
+        fecha: turno.creado_en,
+        detalle: `Turno creado via ${turno.canal}`,
+      },
+    ];
+
+    if (turno.estado === "confirmado" || turno.estado === "en_curso" || turno.estado === "completado") {
+      eventos.push({
+        id: uid(),
+        turno_id: turno.id,
+        tipo: "confirmado" as const,
+        actor_usuario_id: turno.actualizado_por_usuario_id ?? turno.creado_por_usuario_id,
+        fecha: turno.actualizado_en ?? turno.creado_en,
+        detalle: "Turno confirmado",
+      });
+    }
+    if (turno.estado === "en_curso") {
+      eventos.push({
+        id: uid(),
+        turno_id: turno.id,
+        tipo: "en_curso" as const,
+        actor_usuario_id: turno.actualizado_por_usuario_id ?? turno.creado_por_usuario_id,
+        fecha: turno.actualizado_en ?? turno.creado_en,
+        detalle: "Servicio iniciado",
+      });
+    }
+    if (turno.estado === "cancelado") {
+      eventos.push({
+        id: uid(),
+        turno_id: turno.id,
+        tipo: "cancelado" as const,
+        actor_usuario_id: turno.actualizado_por_usuario_id ?? turno.creado_por_usuario_id,
+        fecha: turno.actualizado_en ?? turno.creado_en,
+        detalle: "Cancelado por cliente",
+      });
+    }
+
+    return eventos;
+  });
+
+  const egresos: Store["egresos"] = [
+    {
+      id: uid(),
+      fecha: fechaHaceDias(0, 10),
+      sucursal_id: sucCentro.id,
+      rubro_id: rgInsumos.id,
+      proveedor_id: provKeraplus.id,
+      valor: 42000,
+      mp_id: mpTR.id,
+      observacion: "Reposicion coloracion",
+      pagado: true,
+      usuario_id: userEncargadaCentro.id,
+    },
+    {
+      id: uid(),
+      fecha: fechaHaceDias(1, 9),
+      sucursal_id: sucBarrioNorte.id,
+      rubro_id: rgServicios.id,
+      valor: 18500,
+      mp_id: mpEF.id,
+      observacion: "Limpieza y mantenimiento",
+      pagado: true,
+      usuario_id: userEncargadaNorte.id,
+    },
+    {
+      id: uid(),
+      fecha: fechaHaceDias(2, 18),
+      sucursal_id: sucCentro.id,
+      rubro_id: rgVarios.id,
+      valor: 12500,
+      mp_id: mpMP.id,
+      observacion: "Amenidades clientes",
+      pagado: true,
+      usuario_id: userAdmin.id,
+    },
+  ];
+
   return {
-    sucursales: [sucYB, sucBN],
-    usuarios: [userAdmin, userEncargadaYB, userEmpleadoYB],
+    sucursales: [sucCentro, sucBarrioNorte],
+    horariosSucursal,
+    usuarios: [
+      userAdmin,
+      userEncargadaCentro,
+      userEmpleadoCentro,
+      userEncargadaNorte,
+      userEmpleadoNorte,
+    ],
     empleados: [empAnita, empCamila, empEliana, empCarolina],
+    profesionalesAgenda,
     clientes: [cliMaria, cliLucia, cliSofia, cliConsumidor],
     proveedores: [provVlinda, provKeraplus, provDistrilook],
     servicios: [
-      servCorteMujer, servBrushing, servColorRaiz,
-      servManosEsmaltado, servManosSemi, servPiesSemi,
-      servCejas, servFacial,
+      servCorteMujer,
+      servBrushing,
+      servColorRaiz,
+      servManosEsmaltado,
+      servManosSemi,
+      servPiesSemi,
+      servEsculpidas,
+      servCejas,
+      servLaminado,
+      servFacial,
+      servPromoHair,
     ],
     insumos,
     recetas,
@@ -454,7 +843,10 @@ export function seed(): Store {
     movimientosStock: [],
     ingresos,
     ingresoLineas,
-    egresos: [],
+    turnos,
+    turnoEventos,
+    egresos,
     cierresCaja: [],
   };
 }
+

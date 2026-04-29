@@ -1,399 +1,413 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import type { ComponentType } from "react";
 import {
-  AlertTriangle,
-  Calculator,
-  ClipboardList,
-  PackageX,
-  Receipt,
+  CalendarClock,
+  CircleAlert,
+  PackageSearch,
   TrendingUp,
 } from "lucide-react";
-import { getActiveSucursal, requireUser } from "@/lib/auth/session";
-import { getDashboardData } from "@/lib/data/dashboard";
-import { BarChart } from "@/components/charts/bar-chart";
-import { formatARS } from "@/lib/utils";
+import { getAnalyticsSnapshot } from "@/lib/data/analytics";
+import { listEmpleados } from "@/lib/data/empleados";
+import { listSucursales } from "@/lib/data/sucursales";
+import { requireUser } from "@/lib/auth/session";
+import { formatARS, formatLongDate } from "@/lib/utils";
 
-export default async function DashboardPage() {
+interface SearchParams {
+  desde?: string;
+  hasta?: string;
+  sucursal?: string;
+  empleado?: string;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const user = await requireUser();
-  const sucursal = await getActiveSucursal();
-  if (!sucursal) redirect("/dev/login");
+  const sp = await searchParams;
+  const analytics = await getAnalyticsSnapshot({
+    desde: sp.desde,
+    hasta: sp.hasta,
+    sucursalId: sp.sucursal,
+    empleadoId: sp.empleado,
+  });
+  const [sucursales, empleados] = await Promise.all([
+    listSucursales({ soloActivas: true }),
+    listEmpleados(),
+  ]);
 
-  const data = await getDashboardData(sucursal.id);
-  const { kpis, ventasUltimos14, topServicios, topEmpleados, ventasPorMp } =
-    data;
+  const isEmployee = analytics.scope.rol === "empleado";
 
   return (
-    <div className="space-y-8 max-w-6xl">
-      <header className="space-y-1">
-        <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          Dashboard
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Hola {user.nombre} · {sucursal.nombre} ·{" "}
-          {new Date().toLocaleDateString("es-AR", {
-            weekday: "long",
-            day: "2-digit",
-            month: "long",
-          })}
-        </p>
+    <div className="space-y-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+            {isEmployee
+              ? "Mi operacion"
+              : analytics.scope.puedeVerGlobal
+                ? "Vision global"
+                : "Mi sucursal"}
+          </p>
+          <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
+            Dashboard
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Hola {user.nombre} · rango{" "}
+            {formatLongDate(`${analytics.filters.desde}T12:00:00`)} a{" "}
+            {formatLongDate(`${analytics.filters.hasta}T12:00:00`)}
+          </p>
+        </div>
       </header>
 
-      {/* Alertas operativas */}
-      {(kpis.stockNegativo > 0 ||
-        kpis.stockBajo > 0 ||
-        kpis.egresosPendientes > 0 ||
-        !kpis.cierreHoyId) && (
-        <section className="space-y-2">
-          {kpis.stockNegativo > 0 && (
-            <Alert
-              icon={<PackageX className="h-4 w-4 stroke-[1.5]" />}
-              tone="danger"
-              text={`${kpis.stockNegativo} insumo${kpis.stockNegativo !== 1 ? "s" : ""} con stock negativo`}
-              href="/stock"
+      {!isEmployee && (
+        <form
+          action="/dashboard"
+          method="get"
+          className="grid gap-3 rounded-[1.5rem] border border-border bg-card p-4 lg:grid-cols-[1fr_1fr_1fr_1fr_auto]"
+        >
+          <label className="space-y-1.5 text-sm">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Desde
+            </span>
+            <input
+              type="date"
+              name="desde"
+              defaultValue={analytics.filters.desde}
+              className="w-full rounded-xl border border-border bg-card px-3 py-2"
             />
-          )}
-          {kpis.stockBajo > 0 && (
-            <Alert
-              icon={<AlertTriangle className="h-4 w-4 stroke-[1.5]" />}
-              tone="warning"
-              text={`${kpis.stockBajo} insumo${kpis.stockBajo !== 1 ? "s" : ""} bajo el umbral de stock`}
-              href="/stock"
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Hasta
+            </span>
+            <input
+              type="date"
+              name="hasta"
+              defaultValue={analytics.filters.hasta}
+              className="w-full rounded-xl border border-border bg-card px-3 py-2"
             />
-          )}
-          {kpis.egresosPendientes > 0 && (
-            <Alert
-              icon={<Receipt className="h-4 w-4 stroke-[1.5]" />}
-              tone="warning"
-              text={`${kpis.egresosPendientes} egreso${kpis.egresosPendientes !== 1 ? "s" : ""} pendiente${kpis.egresosPendientes !== 1 ? "s" : ""} de pago · ${formatARS(kpis.egresosPendientesMonto)}`}
-              href="/egresos?pendientes=1"
-            />
-          )}
-          {!kpis.cierreHoyId &&
-            (user.rol === "admin" || user.rol === "encargada") && (
-              <Alert
-                icon={<Calculator className="h-4 w-4 stroke-[1.5]" />}
-                tone="info"
-                text="No cerraste la caja de hoy todavía"
-                href="/caja/nuevo"
-              />
-            )}
-        </section>
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Sucursal
+            </span>
+            <select
+              name="sucursal"
+              defaultValue={analytics.filters.sucursalId ?? ""}
+              className="w-full rounded-xl border border-border bg-card px-3 py-2"
+            >
+              <option value="">Todas las permitidas</option>
+              {sucursales
+                .filter((item) =>
+                  analytics.scope.sucursalIdsPermitidas.includes(item.id),
+                )
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Profesional
+            </span>
+            <select
+              name="empleado"
+              defaultValue={analytics.filters.empleadoId ?? ""}
+              className="w-full rounded-xl border border-border bg-card px-3 py-2"
+            >
+              <option value="">Todos</option>
+              {empleados
+                .filter((item) =>
+                  analytics.scope.sucursalIdsPermitidas.includes(
+                    item.sucursal_principal_id,
+                  ),
+                )
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700"
+            >
+              Actualizar
+            </button>
+          </div>
+        </form>
       )}
 
-      {/* KPIs del día */}
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Hoy
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Kpi
-            label="Ventas"
-            value={formatARS(kpis.ventasHoy)}
-            hint={`${kpis.ticketsHoy} ticket${kpis.ticketsHoy !== 1 ? "s" : ""}`}
-            highlight
-          />
-          <Kpi
-            label="Ticket promedio"
-            value={formatARS(kpis.ticketPromedioHoy)}
-          />
-          <Kpi
-            label="Comisiones"
-            value={formatARS(kpis.comisionesHoy)}
-            color="sage-700"
-          />
-          <Kpi
-            label="Neto del día"
-            value={formatARS(kpis.netoHoy)}
-            color={kpis.netoHoy >= 0 ? "sage-700" : "danger"}
-          />
-        </div>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          label={isEmployee ? "Mi facturacion" : "Ingresos"}
+          value={formatARS(analytics.kpis.ingresos)}
+          hint="ventas cobradas"
+          icon={TrendingUp}
+        />
+        <MetricCard
+          label={isEmployee ? "Mi neto estimado" : "Neto"}
+          value={formatARS(analytics.kpis.neto)}
+          hint="menos comision e insumos"
+        />
+        <MetricCard
+          label={isEmployee ? "Mis turnos" : "Turnos"}
+          value={String(analytics.kpis.turnos)}
+          hint="en el rango"
+          icon={CalendarClock}
+        />
+        <MetricCard
+          label="Ocupacion"
+          value={`${analytics.kpis.ocupacionPct}%`}
+          hint="capacidad teorica"
+        />
+        <MetricCard
+          label="Cancelaciones"
+          value={`${analytics.kpis.cancelacionesPct}%`}
+          hint="sobre turnos"
+        />
       </section>
 
-      {/* Gráfico de ventas */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-            Ventas últimos 14 días
-          </h2>
-          <Link
-            href="/ventas?rango=mes"
-            className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-          >
-            Ver todas →
-          </Link>
-        </div>
-        <div className="bg-card border border-border rounded-md p-5">
-          <BarChart data={ventasUltimos14} />
-        </div>
-      </section>
-
-      {/* KPIs del mes */}
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Mes en curso
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Kpi
-            label="Ventas mes"
-            value={formatARS(kpis.ventasMes)}
-            hint={`${kpis.ticketsMes} ticket${kpis.ticketsMes !== 1 ? "s" : ""}`}
-          />
-          <Kpi
-            label="Comisiones mes"
-            value={formatARS(kpis.comisionesMes)}
-            hint={
-              kpis.ventasMes > 0
-                ? `${((kpis.comisionesMes / kpis.ventasMes) * 100).toFixed(0)}% del total`
-                : undefined
+      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+        <section className="space-y-6">
+          <ChartCard
+            title={isEmployee ? "Mi rendimiento por servicio" : "Ingresos por dia"}
+            description="Base comun de metricas para seguimiento operativo."
+            data={
+              isEmployee
+                ? analytics.charts.serviciosTop
+                : analytics.charts.ingresosPorDia
             }
-            color="sage-700"
+            valueFormatter={formatARS}
           />
-          <Kpi
-            label="Egresos mes"
-            value={formatARS(kpis.egresosMes)}
-          />
-          <Kpi
-            label="Neto mes"
-            value={formatARS(kpis.netoMes)}
-            color={kpis.netoMes >= 0 ? "sage-700" : "danger"}
-            hint={
-              kpis.ventasMes > 0
-                ? `${((kpis.netoMes / kpis.ventasMes) * 100).toFixed(0)}% del total`
-                : undefined
-            }
-            highlight
-          />
-        </div>
-      </section>
 
-      {/* Doble columna: top servicios + top empleados */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5 stroke-[1.5]" />
-            Top servicios del mes
-          </h2>
-          {topServicios.length === 0 ? (
-            <EmptyBox text="Sin ventas registradas este mes." />
-          ) : (
-            <div className="bg-card border border-border rounded-md overflow-hidden">
-              {topServicios.map((s, idx) => (
+          <ChartCard
+            title={isEmployee ? "Mi agenda por estado" : "Turnos por estado"}
+            description="Definiciones consistentes para confirmado, cancelado y completado."
+            data={analytics.charts.turnosPorEstado}
+          />
+
+          {!isEmployee && (
+            <ChartCard
+              title={
+                analytics.scope.puedeVerGlobal
+                  ? "Rendimiento por profesional"
+                  : "Servicios top"
+              }
+              description={
+                analytics.scope.puedeVerGlobal
+                  ? "Comparativo para detectar capacidad y productividad."
+                  : "Mix de servicios mas vendido dentro de la sucursal."
+              }
+              data={
+                analytics.scope.puedeVerGlobal
+                  ? analytics.charts.rendimientoPorProfesional
+                  : analytics.charts.serviciosTop
+              }
+              valueFormatter={formatARS}
+            />
+          )}
+        </section>
+
+        <aside className="space-y-6">
+          <div className="rounded-[1.75rem] border border-border bg-card p-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-cream p-2">
+                <PackageSearch className="h-4 w-4 text-stone-700" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                  Salud operativa
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {analytics.scope.puedeVerGlobal
+                    ? "Comparativa de sucursales"
+                    : "Estado actual de la sucursal"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <StatusMiniCard
+                label="Stock bajo"
+                value={String(analytics.kpis.stockBajo)}
+              />
+              <StatusMiniCard
+                label="Stock negativo"
+                value={String(analytics.kpis.stockNegativo)}
+                tone="danger"
+              />
+              <StatusMiniCard
+                label="Egresos"
+                value={formatARS(analytics.kpis.egresos)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-border bg-card p-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-[#fff5dd] p-2">
+                <CircleAlert className="h-4 w-4 text-[#8c6b11]" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                  Gobernanza de dato
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Las metricas salen de una definicion central compartida.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              {analytics.governance.metricas.map((item) => (
                 <div
-                  key={s.servicio.id}
-                  className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0"
+                  key={item.nombre}
+                  className="rounded-2xl border border-stone-100 bg-cream/60 p-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground tabular-nums w-5">
-                      #{idx + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {s.servicio.nombre}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {s.servicio.rubro} · {s.cantidad} unidad
-                        {s.cantidad !== 1 ? "es" : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium tabular-nums">
-                    {formatARS(s.total)}
+                  <p className="text-sm font-semibold text-ink">{item.nombre}</p>
+                  <p className="mt-1 text-sm text-stone-700">
+                    {item.definicion}
                   </p>
                 </div>
               ))}
             </div>
-          )}
-        </section>
-
-        <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <ClipboardList className="h-3.5 w-3.5 stroke-[1.5]" />
-            Comisiones del mes por empleado
-          </h2>
-          {topEmpleados.length === 0 ? (
-            <EmptyBox text="Sin comisiones acumuladas este mes." />
-          ) : (
-            <div className="bg-card border border-border rounded-md overflow-hidden">
-              {topEmpleados.map((e, idx) => {
-                const max = topEmpleados[0].comisiones || 1;
-                const pct = (e.comisiones / max) * 100;
-                return (
-                  <div
-                    key={e.empleado.id}
-                    className="px-4 py-3 border-b border-border last:border-b-0 space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground tabular-nums w-5">
-                          #{idx + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {e.empleado.nombre}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {e.lineas} línea{e.lineas !== 1 ? "s" : ""}
-                          </p>
-                        </div>
-                      </div>
-                      <p
-                        className="text-sm font-medium tabular-nums"
-                        style={{ color: "var(--sage-700)" }}
-                      >
-                        {formatARS(e.comisiones)}
-                      </p>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-cream/60 overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${pct}%`,
-                          backgroundColor: "var(--sage-700)",
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Ventas por medio de pago (mes) */}
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Ventas por medio de pago (mes)
-        </h2>
-        {ventasPorMp.length === 0 ? (
-          <EmptyBox text="Sin ventas registradas este mes." />
-        ) : (
-          <div className="bg-card border border-border rounded-md p-5 space-y-3">
-            {ventasPorMp.map((row) => (
-              <div key={row.codigo} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">
-                    {row.nombre}
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({row.codigo})
-                    </span>
-                  </span>
-                  <span className="tabular-nums">
-                    {formatARS(row.total)}
-                    <span className="text-xs text-muted-foreground ml-2">
-                      {row.pct.toFixed(0)}%
-                    </span>
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-cream/60 overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${row.pct}%`,
-                      backgroundColor: "var(--sage-700)",
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
           </div>
-        )}
-      </section>
+
+          <div className="rounded-[1.75rem] border border-border bg-card p-5">
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+              Accesos
+            </p>
+            <div className="mt-4 grid gap-2">
+              <QuickLink
+                href="/turnos"
+                label={isEmployee ? "Ver mis turnos" : "Abrir agenda"}
+              />
+              <QuickLink href="/reportes" label="Ir a reportes" />
+              {analytics.scope.puedeVerStock ? (
+                <QuickLink href="/stock" label="Revisar stock" />
+              ) : null}
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
 
-function Kpi({
+function MetricCard({
   label,
   value,
   hint,
-  color,
-  highlight,
+  icon: Icon,
 }: {
   label: string;
   value: string;
-  hint?: string;
-  color?: "sage-700" | "danger";
-  highlight?: boolean;
+  hint: string;
+  icon?: ComponentType<{ className?: string }>;
 }) {
-  const valueStyle =
-    color === "sage-700"
-      ? { color: "var(--sage-700)" }
-      : color === "danger"
-        ? { color: "var(--danger)" }
-        : undefined;
   return (
-    <div
-      className={`bg-card border rounded-md p-5 ${highlight ? "border-sage-300" : "border-border"}`}
-    >
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className="font-display text-2xl mt-2 tabular-nums"
-        style={valueStyle}
-      >
-        {value}
-      </p>
-      {hint && (
-        <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-          {hint}
+    <div className="rounded-[1.4rem] border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-2 font-display text-3xl tabular-nums">{value}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+        </div>
+        {Icon ? <Icon className="h-5 w-5 text-sage-700" /> : null}
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  description,
+  data,
+  valueFormatter = (value: number) => String(value),
+}: {
+  title: string;
+  description: string;
+  data: Array<{ label: string; value: number }>;
+  valueFormatter?: (value: number) => string;
+}) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+  return (
+    <div className="rounded-[1.75rem] border border-border bg-card p-5">
+      <div className="mb-4">
+        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+          {title}
         </p>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      {data.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-stone-200 bg-cream/60 px-4 py-6 text-sm text-stone-700">
+          Sin datos para el rango seleccionado.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.map((item) => (
+            <div key={item.label} className="space-y-1">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink">{item.label}</span>
+                <span className="tabular-nums text-stone-700">
+                  {valueFormatter(item.value)}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-stone-100">
+                <div
+                  className="h-2 rounded-full bg-sage-700"
+                  style={{
+                    width: `${Math.max((item.value / max) * 100, 6)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
-function Alert({
-  icon,
-  text,
+function StatusMiniCard({
+  label,
+  value,
   tone,
-  href,
 }: {
-  icon: React.ReactNode;
-  text: string;
-  tone: "danger" | "warning" | "info";
-  href: string;
+  label: string;
+  value: string;
+  tone?: "danger";
 }) {
-  const styles = {
-    danger: {
-      borderColor: "var(--danger)",
-      color: "var(--danger)",
-      bg: "rgba(220, 38, 38, 0.05)",
-    },
-    warning: {
-      borderColor: "var(--ink)",
-      color: "var(--ink)",
-      bg: "rgba(180, 140, 60, 0.05)",
-    },
-    info: {
-      borderColor: "var(--sage-700)",
-      color: "var(--sage-700)",
-      bg: "rgba(120, 150, 130, 0.05)",
-    },
-  } as const;
-  const s = styles[tone];
   return (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-md border text-sm hover:opacity-90 transition-opacity"
-      style={{ borderColor: s.borderColor, backgroundColor: s.bg, color: s.color }}
+    <div
+      className={`rounded-2xl border p-4 ${
+        tone === "danger"
+          ? "border-[#f2c4bd] bg-[#fff1ef]"
+          : "border-stone-100 bg-cream/60"
+      }`}
     >
-      <span className="flex items-center gap-2">
-        {icon}
-        {text}
-      </span>
-      <span className="text-xs uppercase tracking-wider opacity-70">
-        Ver →
-      </span>
-    </Link>
+      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
+    </div>
   );
 }
 
-function EmptyBox({ text }: { text: string }) {
+function QuickLink({ href, label }: { href: string; label: string }) {
   return (
-    <div className="bg-card border border-border rounded-md p-8 text-center text-sm text-muted-foreground">
-      {text}
-    </div>
+    <Link
+      href={href}
+      className="rounded-xl border border-border px-4 py-3 text-sm transition hover:border-sage-200 hover:bg-sage-50"
+    >
+      {label}
+    </Link>
   );
 }

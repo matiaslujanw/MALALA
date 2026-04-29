@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { id, store } from "@/lib/mock/store";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   computeBreakdown,
   detallarLineas,
@@ -24,13 +25,17 @@ export interface IngresoFiltros {
 export async function listIngresos(
   filtros: IngresoFiltros = {},
 ): Promise<IngresoConDetalle[]> {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
 
   let arr = filtros.incluirAnulados
     ? [...store.ingresos]
     : store.ingresos.filter((i) => !i.anulado);
 
+  arr = arr.filter((i) => scope.sucursalIdsPermitidas.includes(i.sucursal_id));
+
   if (filtros.sucursalId) {
+    if (!isSucursalAllowed(scope, filtros.sucursalId)) return [];
     arr = arr.filter((i) => i.sucursal_id === filtros.sucursalId);
   }
   if (filtros.clienteId) {
@@ -49,6 +54,14 @@ export async function listIngresos(
         .map((l) => l.ingreso_id),
     );
     arr = arr.filter((i) => ingresosConEmpleado.has(i.id));
+  }
+  if (scope.rol === "empleado" && scope.empleadoId) {
+    const ingresosPropios = new Set(
+      store.ingresoLineas
+        .filter((l) => l.empleado_id === scope.empleadoId)
+        .map((l) => l.ingreso_id),
+    );
+    arr = arr.filter((i) => ingresosPropios.has(i.id));
   }
 
   arr.sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -73,10 +86,16 @@ export async function listIngresos(
 export async function getIngreso(
   ingresoId: string,
 ): Promise<IngresoConDetalle | null> {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const ingreso = store.ingresos.find((i) => i.id === ingresoId);
   if (!ingreso) return null;
+  if (!scope.sucursalIdsPermitidas.includes(ingreso.sucursal_id)) return null;
   const lineas = detallarLineas(ingreso.id);
+  if (scope.rol === "empleado" && scope.empleadoId) {
+    const isOwn = lineas.some((linea) => linea.empleado_id === scope.empleadoId);
+    if (!isOwn) return null;
+  }
   return {
     ingreso,
     cliente: ingreso.cliente_id

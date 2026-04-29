@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRightLeft, History, SlidersHorizontal } from "lucide-react";
 import { listStockBySucursal } from "@/lib/data/stock";
-import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { getAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
+import { listSucursales } from "@/lib/data/sucursales";
 
 const UNIDAD_LABEL: Record<string, string> = {
   ud: "ud",
@@ -11,14 +13,36 @@ const UNIDAD_LABEL: Record<string, string> = {
   aplicacion: "apl.",
 };
 
-export default async function StockPage() {
-  const user = await requireUser();
-  const sucursal = await getActiveSucursal();
-  if (!sucursal) return null;
+interface SearchParams {
+  sucursal?: string;
+}
 
-  const rows = await listStockBySucursal(sucursal.id);
+export default async function StockPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const scope = await getAccessScope();
+  if (!scope?.puedeVerStock) {
+    redirect("/dashboard");
+  }
+
+  const sp = await searchParams;
+  const sucursalId =
+    (sp.sucursal && scope.sucursalIdsPermitidas.includes(sp.sucursal)
+      ? sp.sucursal
+      : scope.sucursalIdsPermitidas[0]) ?? "";
+
+  const [rows, sucursales] = await Promise.all([
+    listStockBySucursal(sucursalId),
+    listSucursales({ soloActivas: true }),
+  ]);
   const negativos = rows.filter((r) => r.estado === "negativo").length;
   const bajos = rows.filter((r) => r.estado === "bajo").length;
+  const totalValuado = rows.reduce((acc, row) => {
+    const unit = row.insumo.precio_unitario ?? 0;
+    return acc + Math.max(row.cantidad, 0) * unit;
+  }, 0);
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -28,8 +52,9 @@ export default async function StockPage() {
             Stock
           </h1>
           <p className="text-sm text-muted-foreground">
-            {sucursal.nombre} · {rows.length} insumos · {negativos} negativos ·{" "}
-            {bajos} bajos
+            {scope.puedeVerGlobal
+              ? "Vista consolidable por sucursal"
+              : "Control operativo de tu sucursal"}
           </p>
         </div>
 
@@ -41,7 +66,7 @@ export default async function StockPage() {
             <History className="h-4 w-4 stroke-[1.5]" />
             Movimientos
           </Link>
-          {user.rol === "admin" && (
+          {scope.rol === "admin" && (
             <>
               <Link
                 href="/stock/transferencia"
@@ -62,26 +87,40 @@ export default async function StockPage() {
         </div>
       </header>
 
-      {/* Banner si hay alertas */}
-      {(negativos > 0 || bajos > 0) && (
-        <div
-          className="bg-card border border-border rounded-md p-4 flex items-center gap-3"
-          style={{ borderLeftWidth: 3, borderLeftColor: negativos > 0 ? "var(--danger)" : "var(--warning)" }}
-        >
-          <p className="text-sm">
-            {negativos > 0 && (
-              <span className="font-medium" style={{ color: "var(--danger)" }}>
-                {negativos} insumo{negativos !== 1 ? "s" : ""} en stock negativo.{" "}
-              </span>
-            )}
-            {bajos > 0 && (
-              <span style={{ color: "var(--warning)" }}>
-                {bajos} insumo{bajos !== 1 ? "s" : ""} por debajo del umbral.
-              </span>
-            )}
-          </p>
-        </div>
-      )}
+      <form action="/stock" method="get" className="rounded-[1.5rem] border border-border bg-card p-4">
+        <label className="space-y-1.5 text-sm">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
+            Sucursal
+          </span>
+          <div className="flex gap-3">
+            <select
+              name="sucursal"
+              defaultValue={sucursalId}
+              className="w-full rounded-xl border border-border bg-card px-3 py-2"
+            >
+              {sucursales
+                .filter((item) => scope.sucursalIdsPermitidas.includes(item.id))
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground"
+            >
+              Ver
+            </button>
+          </div>
+        </label>
+      </form>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <SummaryCard label="Valuacion estimada" value={formatARS(totalValuado)} />
+        <SummaryCard label="Stock bajo" value={String(bajos)} tone="warning" />
+        <SummaryCard label="Stock negativo" value={String(negativos)} tone="danger" />
+      </div>
 
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -153,11 +192,29 @@ export default async function StockPage() {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
 
-      <p className="text-xs text-muted-foreground">
-        El stock se descuenta automáticamente al registrar ventas (próxima fase).
-        Stock negativo se permite con warning — no bloquea operaciones.
-      </p>
+function SummaryCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "warning" | "danger";
+}) {
+  const className =
+    tone === "danger"
+      ? "border-[#f2c4bd] bg-[#fff1ef]"
+      : tone === "warning"
+        ? "border-[#f1ddab] bg-[#fff8e9]"
+        : "border-border bg-card";
+  return (
+    <div className={`rounded-[1.4rem] border p-5 ${className}`}>
+      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-display text-3xl tabular-nums">{value}</p>
     </div>
   );
 }
