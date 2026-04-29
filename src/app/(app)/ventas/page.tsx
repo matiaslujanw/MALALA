@@ -51,10 +51,14 @@ export default async function VentasPage({
   const rango = sp.rango ?? "hoy";
   const { desde, hasta } = rangoToFechas(rango);
 
+  // Si es empleado, fuerzo el filtro a sus propias ventas y oculto métricas del local
+  const esEmpleado = user.rol === "empleado" && !!user.empleado_id;
+  const empleadoIdForzado = esEmpleado ? user.empleado_id : sp.empleado;
+
   const [ingresos, empleados, clientes] = await Promise.all([
     listIngresos({
       sucursalId: sucursal.id,
-      empleadoId: sp.empleado,
+      empleadoId: empleadoIdForzado,
       clienteId: sp.cliente,
       desde,
       hasta,
@@ -63,6 +67,181 @@ export default async function VentasPage({
     listClientes(),
   ]);
 
+  // Vista personal del empleado: sólo sus líneas y su comisión
+  if (esEmpleado) {
+    const misLineas = ingresos.flatMap((row) =>
+      row.lineas
+        .filter((l) => l.empleado_id === user.empleado_id)
+        .map((l) => ({
+          linea: l,
+          ingreso: row.ingreso,
+          cliente: row.cliente,
+        })),
+    );
+    misLineas.sort((a, b) =>
+      b.ingreso.fecha.localeCompare(a.ingreso.fecha),
+    );
+    const miTotalComision = misLineas.reduce(
+      (s, x) => s + x.linea.comision_monto,
+      0,
+    );
+    const miTotalCobrado = misLineas.reduce(
+      (s, x) => s + x.linea.subtotal,
+      0,
+    );
+
+    return (
+      <div className="space-y-8 max-w-5xl">
+        <header className="space-y-1">
+          <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
+            Mis ventas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {sucursal.nombre} ·{" "}
+            {RANGOS.find((r) => r.value === rango)?.label.toLowerCase()} ·{" "}
+            {misLineas.length} servicio{misLineas.length !== 1 ? "s" : ""}
+          </p>
+        </header>
+
+        {/* KPIs personales */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <KpiCard
+            label="Servicios trabajados"
+            value={String(misLineas.length)}
+            hint={`En ${ingresos.length} ticket${ingresos.length !== 1 ? "s" : ""}`}
+          />
+          <KpiCard
+            label="Facturado en tus servicios"
+            value={formatARS(miTotalCobrado)}
+            hint="Suma de los precios de tus líneas"
+          />
+          <KpiCard
+            label="Tu comisión"
+            value={formatARS(miTotalComision)}
+            color="sage-700"
+            highlight
+            hint={
+              miTotalCobrado > 0
+                ? `${((miTotalComision / miTotalCobrado) * 100).toFixed(0)}% promedio`
+                : undefined
+            }
+          />
+        </div>
+
+        {/* Filtro de rango (sólo) */}
+        <form
+          action="/ventas"
+          method="get"
+          className="bg-card border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end"
+        >
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Rango
+            </label>
+            <select
+              name="rango"
+              defaultValue={rango}
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+            >
+              {RANGOS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors sm:col-span-1"
+          >
+            Filtrar
+          </button>
+        </form>
+
+        {/* Detalle de líneas trabajadas */}
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Detalle de tus servicios
+          </h2>
+          {misLineas.length === 0 ? (
+            <div className="bg-card border border-border rounded-md p-8 text-center text-sm text-muted-foreground">
+              No tenés servicios cargados en el rango seleccionado.
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="text-left font-medium px-4 py-3">Fecha</th>
+                    <th className="text-left font-medium px-4 py-3">Servicio</th>
+                    <th className="text-left font-medium px-4 py-3">Cliente</th>
+                    <th className="text-right font-medium px-4 py-3">Precio</th>
+                    <th className="text-right font-medium px-4 py-3">%</th>
+                    <th className="text-right font-medium px-4 py-3">
+                      Tu comisión
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {misLineas.map((row) => (
+                    <tr key={row.linea.id} className="hover:bg-cream/30">
+                      <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                        {new Date(row.ingreso.fecha).toLocaleString("es-AR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        {row.linea.servicio?.nombre ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.cliente?.nombre ?? "Consumidor Final"}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatARS(row.linea.subtotal)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {row.linea.comision_pct}%
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right tabular-nums font-medium"
+                        style={{ color: "var(--sage-700)" }}
+                      >
+                        {formatARS(row.linea.comision_monto)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-cream/40 font-medium">
+                    <td className="px-4 py-3" colSpan={3}>
+                      Totales
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatARS(miTotalCobrado)}
+                    </td>
+                    <td></td>
+                    <td
+                      className="px-4 py-3 text-right tabular-nums"
+                      style={{ color: "var(--sage-700)" }}
+                    >
+                      {formatARS(miTotalComision)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Estas comisiones se acumulan y se liquidan a fin de período por la
+            encargada/admin.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  // Vista admin / encargada (la original)
   const totales = aggregate(ingresos);
   const porEmpleado = comisionesPorEmpleado(ingresos);
 

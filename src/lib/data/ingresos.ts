@@ -137,6 +137,23 @@ export async function createIngreso(
   }
 
   const data = parsed.data;
+
+  // Bloqueo: si la caja del día ya está cerrada en esta sucursal, no se puede vender.
+  const hoyYmd = new Date().toISOString().slice(0, 10);
+  const cierreDelDia = store.cierresCaja.find(
+    (c) => c.sucursal_id === data.sucursal_id && c.fecha === hoyYmd,
+  );
+  if (cierreDelDia) {
+    return {
+      ok: false,
+      errors: {
+        _: [
+          "La caja de hoy ya está cerrada para esta sucursal. Reabrí el cierre para registrar más ventas.",
+        ],
+      },
+    };
+  }
+
   const subtotal = data.lineas.reduce((acc, l) => acc + l.precio_efectivo, 0);
   const descuentoMonto =
     data.descuento_tipo === "pct"
