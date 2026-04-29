@@ -1,26 +1,116 @@
 @import "tailwindcss";
 
+/* ============================================================
+   MALALA — Brand tokens
+   Paleta y tipografías del sistema. Ver docs/brand/brand-tokens.md
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Neutros */
+  --white: #ffffff;
+  --off-white: #fafaf9;
+  --cream: #f5f4f0;
+  --stone-100: #e7e5e0;
+  --stone-300: #c4c2bc;
+  --stone-500: #78766f;
+  --stone-700: #3f3d38;
+  --ink: #1a1a1a;
+  --black: #000000;
+
+  /* Sage (acento) */
+  --sage-50: #f2f5f0;
+  --sage-100: #dde5d6;
+  --sage-300: #a8b89a;
+  --sage-500: #6e8060;
+  --sage-700: #4a5840;
+  --sage-900: #2c3525;
+
+  /* Semánticos */
+  --success: #6e8060;
+  --warning: #c9a961;
+  --danger: #a84a3d;
+  --info: #6e8060;
+
+  /* Tokens shadcn-style */
+  --background: var(--off-white);
+  --foreground: var(--ink);
+
+  --card: var(--white);
+  --card-foreground: var(--ink);
+
+  --popover: var(--white);
+  --popover-foreground: var(--ink);
+
+  --primary: var(--sage-500);
+  --primary-foreground: var(--white);
+
+  --secondary: var(--cream);
+  --secondary-foreground: var(--ink);
+
+  --muted: var(--cream);
+  --muted-foreground: var(--stone-500);
+
+  --accent: var(--sage-500);
+  --accent-foreground: var(--white);
+
+  --destructive: var(--danger);
+  --destructive-foreground: var(--white);
+
+  --border: var(--stone-100);
+  --input: var(--stone-100);
+  --ring: var(--sage-500);
+
+  --radius: 0.375rem;
 }
 
 @theme inline {
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-display: var(--font-display), serif;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-sage-50: var(--sage-50);
+  --color-sage-100: var(--sage-100);
+  --color-sage-300: var(--sage-300);
+  --color-sage-500: var(--sage-500);
+  --color-sage-700: var(--sage-700);
+  --color-sage-900: var(--sage-900);
+
+  --color-stone-100: var(--stone-100);
+  --color-stone-300: var(--stone-300);
+  --color-stone-500: var(--stone-500);
+  --color-stone-700: var(--stone-700);
+
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1, "ss01" 1;
 }

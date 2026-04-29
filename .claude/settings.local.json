@@ -1,7 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx --yes create-next-app@latest . --typescript --app --tailwind --eslint --src-dir false --import-alias \"@/*\" --use-npm --yes --no-turbopack)"
+      "Bash(npx --yes create-next-app@latest . --typescript --app --tailwind --eslint --src-dir false --import-alias \"@/*\" --use-npm --yes --no-turbopack)",
+      "Read(//c/c/Users/Matías Lujan/**)",
+      "Read(//c/c/Users/Matías Lujan/malala/**)",
+      "Bash(cp \"/c/Users/Matías Lujan/Downloads/MALALA_prompt_inicial_fase1.md\" \"/c/Users/Matías Lujan/malala/docs/contexto/01-prompt-inicial.md\")",
+      "Bash(cp \"/c/Users/Matías Lujan/Downloads/brand-tokens.md\" \"/c/Users/Matías Lujan/malala/docs/brand/brand-tokens.md\")",
+      "Bash(cp \"/c/Users/Matías Lujan/Downloads/README-data.md\" \"/c/Users/Matías Lujan/malala/docs/data/README-data.md\")",
+      "Bash(npx tsc *)",
+      "Bash(npm install *)",
+      "Bash(curl -s -o /dev/null -w \"/ → %{http_code}\\\\n\" -L --max-redirs 0 http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"/dev/login → %{http_code}\\\\n\" http://localhost:3000/dev/login)",
+      "Bash(curl -s -o /dev/null -w \"/dashboard \\(no auth\\) → %{http_code}\\\\n\" -L --max-redirs 0 http://localhost:3000/dashboard)",
+      "Bash(curl -s -o /dev/null -w \"/dev/styleguide → %{http_code}\\\\n\" http://localhost:3000/dev/styleguide)",
+      "PowerShell($urls = @\\('http://localhost:3000/', 'http://localhost:3000/dev/login', 'http://localhost:3000/dev/styleguide', 'http://localhost:3000/dashboard'\\); foreach \\($u in $urls\\) { try { $r = Invoke-WebRequest -Uri $u -MaximumRedirection 0 -ErrorAction SilentlyContinue; \"$u -> $\\($r.StatusCode\\)\" } catch { \"$u -> $\\($_.Exception.Response.StatusCode.value__\\)\" } })",
+      "Bash(npm run *)",
+      "PowerShell($ProgressPreference='SilentlyContinue'; $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession; $home_r = Invoke-WebRequest -Uri 'http://localhost:3000/dev/login' -UseBasicParsing -WebSession $session -ErrorAction Stop; \"login: $\\($home_r.StatusCode\\)\"; $login_form = $home_r.Content -match 'name=\"\\\\$ACTION_REF_\\(\\\\w+\\)\"'; $home_r.Content -match 'value=\"\\([^\"]+\\)\" name=\"\\\\$ACTION_ID_')"
     ]
   }
 }
