@@ -145,12 +145,24 @@ export default async function ReportesPage({
               KPIs de control
             </p>
             <div className="mt-4 grid gap-3">
-              <KpiLine label="Ingresos" value={formatARS(analytics.kpis.ingresos)} />
+              <KpiLine
+                label="Ingresos"
+                value={formatARS(analytics.kpis.ingresos)}
+              />
               <KpiLine label="Neto" value={formatARS(analytics.kpis.neto)} />
               <KpiLine label="Turnos" value={String(analytics.kpis.turnos)} />
-              <KpiLine label="Ocupacion" value={`${analytics.kpis.ocupacionPct}%`} />
-              <KpiLine label="Cancelaciones" value={`${analytics.kpis.cancelacionesPct}%`} />
-              <KpiLine label="Egresos" value={formatARS(analytics.kpis.egresos)} />
+              <KpiLine
+                label="Ocupacion"
+                value={`${analytics.kpis.ocupacionPct}%`}
+              />
+              <KpiLine
+                label="Cancelaciones"
+                value={`${analytics.kpis.cancelacionesPct}%`}
+              />
+              <KpiLine
+                label="Egresos"
+                value={formatARS(analytics.kpis.egresos)}
+              />
             </div>
           </div>
 
@@ -160,12 +172,24 @@ export default async function ReportesPage({
             </p>
             <div className="mt-4 space-y-3">
               {analytics.governance.actividadReciente.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-stone-100 bg-cream/60 p-4">
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-stone-100 bg-cream/60 p-4"
+                >
                   <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground">
                     <span>{item.modulo}</span>
-                    <span>{new Date(item.fecha).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                    <span>
+                      {new Date(item.fecha).toLocaleString("es-AR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-ink">{item.actor}</p>
+                  <p className="mt-2 text-sm font-medium text-ink">
+                    {item.actor}
+                  </p>
                   <p className="mt-1 text-sm text-stone-700">{item.detalle}</p>
                 </div>
               ))}
@@ -271,12 +295,16 @@ function ReportSection({
             <div key={item.label} className="space-y-1">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink">{item.label}</span>
-                <span className="tabular-nums text-stone-700">{formatValue(item.value)}</span>
+                <span className="tabular-nums text-stone-700">
+                  {formatValue(item.value)}
+                </span>
               </div>
               <div className="h-2 rounded-full bg-stone-100">
                 <div
                   className="h-2 rounded-full bg-sage-700"
-                  style={{ width: `${Math.max((item.value / max) * 100, 6)}%` }}
+                  style={{
+                    width: `${Math.max((item.value / max) * 100, 6)}%`,
+                  }}
                 />
               </div>
             </div>

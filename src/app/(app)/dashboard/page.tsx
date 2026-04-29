@@ -1,6 +1,11 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { CalendarClock, CircleAlert, PackageSearch, TrendingUp } from "lucide-react";
+import {
+  CalendarClock,
+  CircleAlert,
+  PackageSearch,
+  TrendingUp,
+} from "lucide-react";
 import { getAnalyticsSnapshot } from "@/lib/data/analytics";
 import { listEmpleados } from "@/lib/data/empleados";
 import { listSucursales } from "@/lib/data/sucursales";
@@ -39,13 +44,18 @@ export default async function DashboardPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-            {isEmployee ? "Mi operacion" : analytics.scope.puedeVerGlobal ? "Vision global" : "Mi sucursal"}
+            {isEmployee
+              ? "Mi operacion"
+              : analytics.scope.puedeVerGlobal
+                ? "Vision global"
+                : "Mi sucursal"}
           </p>
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
             Dashboard
           </h1>
           <p className="text-sm text-muted-foreground">
-            Hola {user.nombre} Â· rango {formatLongDate(`${analytics.filters.desde}T12:00:00`)} a{" "}
+            Hola {user.nombre} · rango{" "}
+            {formatLongDate(`${analytics.filters.desde}T12:00:00`)} a{" "}
             {formatLongDate(`${analytics.filters.hasta}T12:00:00`)}
           </p>
         </div>
@@ -135,11 +145,33 @@ export default async function DashboardPage({
       )}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <MetricCard label={isEmployee ? "Mi facturacion" : "Ingresos"} value={formatARS(analytics.kpis.ingresos)} hint="ventas cobradas" icon={TrendingUp} />
-        <MetricCard label={isEmployee ? "Mi neto estimado" : "Neto"} value={formatARS(analytics.kpis.neto)} hint="menos comision e insumos" />
-        <MetricCard label={isEmployee ? "Mis turnos" : "Turnos"} value={String(analytics.kpis.turnos)} hint="en el rango" icon={CalendarClock} />
-        <MetricCard label="Ocupacion" value={`${analytics.kpis.ocupacionPct}%`} hint="capacidad teorica" />
-        <MetricCard label="Cancelaciones" value={`${analytics.kpis.cancelacionesPct}%`} hint="sobre turnos" />
+        <MetricCard
+          label={isEmployee ? "Mi facturacion" : "Ingresos"}
+          value={formatARS(analytics.kpis.ingresos)}
+          hint="ventas cobradas"
+          icon={TrendingUp}
+        />
+        <MetricCard
+          label={isEmployee ? "Mi neto estimado" : "Neto"}
+          value={formatARS(analytics.kpis.neto)}
+          hint="menos comision e insumos"
+        />
+        <MetricCard
+          label={isEmployee ? "Mis turnos" : "Turnos"}
+          value={String(analytics.kpis.turnos)}
+          hint="en el rango"
+          icon={CalendarClock}
+        />
+        <MetricCard
+          label="Ocupacion"
+          value={`${analytics.kpis.ocupacionPct}%`}
+          hint="capacidad teorica"
+        />
+        <MetricCard
+          label="Cancelaciones"
+          value={`${analytics.kpis.cancelacionesPct}%`}
+          hint="sobre turnos"
+        />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
@@ -147,8 +179,12 @@ export default async function DashboardPage({
           <ChartCard
             title={isEmployee ? "Mi rendimiento por servicio" : "Ingresos por dia"}
             description="Base comun de metricas para seguimiento operativo."
-            data={isEmployee ? analytics.charts.serviciosTop : analytics.charts.ingresosPorDia}
-            valueFormatter={(value) => (isEmployee ? formatARS(value) : formatARS(value))}
+            data={
+              isEmployee
+                ? analytics.charts.serviciosTop
+                : analytics.charts.ingresosPorDia
+            }
+            valueFormatter={formatARS}
           />
 
           <ChartCard
@@ -159,7 +195,11 @@ export default async function DashboardPage({
 
           {!isEmployee && (
             <ChartCard
-              title={analytics.scope.puedeVerGlobal ? "Rendimiento por profesional" : "Servicios top"}
+              title={
+                analytics.scope.puedeVerGlobal
+                  ? "Rendimiento por profesional"
+                  : "Servicios top"
+              }
               description={
                 analytics.scope.puedeVerGlobal
                   ? "Comparativo para detectar capacidad y productividad."
@@ -186,14 +226,26 @@ export default async function DashboardPage({
                   Salud operativa
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {analytics.scope.puedeVerGlobal ? "Comparativa de sucursales" : "Estado actual de la sucursal"}
+                  {analytics.scope.puedeVerGlobal
+                    ? "Comparativa de sucursales"
+                    : "Estado actual de la sucursal"}
                 </p>
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <StatusMiniCard label="Stock bajo" value={String(analytics.kpis.stockBajo)} />
-              <StatusMiniCard label="Stock negativo" value={String(analytics.kpis.stockNegativo)} tone="danger" />
-              <StatusMiniCard label="Egresos" value={formatARS(analytics.kpis.egresos)} />
+              <StatusMiniCard
+                label="Stock bajo"
+                value={String(analytics.kpis.stockBajo)}
+              />
+              <StatusMiniCard
+                label="Stock negativo"
+                value={String(analytics.kpis.stockNegativo)}
+                tone="danger"
+              />
+              <StatusMiniCard
+                label="Egresos"
+                value={formatARS(analytics.kpis.egresos)}
+              />
             </div>
           </div>
 
@@ -213,9 +265,14 @@ export default async function DashboardPage({
             </div>
             <div className="mt-4 space-y-3">
               {analytics.governance.metricas.map((item) => (
-                <div key={item.nombre} className="rounded-2xl border border-stone-100 bg-cream/60 p-4">
+                <div
+                  key={item.nombre}
+                  className="rounded-2xl border border-stone-100 bg-cream/60 p-4"
+                >
                   <p className="text-sm font-semibold text-ink">{item.nombre}</p>
-                  <p className="mt-1 text-sm text-stone-700">{item.definicion}</p>
+                  <p className="mt-1 text-sm text-stone-700">
+                    {item.definicion}
+                  </p>
                 </div>
               ))}
             </div>
@@ -226,9 +283,14 @@ export default async function DashboardPage({
               Accesos
             </p>
             <div className="mt-4 grid gap-2">
-              <QuickLink href="/turnos" label={isEmployee ? "Ver mis turnos" : "Abrir agenda"} />
+              <QuickLink
+                href="/turnos"
+                label={isEmployee ? "Ver mis turnos" : "Abrir agenda"}
+              />
               <QuickLink href="/reportes" label="Ir a reportes" />
-              {analytics.scope.puedeVerStock ? <QuickLink href="/stock" label="Revisar stock" /> : null}
+              {analytics.scope.puedeVerStock ? (
+                <QuickLink href="/stock" label="Revisar stock" />
+              ) : null}
             </div>
           </div>
         </aside>
@@ -294,12 +356,16 @@ function ChartCard({
             <div key={item.label} className="space-y-1">
               <div className="flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink">{item.label}</span>
-                <span className="tabular-nums text-stone-700">{valueFormatter(item.value)}</span>
+                <span className="tabular-nums text-stone-700">
+                  {valueFormatter(item.value)}
+                </span>
               </div>
               <div className="h-2 rounded-full bg-stone-100">
                 <div
                   className="h-2 rounded-full bg-sage-700"
-                  style={{ width: `${Math.max((item.value / max) * 100, 6)}%` }}
+                  style={{
+                    width: `${Math.max((item.value / max) * 100, 6)}%`,
+                  }}
                 />
               </div>
             </div>
@@ -320,8 +386,16 @@ function StatusMiniCard({
   tone?: "danger";
 }) {
   return (
-    <div className={`rounded-2xl border p-4 ${tone === "danger" ? "border-[#f2c4bd] bg-[#fff1ef]" : "border-stone-100 bg-cream/60"}`}>
-      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{label}</p>
+    <div
+      className={`rounded-2xl border p-4 ${
+        tone === "danger"
+          ? "border-[#f2c4bd] bg-[#fff1ef]"
+          : "border-stone-100 bg-cream/60"
+      }`}
+    >
+      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
     </div>
   );

@@ -284,3 +284,4 @@ export interface AccessScope {
   puedeVerCaja: boolean;
   puedeVerCatalogos: boolean;
 }
+

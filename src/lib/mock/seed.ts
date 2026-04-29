@@ -849,3 +849,4 @@ export function seed(): Store {
     cierresCaja: [],
   };
 }
+
