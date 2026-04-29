@@ -96,6 +96,10 @@ export function seed(): Store {
     observacion: "Encargada",
   };
 
+  // Vinculo el usuario "empleado" con su registro Empleado para
+  // que la UI pueda filtrar a su propia data.
+  (userEmpleadoYB as { empleado_id?: string }).empleado_id = empAnita.id;
+
   // Clientes
   const cliMaria = { id: uid(), nombre: "María Pérez", telefono: "+5493815552001", activo: true, saldo_cc: 0 };
   const cliLucia = { id: uid(), nombre: "Lucía Gómez", telefono: "+5493815552002", activo: true, saldo_cc: 0 };

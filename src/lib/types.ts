@@ -28,6 +28,11 @@ export interface Usuario {
   rol: Rol;
   sucursal_default_id: ID;
   activo: boolean;
+  /**
+   * Sólo aplica cuando rol = "empleado": apunta al registro `Empleado`
+   * sobre el que se calculan comisiones. Permite filtrar la UI a su propia data.
+   */
+  empleado_id?: ID;
 }
 
 export interface Empleado {
