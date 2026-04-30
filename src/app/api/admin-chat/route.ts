@@ -245,11 +245,12 @@ async function executeTool(
       return getAnalyticsSnapshot(args);
     case "get_dashboard":
       return getDashboardData(args.sucursalId as string);
-    case "get_resumen_caja":
-      return getResumenDelDia({
-        sucursalId: args.sucursalId as string,
-        fecha: args.fecha as string | undefined,
-      });
+    case "get_resumen_caja": {
+      const fecha =
+        (args.fecha as string | undefined) ??
+        new Date().toISOString().slice(0, 10);
+      return getResumenDelDia(args.sucursalId as string, fecha);
+    }
     default:
       return { error: `Tool desconocida: ${name}` };
   }
