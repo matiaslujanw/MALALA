@@ -1,0 +1,47 @@
+<svg width="920" height="1100" viewBox="0 0 920 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="heroBg" x1="92" y1="54" x2="786" y2="1038" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF6F0"/>
+      <stop offset="0.52" stop-color="#F2E8DE"/>
+      <stop offset="1" stop-color="#E6EFE5"/>
+    </linearGradient>
+    <radialGradient id="hairGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(648 338) rotate(90) scale(260 240)">
+      <stop stop-color="#33524B"/>
+      <stop offset="1" stop-color="#163A36"/>
+    </radialGradient>
+    <radialGradient id="skin" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(526 648) rotate(90) scale(222 172)">
+      <stop stop-color="#F5DDCC"/>
+      <stop offset="1" stop-color="#DDB68C"/>
+    </radialGradient>
+    <filter id="softShadow" x="116" y="104" width="700" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="28"/>
+      <feGaussianBlur stdDeviation="24"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.17 0 0 0 0 0.21 0 0 0 0 0.15 0 0 0 0.14 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_hero"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_hero" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="920" height="1100" fill="#F5EEE7"/>
+  <rect x="38" y="38" width="844" height="1024" rx="44" fill="url(#heroBg)"/>
+  <circle cx="732" cy="212" r="108" fill="#E6EFE5"/>
+  <circle cx="196" cy="894" r="144" fill="#ECD8C9"/>
+  <g filter="url(#softShadow)">
+    <rect x="164" y="132" width="592" height="824" rx="42" fill="#FEFCF8"/>
+    <path d="M296 684C296 500 416 354 568 354C720 354 756 510 756 690V866H296V684Z" fill="url(#hairGlow)"/>
+    <path d="M394 476C394 386 458 318 540 318C622 318 688 386 688 476V694H394V476Z" fill="#FBF5EC"/>
+    <ellipse cx="540" cy="508" rx="122" ry="150" fill="url(#skin)"/>
+    <path d="M422 468C422 382 470 320 556 310C638 300 714 344 734 440C696 408 646 388 580 394C510 402 460 426 422 468Z" fill="#FFF9F1"/>
+    <path d="M408 474C394 376 436 288 524 256C626 218 758 286 790 414C732 362 666 338 592 340C516 342 456 390 408 474Z" fill="#173A36"/>
+    <path d="M470 614C498 578 548 556 596 556C676 556 740 618 740 694C740 774 674 836 592 836H532C458 836 396 780 396 710C396 670 420 638 470 614Z" fill="#D7B286"/>
+    <path d="M606 616C646 626 674 658 680 702C682 720 676 742 662 760C640 786 606 800 568 796C560 776 560 748 564 728C570 684 578 650 606 616Z" fill="#173A36"/>
+    <path d="M504 690C540 674 576 674 606 694" stroke="#3A2A24" stroke-width="8" stroke-linecap="round"/>
+    <path d="M620 538C632 530 648 530 662 538" stroke="#3A2A24" stroke-width="8" stroke-linecap="round"/>
+    <path d="M470 730C486 790 518 842 562 870C608 900 670 906 726 886" stroke="#FFF7EF" stroke-width="20" stroke-linecap="round"/>
+    <path d="M438 788C484 846 534 888 586 916" stroke="#F1E4D3" stroke-width="18" stroke-linecap="round"/>
+    <path d="M372 830C410 786 446 760 494 748" stroke="#E2C7AF" stroke-width="22" stroke-linecap="round"/>
+    <path d="M316 832C358 818 402 818 444 830" stroke="#D2A982" stroke-width="30" stroke-linecap="round"/>
+    <path d="M304 880C362 856 418 854 472 874" stroke="#173A36" stroke-width="18" stroke-linecap="round" opacity="0.28"/>
+  </g>
+</svg>

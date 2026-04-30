@@ -1,0 +1,42 @@
+<svg width="920" height="1100" viewBox="0 0 920 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="serviceBg" x1="104" y1="84" x2="742" y2="1020" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9F2"/>
+      <stop offset="0.48" stop-color="#F2E7DA"/>
+      <stop offset="1" stop-color="#E7EFE5"/>
+    </linearGradient>
+    <filter id="shadowService" x="132" y="124" width="652" height="858" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="26"/>
+      <feGaussianBlur stdDeviation="20"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.17 0 0 0 0 0.21 0 0 0 0 0.15 0 0 0 0.12 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_service"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_service" result="shape"/>
+    </filter>
+  </defs>
+  <rect width="920" height="1100" fill="#F5F0E9"/>
+  <rect x="44" y="44" width="832" height="1012" rx="42" fill="url(#serviceBg)"/>
+  <circle cx="698" cy="186" r="116" fill="#E8EFE6"/>
+  <circle cx="206" cy="890" r="130" fill="#E8D7C8"/>
+  <g filter="url(#shadowService)">
+    <rect x="172" y="152" width="572" height="778" rx="40" fill="#FFFDF9"/>
+    <rect x="204" y="190" width="508" height="714" rx="34" fill="#F8F0E7"/>
+    <path d="M444 366C444 286 506 224 586 224C666 224 726 286 726 366V472H444V366Z" fill="#1C4943"/>
+    <path d="M470 322C470 262 516 214 576 214C638 214 682 262 682 322V454H470V322Z" fill="#FFF8F0"/>
+    <ellipse cx="578" cy="350" rx="96" ry="124" fill="#F1D7C3"/>
+    <path d="M494 328C500 254 552 212 620 214C676 216 722 256 734 316C708 298 674 288 634 290C584 292 536 304 494 328Z" fill="#FAF5EE"/>
+    <path d="M486 334C486 252 526 188 610 170C680 156 756 212 774 294C728 278 684 278 648 294C600 316 560 350 514 406C498 388 486 360 486 334Z" fill="#173A36"/>
+    <path d="M598 488C626 486 650 500 664 522C678 544 680 574 666 604C654 628 630 648 602 660C590 618 590 580 598 488Z" fill="#D3A97E"/>
+    <path d="M418 530C444 466 476 430 532 398" stroke="#F5E8DB" stroke-width="28" stroke-linecap="round"/>
+    <path d="M396 588C450 486 520 410 612 366" stroke="#F2D7BF" stroke-width="22" stroke-linecap="round"/>
+    <path d="M362 650C420 530 500 436 620 380" stroke="#173A36" stroke-width="16" stroke-linecap="round" opacity="0.2"/>
+    <path d="M320 690C366 672 418 672 460 694" stroke="#DAB58C" stroke-width="26" stroke-linecap="round"/>
+    <path d="M270 774C326 720 388 686 474 668" stroke="#214A44" stroke-width="18" stroke-linecap="round" opacity="0.25"/>
+    <rect x="236" y="734" width="444" height="132" rx="26" fill="#FFFCF8"/>
+    <circle cx="290" cy="800" r="22" fill="#173A36"/>
+    <rect x="332" y="774" width="220" height="16" rx="8" fill="#2E352E" fill-opacity="0.9"/>
+    <rect x="332" y="806" width="164" height="12" rx="6" fill="#857B72"/>
+    <rect x="332" y="834" width="126" height="12" rx="6" fill="#857B72"/>
+  </g>
+</svg>
