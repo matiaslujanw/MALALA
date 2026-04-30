@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
+import { AdminChat } from "@/components/admin-chat/admin-chat";
 import { getActiveSucursal, getCurrentUser } from "@/lib/auth/session";
 
 export default async function AppLayout({
@@ -25,6 +26,7 @@ export default async function AppLayout({
         </header>
         <main className="flex-1 p-6 md:p-8">{children}</main>
       </div>
+      {user.rol === "admin" && <AdminChat />}
     </div>
   );
 }
