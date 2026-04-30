@@ -44,7 +44,7 @@ export function AppSidebar({ user }: { user: Usuario }) {
   const items = NAV.filter((item) => item.visible(scope));
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col">
+    <aside className="w-60 shrink-0 border-r border-border bg-card flex flex-col sticky top-0 h-screen self-start">
       <Link href="/dashboard" className="block p-6 border-b border-border hover:bg-cream/40 transition-colors">
         <h1 className="font-display text-xl tracking-[0.3em] uppercase">
           MALALA
@@ -54,7 +54,7 @@ export function AppSidebar({ user }: { user: Usuario }) {
         </p>
       </Link>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
         {items.map((item) => {
           const Icon = item.icon;
           return (
