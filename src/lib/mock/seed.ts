@@ -3,7 +3,16 @@
  */
 import type { Store } from "./store";
 
-const uid = () => crypto.randomUUID();
+// IDs deterministas: en serverless, cada instancia corre seed() de forma
+// independiente. Si los IDs fueran random, las cookies guardadas con un id de
+// la instancia A nunca matchean en la B → loop /dev/login → /dashboard →
+// /dev/login. Un contador estable garantiza el mismo id en todas las réplicas
+// porque el seed se ejecuta siempre en el mismo orden.
+let __seq = 0;
+const uid = () => `seed-${(++__seq).toString(36).padStart(6, "0")}`;
+const resetSeq = () => {
+  __seq = 0;
+};
 
 function addDays(base: Date, days: number) {
   const next = new Date(base);
@@ -22,6 +31,7 @@ function toIsoDateTime(date: Date, hour: number, minute = 0) {
 }
 
 export function seed(): Store {
+  resetSeq();
   const today = new Date();
 
   // Sucursales

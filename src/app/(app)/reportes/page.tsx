@@ -1,316 +1,388 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getAnalyticsSnapshot } from "@/lib/data/analytics";
-import { listEmpleados } from "@/lib/data/empleados";
-import { listSucursales } from "@/lib/data/sucursales";
 import { requireUser } from "@/lib/auth/session";
+import {
+  getAuditTimeline,
+  type AuditEventType,
+} from "@/lib/data/auditoria";
+import {
+  aggregateAudit,
+  TIPO_LABELS,
+} from "@/lib/data/auditoria-helpers";
+import { listSucursales } from "@/lib/data/sucursales";
+import { store } from "@/lib/mock/store";
 import { formatARS } from "@/lib/utils";
+import { getAnalyticsSnapshot } from "@/lib/data/analytics";
 
 interface SearchParams {
-  desde?: string;
-  hasta?: string;
+  rango?: "hoy" | "semana" | "mes" | "todo";
+  tipo?: string;
+  usuario?: string;
   sucursal?: string;
-  empleado?: string;
-  estado?: string;
-  rubro?: string;
+  q?: string;
 }
+
+const RANGOS: Array<{ value: NonNullable<SearchParams["rango"]>; label: string }> = [
+  { value: "hoy", label: "Hoy" },
+  { value: "semana", label: "Últimos 7 días" },
+  { value: "mes", label: "Últimos 30 días" },
+  { value: "todo", label: "Todo" },
+];
+
+function rangoToFechas(rango: NonNullable<SearchParams["rango"]>) {
+  const now = new Date();
+  const desde = new Date(now);
+  if (rango === "hoy") desde.setHours(0, 0, 0, 0);
+  else if (rango === "semana") desde.setDate(desde.getDate() - 7);
+  else if (rango === "mes") desde.setDate(desde.getDate() - 30);
+  else return { desde: undefined, hasta: undefined };
+  return { desde: desde.toISOString(), hasta: now.toISOString() };
+}
+
+const ALL_TIPOS: AuditEventType[] = [
+  "venta",
+  "egreso",
+  "cierre",
+  "stock_compra",
+  "stock_venta",
+  "stock_ajuste",
+  "stock_transferencia",
+];
+
+const TIPO_COLORS: Record<AuditEventType, string> = {
+  venta: "var(--sage-700)",
+  egreso: "var(--ink)",
+  cierre: "var(--sage-700)",
+  stock_compra: "var(--ink)",
+  stock_venta: "var(--ink)",
+  stock_ajuste: "var(--danger)",
+  stock_transferencia: "var(--ink)",
+};
 
 export default async function ReportesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  await requireUser();
-  const sp = await searchParams;
-  const analytics = await getAnalyticsSnapshot({
-    desde: sp.desde,
-    hasta: sp.hasta,
-    sucursalId: sp.sucursal,
-    empleadoId: sp.empleado,
-    turnoEstado: (sp.estado as never) ?? "",
-    rubro: sp.rubro,
-  });
-
+  const user = await requireUser();
+  // Verify the user has reportes scope; otherwise bounce to dashboard.
+  const analytics = await getAnalyticsSnapshot({});
   if (!analytics.scope.puedeVerReportes) {
     redirect("/dashboard");
   }
 
-  const [sucursales, empleados] = await Promise.all([
-    listSucursales({ soloActivas: true }),
-    listEmpleados(),
-  ]);
+  const sp = await searchParams;
+  const rango = sp.rango ?? "hoy";
+  const { desde, hasta } = rangoToFechas(rango);
+  const tipos = sp.tipo
+    ? [sp.tipo as AuditEventType].filter((t) => ALL_TIPOS.includes(t))
+    : undefined;
+
+  const events = await getAuditTimeline({
+    desde,
+    hasta,
+    tipos,
+    usuarioId: sp.usuario || undefined,
+    sucursalId: sp.sucursal || undefined,
+    search: sp.q || undefined,
+    limit: 500,
+  });
+
+  const agg = aggregateAudit(events);
+  const sucursales = await listSucursales();
+  const usuarios = [...store.usuarios].sort((a, b) =>
+    a.nombre.localeCompare(b.nombre),
+  );
+
+  // Totales monetarios para trazabilidad rápida
+  const totalIngresos = events
+    .filter((e) => e.tipo === "venta")
+    .reduce((acc, e) => acc + (e.monto ?? 0), 0);
+  const totalEgresos = events
+    .filter((e) => e.tipo === "egreso")
+    .reduce((acc, e) => acc + (e.monto ?? 0), 0);
 
   return (
-    <div className="space-y-8 max-w-7xl">
+    <div className="space-y-8 max-w-6xl">
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-          Hub analitico
+          Trazabilidad
         </p>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          Reportes
+          Reportes · Auditoría
         </h1>
         <p className="text-sm text-muted-foreground">
-          Analitica multi-modulo con filtros compartidos y actividad auditada.
+          Línea de tiempo de cada movimiento operativo: quién lo hizo, cuándo, en
+          qué sucursal y por qué monto. {agg.total} evento
+          {agg.total !== 1 ? "s" : ""} ·{" "}
+          {RANGOS.find((r) => r.value === rango)?.label.toLowerCase()}
+          {user.rol !== "admin" ? " · vista limitada" : ""}
         </p>
       </header>
 
+      {/* KPIs monetarios */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-card border border-border rounded-md p-4">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Ingresos del período
+          </p>
+          <p className="font-display text-2xl mt-1 tabular-nums text-sage-700">
+            {formatARS(totalIngresos)}
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-4">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Egresos del período
+          </p>
+          <p className="font-display text-2xl mt-1 tabular-nums text-ink">
+            {formatARS(totalEgresos)}
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-4">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Neto
+          </p>
+          <p className="font-display text-2xl mt-1 tabular-nums">
+            {formatARS(totalIngresos - totalEgresos)}
+          </p>
+        </div>
+      </div>
+
+      {/* KPIs por tipo */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {ALL_TIPOS.map((t) => (
+          <div
+            key={t}
+            className="bg-card border border-border rounded-md p-3"
+          >
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground leading-tight">
+              {TIPO_LABELS[t]}
+            </p>
+            <p
+              className="font-display text-xl mt-1 tabular-nums"
+              style={{ color: TIPO_COLORS[t] }}
+            >
+              {agg.porTipo[t]}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtros */}
       <form
         action="/reportes"
         method="get"
-        className="grid gap-3 rounded-[1.5rem] border border-border bg-card p-4 md:grid-cols-2 xl:grid-cols-6"
+        className="bg-card border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end"
       >
-        <FieldDate name="desde" label="Desde" value={analytics.filters.desde} />
-        <FieldDate name="hasta" label="Hasta" value={analytics.filters.hasta} />
-        <FieldSelect
-          name="sucursal"
-          label="Sucursal"
-          value={analytics.filters.sucursalId ?? ""}
-          options={[
-            { value: "", label: "Todas" },
-            ...sucursales
-              .filter((item) =>
-                analytics.scope.sucursalIdsPermitidas.includes(item.id),
-              )
-              .map((item) => ({ value: item.id, label: item.nombre })),
-          ]}
-        />
-        <FieldSelect
-          name="empleado"
-          label="Profesional"
-          value={analytics.filters.empleadoId ?? ""}
-          options={[
-            { value: "", label: "Todos" },
-            ...empleados
-              .filter((item) =>
-                analytics.scope.sucursalIdsPermitidas.includes(
-                  item.sucursal_principal_id,
-                ),
-              )
-              .map((item) => ({ value: item.id, label: item.nombre })),
-          ]}
-        />
-        <FieldSelect
-          name="estado"
-          label="Estado turno"
-          value={analytics.filters.turnoEstado}
-          options={[
-            { value: "", label: "Todos" },
-            { value: "pendiente", label: "Pendiente" },
-            { value: "confirmado", label: "Confirmado" },
-            { value: "en_curso", label: "En curso" },
-            { value: "completado", label: "Completado" },
-            { value: "cancelado", label: "Cancelado" },
-            { value: "ausente", label: "Ausente" },
-          ]}
-        />
-        <div className="flex items-end">
-          <button
-            type="submit"
-            className="w-full rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700"
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Rango
+          </label>
+          <select
+            name="rango"
+            defaultValue={rango}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
           >
-            Aplicar
-          </button>
+            {RANGOS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Tipo
+          </label>
+          <select
+            name="tipo"
+            defaultValue={sp.tipo ?? ""}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          >
+            <option value="">Todos</option>
+            {ALL_TIPOS.map((t) => (
+              <option key={t} value={t}>
+                {TIPO_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Usuario
+          </label>
+          <select
+            name="usuario"
+            defaultValue={sp.usuario ?? ""}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          >
+            <option value="">Todos</option>
+            {usuarios.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nombre} ({u.rol})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Sucursal
+          </label>
+          <select
+            name="sucursal"
+            defaultValue={sp.sucursal ?? ""}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          >
+            <option value="">Todas</option>
+            {sucursales
+              .filter((s) =>
+                analytics.scope.sucursalIdsPermitidas.includes(s.id),
+              )
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Búsqueda
+          </label>
+          <div className="flex gap-2">
+            <input
+              name="q"
+              defaultValue={sp.q ?? ""}
+              placeholder="Cliente, insumo, motivo…"
+              className="flex-1 px-3 py-2 border border-border rounded-md bg-card text-sm"
+            />
+            <button
+              type="submit"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+            >
+              Filtrar
+            </button>
+          </div>
         </div>
       </form>
 
-      <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <div className="space-y-6">
-          <ReportSection
-            title="Distribucion de ingresos"
-            description="Consolidado por sucursal para comparacion ejecutiva."
-            rows={analytics.charts.ingresosPorSucursal}
-            formatValue={formatARS}
-          />
-          <ReportSection
-            title="Productividad por profesional"
-            description="Facturacion asociada a lineas registradas."
-            rows={analytics.charts.rendimientoPorProfesional}
-            formatValue={formatARS}
-          />
-          <ReportSection
-            title="Servicios top"
-            description="Mix de servicios mas vendidos dentro del rango actual."
-            rows={analytics.charts.serviciosTop}
-            formatValue={formatARS}
-          />
-          <ReportSection
-            title="Stock critico por sucursal"
-            description="Conteo de insumos por debajo del umbral o en negativo."
-            rows={analytics.charts.stockCriticoPorSucursal}
-          />
-        </div>
-
-        <aside className="space-y-6">
-          <div className="rounded-[1.75rem] border border-border bg-card p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              KPIs de control
-            </p>
-            <div className="mt-4 grid gap-3">
-              <KpiLine
-                label="Ingresos"
-                value={formatARS(analytics.kpis.ingresos)}
-              />
-              <KpiLine label="Neto" value={formatARS(analytics.kpis.neto)} />
-              <KpiLine label="Turnos" value={String(analytics.kpis.turnos)} />
-              <KpiLine
-                label="Ocupacion"
-                value={`${analytics.kpis.ocupacionPct}%`}
-              />
-              <KpiLine
-                label="Cancelaciones"
-                value={`${analytics.kpis.cancelacionesPct}%`}
-              />
-              <KpiLine
-                label="Egresos"
-                value={formatARS(analytics.kpis.egresos)}
-              />
-            </div>
+      {/* Resumen por usuario */}
+      {agg.porUsuario.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Actividad por usuario
+          </h2>
+          <div className="bg-card border border-border rounded-md overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left font-medium px-4 py-3">Usuario</th>
+                  <th className="text-left font-medium px-4 py-3">Rol</th>
+                  <th className="text-right font-medium px-4 py-3">
+                    Eventos
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {agg.porUsuario.map((u) => (
+                  <tr key={u.usuario}>
+                    <td className="px-4 py-3 font-medium">{u.usuario}</td>
+                    <td className="px-4 py-3 text-xs uppercase text-muted-foreground tracking-wider">
+                      {u.rol}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {u.cantidad}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </section>
+      )}
 
-          <div className="rounded-[1.75rem] border border-border bg-card p-5">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              Trazabilidad reciente
-            </p>
-            <div className="mt-4 space-y-3">
-              {analytics.governance.actividadReciente.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-stone-100 bg-cream/60 p-4"
-                >
-                  <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground">
-                    <span>{item.modulo}</span>
-                    <span>
-                      {new Date(item.fecha).toLocaleString("es-AR", {
+      {/* Timeline cronológico */}
+      <section className="space-y-3">
+        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+          Línea de tiempo
+        </h2>
+        {events.length === 0 ? (
+          <div className="bg-card border border-border rounded-md p-8 text-center text-sm text-muted-foreground">
+            Sin eventos para los filtros aplicados.
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-md overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left font-medium px-4 py-3">Fecha</th>
+                  <th className="text-left font-medium px-4 py-3">Evento</th>
+                  <th className="text-left font-medium px-4 py-3">Detalle</th>
+                  <th className="text-left font-medium px-4 py-3">Usuario</th>
+                  <th className="text-left font-medium px-4 py-3">Sucursal</th>
+                  <th className="text-right font-medium px-4 py-3">Monto</th>
+                  <th className="px-4 py-3 w-16"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {events.map((e) => (
+                  <tr key={e.id} className="hover:bg-cream/30">
+                    <td className="px-4 py-3 text-muted-foreground tabular-nums whitespace-nowrap">
+                      {new Date(e.fecha).toLocaleString("es-AR", {
                         day: "2-digit",
                         month: "2-digit",
+                        year: "2-digit",
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-ink">
-                    {item.actor}
-                  </p>
-                  <p className="mt-1 text-sm text-stone-700">{item.detalle}</p>
-                </div>
-              ))}
-            </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider"
+                        style={{ color: TIPO_COLORS[e.tipo] }}
+                      >
+                        <span
+                          className="inline-block w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: TIPO_COLORS[e.tipo] }}
+                        />
+                        {e.titulo}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{e.detalle}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium">{e.usuario_nombre}</span>
+                      <span className="text-xs text-muted-foreground ml-1">
+                        ({e.usuario_rol})
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {e.sucursal_nombre}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {e.monto != null ? formatARS(e.monto) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {e.href && (
+                        <Link
+                          href={e.href}
+                          className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
+                        >
+                          Ver
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </aside>
-      </div>
+        )}
+        {events.length === 500 && (
+          <p className="text-xs text-muted-foreground italic">
+            Mostrando los primeros 500 eventos. Acotá el rango para ver más.
+          </p>
+        )}
+      </section>
     </div>
-  );
-}
-
-function FieldDate({
-  name,
-  label,
-  value,
-}: {
-  name: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <label className="space-y-1.5 text-sm">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <input
-        name={name}
-        type="date"
-        defaultValue={value}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2"
-      />
-    </label>
-  );
-}
-
-function FieldSelect({
-  name,
-  label,
-  value,
-  options,
-}: {
-  name: string;
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-}) {
-  return (
-    <label className="space-y-1.5 text-sm">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <select
-        name={name}
-        defaultValue={value}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2"
-      >
-        {options.map((item) => (
-          <option key={`${name}-${item.value || "all"}`} value={item.value}>
-            {item.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function KpiLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-100 bg-cream/60 px-4 py-3 text-sm">
-      <span className="text-stone-700">{label}</span>
-      <span className="font-semibold tabular-nums text-ink">{value}</span>
-    </div>
-  );
-}
-
-function ReportSection({
-  title,
-  description,
-  rows,
-  formatValue = (value: number) => String(value),
-}: {
-  title: string;
-  description: string;
-  rows: Array<{ label: string; value: number }>;
-  formatValue?: (value: number) => string;
-}) {
-  const max = Math.max(...rows.map((item) => item.value), 1);
-  return (
-    <section className="rounded-[1.75rem] border border-border bg-card p-5">
-      <div className="mb-4">
-        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-          {title}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-200 bg-cream/60 px-4 py-6 text-sm text-stone-700">
-          Sin datos para estos filtros.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {rows.map((item) => (
-            <div key={item.label} className="space-y-1">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-ink">{item.label}</span>
-                <span className="tabular-nums text-stone-700">
-                  {formatValue(item.value)}
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-stone-100">
-                <div
-                  className="h-2 rounded-full bg-sage-700"
-                  style={{
-                    width: `${Math.max((item.value / max) * 100, 6)}%`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }
