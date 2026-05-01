@@ -20,6 +20,13 @@ export interface AnalyticsPoint {
   value: number;
 }
 
+export interface RetentionSnapshot {
+  recurrentes: number;
+  nuevos: number;
+  total: number;
+  tasaPct: number;
+}
+
 export interface AnalyticsSnapshot {
   scope: AccessScope;
   filters: {
@@ -48,6 +55,8 @@ export interface AnalyticsSnapshot {
     rendimientoPorProfesional: AnalyticsPoint[];
     stockCriticoPorSucursal: AnalyticsPoint[];
     serviciosTop: AnalyticsPoint[];
+    turnosPorHora: AnalyticsPoint[];
+    retencionClientes: RetentionSnapshot;
   };
   governance: {
     metricas: Array<{ nombre: string; definicion: string }>;
@@ -247,6 +256,34 @@ export async function getAnalyticsSnapshot(
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
     .slice(0, 8);
 
+  const byHour = new Map<string, number>();
+  turnos
+    .filter((item) => item.estado !== "cancelado" && item.estado !== "ausente")
+    .forEach((item) => {
+      const hour = `${item.hora.slice(0, 2)}hs`;
+      byHour.set(hour, (byHour.get(hour) ?? 0) + 1);
+    });
+
+  const customerVisits = new Map<string, number>();
+  const registerCustomer = (key?: string | null) => {
+    if (!key) return;
+    customerVisits.set(key, (customerVisits.get(key) ?? 0) + 1);
+  };
+
+  turnos.forEach((item) => {
+    registerCustomer(item.cliente_telefono || item.cliente_nombre);
+  });
+
+  ingresos.forEach((item) => {
+    if (item.cliente_id) {
+      registerCustomer(item.cliente_id);
+    }
+  });
+
+  const recurrentes = Array.from(customerVisits.values()).filter((count) => count > 1).length;
+  const nuevos = Array.from(customerVisits.values()).filter((count) => count <= 1).length;
+  const retentionTotal = recurrentes + nuevos;
+
   return {
     scope,
     filters: {
@@ -296,6 +333,15 @@ export async function getAnalyticsSnapshot(
         .sort((a, b) => b[1] - a[1])
         .slice(0, 6)
         .map(([label, value]) => ({ label, value })),
+      turnosPorHora: Array.from(byHour.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([label, value]) => ({ label, value })),
+      retencionClientes: {
+        recurrentes,
+        nuevos,
+        total: retentionTotal,
+        tasaPct: retentionTotal > 0 ? Math.round((recurrentes / retentionTotal) * 100) : 0,
+      },
     },
     governance: {
       metricas: [

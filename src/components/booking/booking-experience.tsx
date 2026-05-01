@@ -12,11 +12,8 @@ import {
   MessageCircle,
   Phone,
   Search,
-  ShoppingBag,
   Sparkles,
   Star,
-  Store,
-  UserRound,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -26,6 +23,7 @@ import {
   listOpenDatesForSucursal,
   type ProfesionalReserva,
 } from "@/lib/turnos-helpers";
+import { HeroVideoShowcase } from "@/components/booking/hero-video-showcase";
 import { cn, formatARS } from "@/lib/utils";
 import type { HorarioSucursal, Servicio, Sucursal, Turno } from "@/lib/types";
 
@@ -106,10 +104,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   );
 
   const profesionales = useMemo(
-    () =>
-      snapshot.profesionales.filter(
-        (item) => item.sucursal_id === bookingSucursalId,
-      ),
+    () => snapshot.profesionales.filter((item) => item.sucursal_id === bookingSucursalId),
     [bookingSucursalId, snapshot.profesionales],
   );
 
@@ -156,8 +151,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   ]);
 
   const selectedSlot =
-    slots.find((item) => `${item.profesional_id}-${item.hora}` === slotKey) ??
-    null;
+    slots.find((item) => `${item.profesional_id}-${item.hora}` === slotKey) ?? null;
 
   const currentStep = state?.ok
     ? 7
@@ -192,6 +186,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
       setBookingSucursalId(nextSucursalId);
       setFeaturedSucursalId(nextSucursalId);
       resetBooking(true);
+      setBookingSucursalId(nextSucursalId);
     }
     if (nextServicioId) {
       setServicioId(nextServicioId);
@@ -292,9 +287,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                   className="h-11 w-11 rounded-full border border-stone-100 object-cover"
                 />
                 <div>
-                  <p className="font-display text-xl uppercase tracking-[0.28em] text-ink">
-                    MALALA
-                  </p>
+                  <p className="font-display text-xl uppercase tracking-[0.28em] text-ink">MALALA</p>
                   <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">
                     Club de belleza
                   </p>
@@ -302,21 +295,10 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
               </div>
 
               <nav className="hidden items-center gap-6 text-sm text-stone-700 lg:flex">
-                <a href="#servicios" className="transition hover:text-ink">
-                  Servicios
-                </a>
-                <a href="#sucursales" className="transition hover:text-ink">
-                  Sucursales
-                </a>
-                <a href="#contacto" className="transition hover:text-ink">
-                  Contacto
-                </a>
-                <a
-                  href={storeUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="transition hover:text-ink"
-                >
+                <a href="#servicios" className="transition hover:text-ink">Servicios</a>
+                <a href="#sucursales" className="transition hover:text-ink">Sucursales</a>
+                <a href="#contacto" className="transition hover:text-ink">Contacto</a>
+                <a href={storeUrl} target="_blank" rel="noreferrer" className="transition hover:text-ink">
                   Tienda online
                 </a>
               </nav>
@@ -350,146 +332,19 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           </div>
         </header>
 
-        <section className="grid gap-8 overflow-hidden rounded-[2.5rem] border border-white/70 bg-white/88 px-6 py-8 shadow-[0_26px_80px_rgba(44,53,37,0.08)] lg:grid-cols-[1.02fr_0.98fr] lg:px-10 lg:py-10">
-          <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 rounded-full border border-sage-100 bg-sage-50 px-4 py-2 text-xs uppercase tracking-[0.28em] text-sage-900">
-              <Sparkles className="h-4 w-4" />
-              Tu momento en MALALA
-            </span>
-
-            <div className="space-y-4">
-              <h1 className="max-w-3xl font-display text-5xl uppercase leading-[0.95] tracking-[0.12em] text-ink sm:text-6xl lg:text-7xl">
-                Belleza, cuidado
-                <br />
-                y tiempo para vos
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-stone-700 sm:text-lg">
-                En MALALA creamos experiencias de belleza para que disfrutes tu
-                tiempo, te sientas bien y encuentres un espacio pensado para vos.
-                Reserva tu turno, conoce nuestras sucursales y descubre una
-                propuesta que combina detalle, estilo y calidez.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => openBooking()}
-                className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-              >
-                Reserva tu turno
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:border-sage-200 hover:bg-sage-50"
-              >
-                Escribinos
-                <MessageCircle className="h-4 w-4 text-sage-700" />
-              </a>
-              <a
-                href={storeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-sage-100 bg-sage-50 px-6 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
-              >
-                Tienda online
-                <ShoppingBag className="h-4 w-4" />
-              </a>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {heroStats.map((item) => (
-                <StatCard key={item.label} value={item.value} label={item.label} />
-              ))}
-            </div>
-          </div>
-
-          <div className="relative overflow-hidden rounded-[2rem] border border-stone-100 bg-[linear-gradient(145deg,#f6efe7_0%,#ffffff_42%,#eef4eb_100%)] p-5">
-            <div className="absolute left-5 top-5 h-2 w-20 bg-sage-900" />
-            <div className="absolute right-8 top-8 h-2 w-14 bg-[#d1b194]" />
-            <div className="absolute bottom-10 left-10 h-16 w-16 rounded-full border border-stone-300/70" />
-            <div className="absolute right-10 top-24 h-28 w-28 rounded-full bg-sage-100/70 blur-2xl" />
-            <div className="absolute bottom-14 left-24 h-28 w-28 rounded-full bg-[#f2ddd0]/70 blur-3xl" />
-
-            <div className="relative grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-              <div className="flex flex-col justify-between gap-5 pt-3">
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                    Un espacio para sentirte bien
-                  </p>
-                  <h2 className="font-display text-4xl uppercase leading-none tracking-[0.12em] text-ink">
-                    Ritual
-                    <br />
-                    de belleza
-                  </h2>
-                  <p className="max-w-xs text-sm leading-6 text-stone-700">
-                    Servicios de peluqueria, manos, cejas y cuidado facial en un
-                    entorno calido y moderno.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => openBooking()}
-                  className="inline-flex w-fit items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-900"
-                >
-                  Quiero mi cita
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-[1.08fr_0.92fr]">
-                  <div className="overflow-hidden rounded-[1.6rem] border border-white/80 bg-white shadow-[0_18px_50px_rgba(44,53,37,0.12)]">
-                    <Image
-                      src="/landing-hero-editorial.svg"
-                      alt="Mujer con cabello brillante en MALALA"
-                      width={920}
-                      height={1100}
-                      className="h-[360px] w-full object-cover"
-                    />
-                  </div>
-                  <div className="overflow-hidden rounded-[1.4rem] border border-white/80 bg-white shadow-[0_18px_50px_rgba(44,53,37,0.08)]">
-                    <Image
-                      src="/landing-service-editorial.svg"
-                      alt="Procedimiento de belleza en salon"
-                      width={920}
-                      height={1100}
-                      className="h-[360px] w-full object-cover"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-[1.4rem] border border-stone-100 bg-white/92 px-5 py-4 shadow-[0_18px_50px_rgba(44,53,37,0.1)]">
-                  <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                    Tu cita en MALALA
-                  </p>
-                  <p className="mt-2 text-xl font-semibold text-ink">
-                    Reserva con calma, elige tu servicio y encuentra tu mejor momento
-                  </p>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-700">
-                    Desde aqui puedes elegir la sucursal, el servicio y el horario
-                    que mejor se adapten a vos, con una experiencia clara y comoda.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <HeroVideoShowcase
+          onReserve={() => openBooking()}
+          whatsappUrl={whatsappUrl}
+          storeUrl={storeUrl}
+          heroStats={heroStats}
+        />
 
         <section className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
           <div className="rounded-[2rem] border border-white/70 bg-[#f6efe8] p-6 shadow-[0_20px_60px_rgba(44,53,37,0.05)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              Nuestra experiencia
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold text-ink">
-              Un lugar pensado para disfrutar tu momento
-            </h2>
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Nuestra experiencia</p>
+            <h2 className="mt-3 text-3xl font-semibold text-ink">Un lugar pensado para disfrutar tu momento</h2>
             <p className="mt-4 text-sm leading-7 text-stone-700 sm:text-base">
-              En MALALA queremos que cada visita se sienta cuidada desde el
-              primer momento. Por eso unimos atencion personalizada, servicios
-              elegidos con detalle y una forma comoda de reservar.
+              En MALALA queremos que cada visita se sienta cuidada desde el primer momento. Por eso unimos atencion personalizada, servicios elegidos con detalle y una forma comoda de reservar.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
@@ -521,12 +376,8 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sage-50 text-sage-900">
                   <Sparkles className="h-5 w-5" />
                 </div>
-                <h3 className="mt-4 text-lg font-semibold text-ink">
-                  {item.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-stone-700">
-                  {item.text}
-                </p>
+                <h3 className="mt-4 text-lg font-semibold text-ink">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-stone-700">{item.text}</p>
               </div>
             ))}
           </div>
@@ -535,12 +386,8 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
         <section id="servicios" className="space-y-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                Servicios destacados
-              </p>
-              <h2 className="text-3xl font-semibold text-ink">
-                Elige la experiencia que mejor acompana tu momento
-              </h2>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Servicios destacados</p>
+              <h2 className="text-3xl font-semibold text-ink">Elige la experiencia que mejor acompana tu momento</h2>
             </div>
             <button
               type="button"
@@ -565,16 +412,10 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                 </span>
                 <div className="space-y-3">
                   <p className="text-lg font-semibold text-ink">{item.nombre}</p>
-                  <p className="text-sm leading-6 text-stone-700">
-                    {item.descripcion_corta}
-                  </p>
+                  <p className="text-sm leading-6 text-stone-700">{item.descripcion_corta}</p>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-stone-700">
-                    <span className="font-semibold text-ink">
-                      Desde {formatARS(item.precio_efectivo)}
-                    </span>
-                    <span className="line-through text-stone-400">
-                      {formatARS(item.precio_lista)}
-                    </span>
+                    <span className="font-semibold text-ink">Desde {formatARS(item.precio_efectivo)}</span>
+                    <span className="line-through text-stone-400">{formatARS(item.precio_lista)}</span>
                     <span className="inline-flex items-center gap-1">
                       <Clock3 className="h-4 w-4 text-sage-700" />
                       {item.duracion_min} min
@@ -592,12 +433,8 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
         >
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                Nuestras sucursales
-              </p>
-              <h2 className="text-3xl font-semibold text-ink">
-                Elige el espacio que te resulte mas comodo
-              </h2>
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Nuestras sucursales</p>
+              <h2 className="text-3xl font-semibold text-ink">Elige el espacio que te resulte mas comodo</h2>
             </div>
             <button
               type="button"
@@ -629,12 +466,8 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                           Sucursal {index + 1}
                         </span>
                         <div>
-                          <h3 className="text-2xl font-semibold text-ink">
-                            {item.nombre}
-                          </h3>
-                          <p className="mt-2 text-sm leading-6 text-stone-700">
-                            {item.descripcion_corta}
-                          </p>
+                          <h3 className="text-2xl font-semibold text-ink">{item.nombre}</h3>
+                          <p className="mt-2 text-sm leading-6 text-stone-700">{item.descripcion_corta}</p>
                         </div>
                         <div className="space-y-3 text-sm text-stone-700">
                           <p className="flex items-start gap-2">
@@ -647,9 +480,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                           </p>
                           <p className="flex items-center gap-2">
                             <Star className="h-4 w-4 fill-current text-[#c69b4e]" />
-                            <span>
-                              {item.rating?.toFixed(1)} · {item.reviews} reseñas
-                            </span>
+                            <span>{item.rating?.toFixed(1)} · {item.reviews} reseñas</span>
                           </p>
                         </div>
                       </div>
@@ -658,11 +489,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
                     <div className="flex flex-col justify-between gap-4 p-5">
                       <div className="overflow-hidden rounded-[1.35rem] border border-stone-100">
                         <Image
-                          src={
-                            index % 2 === 0
-                              ? "/landing-service-editorial.svg"
-                              : "/landing-shop-editorial.svg"
-                          }
+                          src={index % 2 === 0 ? "/landing-service-editorial.svg" : "/landing-shop-editorial.svg"}
                           alt={`Visual de ${item.nombre}`}
                           width={920}
                           height={1100}
@@ -696,139 +523,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
-          <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_20px_60px_rgba(44,53,37,0.08)]">
-            <div className="h-10 bg-[#caa5cf]" />
-            <div className="border-b border-stone-100 px-5 py-5 sm:px-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-[#f0e5d6] px-4 py-2 text-sm text-stone-500">
-                    ¿Que estas buscando?
-                  </div>
-                </div>
-                <div className="text-center">
-                  <p className="font-display text-4xl uppercase tracking-[0.2em] text-ink">
-                    MALALA
-                  </p>
-                </div>
-                <div className="flex items-center justify-end gap-3 text-sm text-stone-600">
-                  <span className="rounded-full bg-stone-100 px-3 py-2">Entrar</span>
-                  <span className="rounded-full bg-stone-100 px-3 py-2">Carrito</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-[#4d866f] px-5 py-4 text-sm font-medium uppercase tracking-[0.16em] text-white sm:px-6">
-              <div className="flex flex-wrap gap-x-8 gap-y-3">
-                <span>Categorias</span>
-                <span>Inicio</span>
-                <span>Productos</span>
-                <span>Contacto</span>
-                <span>Servicios</span>
-              </div>
-            </div>
-
-            <div className="grid gap-5 p-5 sm:p-6">
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {[
-                  "Hair care",
-                  "Joyeria",
-                  "Color",
-                  "Skincare",
-                  "Salon",
-                  "Beauty picks",
-                ].map((label) => (
-                  <div
-                    key={label}
-                    className="rounded-[1.1rem] border border-stone-100 bg-[#f6efe7] px-3 py-4 text-center text-xs font-medium uppercase tracking-[0.14em] text-stone-600"
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
-                <div className="space-y-4 rounded-[1.7rem] border border-stone-100 bg-[#fbf7f1] p-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                    Tienda online
-                  </p>
-                  <h2 className="text-3xl font-semibold text-ink">
-                    Productos, accesorios y favoritos de MALALA
-                  </h2>
-                  <p className="text-sm leading-7 text-stone-700 sm:text-base">
-                    Inspirada en la vidriera online de la marca, esta seccion
-                    acompana la experiencia del salon con productos para seguir
-                    cuidandote en casa y pequeños detalles para regalarte.
-                  </p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <StoreTeaser label="Hair care" />
-                    <StoreTeaser label="Accesorios" />
-                    <StoreTeaser label="Rituales" />
-                  </div>
-                  <a
-                    href={storeUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-                  >
-                    Ir a la tienda
-                    <Store className="h-4 w-4" />
-                  </a>
-                </div>
-
-                <div className="overflow-hidden rounded-[1.7rem] border border-stone-100 bg-white">
-                  <Image
-                    src="/landing-shop-editorial.svg"
-                    alt="Productos de belleza MALALA"
-                    width={920}
-                    height={1100}
-                    className="h-full min-h-[320px] w-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-[0_20px_60px_rgba(44,53,37,0.06)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              Tu reserva
-            </p>
-            <h2 className="mt-3 text-3xl font-semibold text-ink">
-              Encuentra tu mejor momento para venir
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-stone-700 sm:text-base">
-              Elige sucursal, servicio y horario desde una experiencia clara,
-              comoda y pensada para ayudarte a decidir sin vueltas.
-            </p>
-            <div className="mt-6 space-y-3">
-              <FeatureRow
-                icon={Check}
-                text="Reserva guiada y simple"
-              />
-              <FeatureRow
-                icon={UserRound}
-                text="Profesional elegido o sin preferencia"
-              />
-              <FeatureRow
-                icon={CalendarDays}
-                text="Horarios sugeridos segun disponibilidad"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => openBooking()}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-            >
-              Reserva tu turno
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </section>
-
-        <section
-          id="contacto"
-          className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]"
-        >
+        <section id="contacto" className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
           <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]">
             <iframe
               src={mapEmbedUrl}
@@ -843,27 +538,18 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           </div>
 
           <div className="space-y-4 rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-[0_20px_60px_rgba(44,53,37,0.06)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-              Contacto y ubicacion
-            </p>
-            <h2 className="text-3xl font-semibold text-ink">
-              Estamos cerca para acompanarte
-            </h2>
+            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Contacto y ubicacion</p>
+            <h2 className="text-3xl font-semibold text-ink">Estamos cerca para acompanarte</h2>
             <p className="text-sm leading-7 text-stone-700 sm:text-base">
-              Puedes encontrarnos, escribirnos o reservar desde aqui. Queremos
-              que llegar a MALALA sea tan simple como disfrutarlo.
+              Puedes encontrarnos, escribirnos o reservar desde aqui. Queremos que llegar a MALALA sea tan simple como disfrutarlo.
             </p>
 
             <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
               <div className="flex items-start gap-3">
                 <MapPin className="mt-1 h-4 w-4 text-sage-700" />
                 <div>
-                  <p className="font-medium text-ink">
-                    Corrientes 1677, San Miguel de Tucuman
-                  </p>
-                  <p className="text-sm text-stone-700">
-                    Ubicacion principal de referencia de MALALA.
-                  </p>
+                  <p className="font-medium text-ink">Corrientes 1677, San Miguel de Tucuman</p>
+                  <p className="text-sm text-stone-700">Ubicacion principal de referencia de MALALA.</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-sm text-stone-700">
@@ -975,7 +661,6 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     </div>
   );
 }
-
 interface BookingModalProps {
   currentStep: number;
   currentStepMeta: { title: string; text: string };
@@ -1635,38 +1320,6 @@ function SummaryLine({
         ) : null}
       </div>
       <p className="mt-1 text-sm font-medium text-ink">{value}</p>
-    </div>
-  );
-}
-
-function StatCard({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="rounded-[1.4rem] border border-stone-100 bg-cream/60 px-4 py-4">
-      <p className="font-display text-3xl text-ink">{value}</p>
-      <p className="mt-1 text-sm text-stone-700">{label}</p>
-    </div>
-  );
-}
-
-function FeatureRow({
-  icon: Icon,
-  text,
-}: {
-  icon: typeof Check;
-  text: string;
-}) {
-  return (
-    <p className="flex items-start gap-2 text-sm text-stone-700">
-      <Icon className="mt-0.5 h-4 w-4 text-sage-700" />
-      {text}
-    </p>
-  );
-}
-
-function StoreTeaser({ label }: { label: string }) {
-  return (
-    <div className="rounded-[1.15rem] border border-stone-200 bg-white px-3 py-3 text-center text-sm font-medium text-stone-700 shadow-[0_8px_18px_rgba(44,53,37,0.04)]">
-      {label}
     </div>
   );
 }
