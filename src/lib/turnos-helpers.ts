@@ -119,6 +119,13 @@ export function buildAvailableSlots(args: {
       isBlockingTurnoStatus(turno.estado),
   );
 
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" })
+  );
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const isToday = args.fecha === todayStr;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
   const slots: SlotDisponible[] = [];
   for (const prof of profesionales.sort((a, b) => a.prioridad - b.prioridad)) {
     const profTurnos = blocked.filter(
@@ -129,6 +136,11 @@ export function buildAvailableSlots(args: {
       let cursor = timeToMinutes(window.apertura);
       const end = timeToMinutes(window.cierre);
       while (cursor + duration <= end) {
+        if (isToday && cursor <= currentMinutes) {
+          cursor += 45;
+          continue;
+        }
+
         const slotEnd = cursor + duration;
         const hasCollision = profTurnos.some((turno) => {
           const bookedStart = timeToMinutes(turno.hora);
