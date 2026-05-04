@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
-import { clampSucursalId, getAccessScope } from "@/lib/auth/access";
+import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
   getCierreDeFecha,
@@ -28,16 +28,15 @@ export default async function CajaPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const [user, scope, sp, sucursales] = await Promise.all([
-    requireUser(),
-    getAccessScope(),
-    searchParams,
-    listSucursales({ soloActivas: true }),
-  ]);
+  const user = await requireUser();
+  const scope = getAccessScopeForUser(user);
+  const sp = await searchParams;
 
   if (!scope?.puedeVerCaja) {
     redirect("/dashboard");
   }
+
+  const sucursales = await listSucursales({ soloActivas: true });
 
   const sucursalId = clampSucursalId(scope, sp.sucursal);
   const sucursal =
@@ -50,11 +49,9 @@ export default async function CajaPage({
   }
 
   const hoy = todayYMD();
-  const [resumen, cierres, cierreHoy] = await Promise.all([
-    getResumenDelDia(sucursal.id, hoy),
-    listCierres({ sucursalId: sucursal.id, limit: 30 }),
-    getCierreDeFecha(sucursal.id, hoy),
-  ]);
+  const resumen = await getResumenDelDia(sucursal.id, hoy);
+  const cierres = await listCierres({ sucursalId: sucursal.id, limit: 30 });
+  const cierreHoy = await getCierreDeFecha(sucursal.id, hoy);
 
   const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
 

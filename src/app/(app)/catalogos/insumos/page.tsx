@@ -14,10 +14,8 @@ const UNIDAD_LABEL: Record<string, string> = {
 
 export default async function InsumosPage() {
   const user = await requireUser();
-  const [insumos, proveedores] = await Promise.all([
-    listInsumos({ incluirInactivos: true }),
-    listProveedores(),
-  ]);
+  const insumos = await listInsumos({ incluirInactivos: true });
+  const proveedores = await listProveedores();
   const provMap = new Map(proveedores.map((p) => [p.id, p.nombre]));
 
   return (

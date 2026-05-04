@@ -28,10 +28,8 @@ export default async function DashboardPage({
     sucursalId: sp.sucursal,
     empleadoId: sp.empleado,
   });
-  const [sucursales, empleados] = await Promise.all([
-    listSucursales({ soloActivas: true }),
-    listEmpleados(),
-  ]);
+  const sucursales = await listSucursales({ soloActivas: true });
+  const empleados = await listEmpleados();
 
   const isEmployee = analytics.scope.rol === "empleado";
 

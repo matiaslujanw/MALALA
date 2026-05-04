@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { togglePagadoEgreso } from "@/lib/data/egresos";
+import { togglePagadoEgreso } from "@/lib/data/egresos-actions";
 import { useRouter } from "next/navigation";
 
 export function TogglePagadoButton({

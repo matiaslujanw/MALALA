@@ -13,10 +13,8 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default async function EmpleadosPage() {
   const user = await requireUser();
-  const [empleados, sucursales] = await Promise.all([
-    listEmpleados({ incluirInactivos: true }),
-    listSucursales(),
-  ]);
+  const empleados = await listEmpleados({ incluirInactivos: true });
+  const sucursales = await listSucursales();
   const sucMap = new Map(sucursales.map((s) => [s.id, s.nombre]));
 
   return (

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
-import { clampSucursalId, getAccessScope } from "@/lib/auth/access";
+import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import { listEgresos } from "@/lib/data/egresos";
 import { aggregateEgresos } from "@/lib/data/egresos-helpers";
@@ -41,18 +41,17 @@ export default async function EgresosPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const [user, scope, sp, sucursales, rubros, proveedores] = await Promise.all([
-    requireUser(),
-    getAccessScope(),
-    searchParams,
-    listSucursales({ soloActivas: true }),
-    listRubrosGasto(),
-    listProveedores(),
-  ]);
+  const user = await requireUser();
+  const scope = getAccessScopeForUser(user);
+  const sp = await searchParams;
 
   if (!scope || scope.rol === "empleado") {
     redirect("/dashboard");
   }
+
+  const sucursales = await listSucursales({ soloActivas: true });
+  const rubros = await listRubrosGasto();
+  const proveedores = await listProveedores();
 
   const rango = sp.rango ?? "mes";
   const { desde, hasta } = rangoToFechas(rango);

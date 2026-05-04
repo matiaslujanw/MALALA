@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
 import { AdminChat } from "@/components/admin-chat/admin-chat";
-import { getActiveSucursal, getCurrentUser } from "@/lib/auth/session";
+import { getActiveSucursalForUser, getCurrentUser } from "@/lib/auth/session";
+import { listSucursales } from "@/lib/data/sucursales";
 
 export default async function AppLayout({
   children,
@@ -11,8 +12,9 @@ export default async function AppLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/dev/login");
-  const sucursal = await getActiveSucursal();
+  const sucursal = await getActiveSucursalForUser(user);
   if (!sucursal) redirect("/dev/login");
+  const sucursales = await listSucursales({ soloActivas: true });
 
   return (
     <div className="flex flex-1 min-h-screen">
@@ -22,7 +24,11 @@ export default async function AppLayout({
           <div className="text-xs uppercase tracking-widest text-muted-foreground">
             Sistema MALALA
           </div>
-          <SucursalSwitcher user={user} active={sucursal} />
+          <SucursalSwitcher
+            user={user}
+            active={sucursal}
+            sucursales={sucursales}
+          />
         </header>
         <main className="flex-1 p-6 md:p-8">{children}</main>
       </div>

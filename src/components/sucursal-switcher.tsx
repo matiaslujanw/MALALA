@@ -1,14 +1,13 @@
 import { switchSucursal } from "@/lib/auth/actions";
-import { store } from "@/lib/mock/store";
 import type { Sucursal, Usuario } from "@/lib/types";
 
 interface Props {
   user: Usuario;
   active: Sucursal;
+  sucursales: Sucursal[];
 }
 
-export function SucursalSwitcher({ user, active }: Props) {
-  // Solo admin puede cambiar; los otros ven su sucursal pero sin selector
+export function SucursalSwitcher({ user, active, sucursales }: Props) {
   if (user.rol !== "admin") {
     return (
       <div className="flex items-center gap-2 text-sm">
@@ -34,9 +33,9 @@ export function SucursalSwitcher({ user, active }: Props) {
         defaultValue={active.id}
         className="text-sm border border-border rounded-md px-3 py-1.5 bg-card"
       >
-        {store.sucursales.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.nombre}
+        {sucursales.map((sucursal) => (
+          <option key={sucursal.id} value={sucursal.id}>
+            {sucursal.nombre}
           </option>
         ))}
       </select>
@@ -53,9 +52,9 @@ export function SucursalSwitcher({ user, active }: Props) {
 async function switchSucursalAndReload(formData: FormData) {
   "use server";
   const { revalidatePath } = await import("next/cache");
-  const sucId = formData.get("sucursal_id");
-  if (typeof sucId === "string") {
-    await switchSucursal(sucId);
+  const sucursalId = formData.get("sucursal_id");
+  if (typeof sucursalId === "string") {
+    await switchSucursal(sucursalId);
     revalidatePath("/", "layout");
   }
 }

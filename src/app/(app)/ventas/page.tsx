@@ -55,17 +55,15 @@ export default async function VentasPage({
   const esEmpleado = user.rol === "empleado" && !!user.empleado_id;
   const empleadoIdForzado = esEmpleado ? user.empleado_id : sp.empleado;
 
-  const [ingresos, empleados, clientes] = await Promise.all([
-    listIngresos({
-      sucursalId: sucursal.id,
-      empleadoId: empleadoIdForzado,
-      clienteId: sp.cliente,
-      desde,
-      hasta,
-    }),
-    listEmpleados(),
-    listClientes(),
-  ]);
+  const ingresos = await listIngresos({
+    sucursalId: sucursal.id,
+    empleadoId: empleadoIdForzado,
+    clienteId: sp.cliente,
+    desde,
+    hasta,
+  });
+  const empleados = await listEmpleados();
+  const clientes = await listClientes();
 
   // Vista personal del empleado: sólo sus líneas y su comisión
   if (esEmpleado) {

@@ -4,10 +4,12 @@ import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
   getTurno,
   getTurnosAgendaData,
+} from "@/lib/data/turnos";
+import {
   submitAdminTurnoAction,
   submitReprogramTurnoAction,
   submitUpdateTurnoEstadoAction,
-} from "@/lib/data/turnos";
+} from "@/lib/data/turnos-actions";
 import { listServicios } from "@/lib/data/servicios";
 import { formatARS, formatLongDate } from "@/lib/utils";
 
@@ -48,17 +50,14 @@ export default async function TurnosPage({
   const fecha = sp.fecha ?? new Date().toISOString().slice(0, 10);
   const sucursalId = sp.sucursal ?? activeSucursal?.id ?? "";
 
-  const [agenda, servicios, turnoSeleccionado] =
-    await Promise.all([
-      getTurnosAgendaData({
-        fecha,
-        sucursalId,
-        profesionalId: sp.profesional || undefined,
-        estado: sp.estado || undefined,
-      }),
-      listServicios(),
-      sp.turno ? getTurno(sp.turno) : Promise.resolve(null),
-    ]);
+  const agenda = await getTurnosAgendaData({
+    fecha,
+    sucursalId,
+    profesionalId: sp.profesional || undefined,
+    estado: sp.estado || undefined,
+  });
+  const servicios = await listServicios();
+  const turnoSeleccionado = sp.turno ? await getTurno(sp.turno) : null;
 
   const turnosPorProfesional = agenda.turnos.reduce<Record<string, typeof agenda.turnos>>(
     (acc, turno) => {

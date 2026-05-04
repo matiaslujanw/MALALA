@@ -1,7 +1,11 @@
 "use server";
 
+import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import { requireSupabaseRuntime } from "@/lib/db/env";
+import { clientes as clientesTable } from "@/lib/db/schema";
+import type { Cliente } from "@/lib/types";
 import { clienteSchema } from "@/lib/validations/cliente";
 import {
   fieldErrors,
@@ -9,28 +13,67 @@ import {
   requireRole,
   type ActionResult,
 } from "./_helpers";
-import type { Cliente } from "@/lib/types";
+
+function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    telefono: row.telefono ?? undefined,
+    observacion: row.observacion ?? undefined,
+    activo: row.activo,
+    saldo_cc: row.saldoCc,
+  };
+}
 
 export async function listClientes(opts?: {
   incluirInactivos?: boolean;
   q?: string;
 }): Promise<Cliente[]> {
-  const q = opts?.q?.trim().toLowerCase();
-  let arr = opts?.incluirInactivos
-    ? [...store.clientes]
-    : store.clientes.filter((c) => c.activo);
+  const q = opts?.q?.trim();
+  requireSupabaseRuntime(
+    "Los clientes del sistema solo se cargan desde Supabase.",
+  );
+
+  const db = getDb();
+  const filters = [];
+  if (!opts?.incluirInactivos) filters.push(eq(clientesTable.activo, true));
   if (q) {
-    arr = arr.filter(
-      (c) =>
-        c.nombre.toLowerCase().includes(q) ||
-        (c.telefono ?? "").toLowerCase().includes(q),
+    filters.push(
+      or(
+        ilike(clientesTable.nombre, `%${q}%`),
+        ilike(clientesTable.telefono, `%${q}%`),
+      )!,
     );
   }
-  return arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const rows =
+    filters.length > 0
+      ? await db
+          .select()
+          .from(clientesTable)
+          .where(and(...filters))
+          .orderBy(asc(clientesTable.nombre))
+      : await db
+          .select()
+          .from(clientesTable)
+          .orderBy(asc(clientesTable.nombre));
+
+  return rows.map(mapCliente);
 }
 
 export async function getCliente(clienteId: string): Promise<Cliente | null> {
-  return store.clientes.find((c) => c.id === clienteId) ?? null;
+  requireSupabaseRuntime(
+    "Los clientes del sistema solo se cargan desde Supabase.",
+  );
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(clientesTable)
+    .where(eq(clientesTable.id, clienteId))
+    .limit(1);
+
+  return row ? mapCliente(row) : null;
 }
 
 function parse(formData: FormData) {
@@ -44,18 +87,25 @@ function parse(formData: FormData) {
 
 export async function createCliente(formData: FormData): Promise<ActionResult> {
   await requireRole(["admin", "encargada", "empleado"]);
+  requireSupabaseRuntime(
+    "La creacion de clientes requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  store.clientes.push({
-    id: id(),
+  const db = getDb();
+  await db.insert(clientesTable).values({
+    id: crypto.randomUUID(),
     nombre: parsed.data.nombre,
-    telefono: normPhone(parsed.data.telefono),
-    observacion: parsed.data.observacion,
+    telefono: normPhone(parsed.data.telefono) ?? null,
+    observacion: parsed.data.observacion ?? null,
     activo: parsed.data.activo,
-    saldo_cc: 0,
+    saldoCc: 0,
   });
+
   revalidatePath("/catalogos/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/nueva");
   return { ok: true };
 }
 
@@ -64,19 +114,29 @@ export async function updateCliente(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole(["admin", "encargada"]);
-  const idx = store.clientes.findIndex((c) => c.id === clienteId);
-  if (idx === -1) return { ok: false, errors: { _: ["No encontrado"] } };
+  requireSupabaseRuntime(
+    "La edicion de clientes requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  store.clientes[idx] = {
-    ...store.clientes[idx],
-    nombre: parsed.data.nombre,
-    telefono: normPhone(parsed.data.telefono),
-    observacion: parsed.data.observacion,
-    activo: parsed.data.activo,
-  };
+  const db = getDb();
+  const existing = await getCliente(clienteId);
+  if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  await db
+    .update(clientesTable)
+    .set({
+      nombre: parsed.data.nombre,
+      telefono: normPhone(parsed.data.telefono) ?? null,
+      observacion: parsed.data.observacion ?? null,
+      activo: parsed.data.activo,
+    })
+    .where(eq(clientesTable.id, clienteId));
+
   revalidatePath("/catalogos/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/nueva");
   return { ok: true };
 }
 
@@ -84,9 +144,21 @@ export async function toggleClienteActivo(
   clienteId: string,
 ): Promise<ActionResult> {
   await requireRole(["admin", "encargada"]);
-  const c = store.clientes.find((x) => x.id === clienteId);
-  if (!c) return { ok: false, errors: { _: ["No encontrado"] } };
-  c.activo = !c.activo;
+  requireSupabaseRuntime(
+    "La activacion de clientes requiere Supabase configurado.",
+  );
+
+  const cliente = await getCliente(clienteId);
+  if (!cliente) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  const db = getDb();
+  await db
+    .update(clientesTable)
+    .set({ activo: !cliente.activo })
+    .where(eq(clientesTable.id, clienteId));
+
   revalidatePath("/catalogos/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/nueva");
   return { ok: true };
 }

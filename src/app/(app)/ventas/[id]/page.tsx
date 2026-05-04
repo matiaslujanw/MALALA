@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getIngreso } from "@/lib/data/ingresos";
 import { requireUser } from "@/lib/auth/session";
-import { store } from "@/lib/mock/store";
+import { listSucursales } from "@/lib/data/sucursales";
 import { formatARS } from "@/lib/utils";
 
 export default async function VentaDetallePage({
@@ -13,11 +13,14 @@ export default async function VentaDetallePage({
 }) {
   await requireUser();
   const { id } = await params;
-  const row = await getIngreso(id);
+  const [row, sucursales] = await Promise.all([
+    getIngreso(id),
+    listSucursales(),
+  ]);
   if (!row) notFound();
 
   const { ingreso, cliente, mp1, mp2, lineas, breakdown } = row;
-  const sucursal = store.sucursales.find((s) => s.id === ingreso.sucursal_id);
+  const sucursal = sucursales.find((item) => item.id === ingreso.sucursal_id);
 
   return (
     <div className="space-y-8 max-w-4xl">

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, X, AlertTriangle } from "lucide-react";
-import { createIngreso } from "@/lib/data/ingresos";
+import { createIngreso } from "@/lib/data/ingresos-actions";
 import type {
   Cliente,
   Empleado,

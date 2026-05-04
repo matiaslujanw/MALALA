@@ -1,12 +1,33 @@
 "use server";
 
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import {
+  buildAccessScope,
+  isSucursalAllowed,
+} from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
+import {
+  cierresCaja as cierresCajaTable,
+  egresos as egresosTable,
+  insumos as insumosTable,
+  mediosPago as mediosPagoTable,
+  proveedores as proveedoresTable,
+  rubrosGasto as rubrosGastoTable,
+  sucursales as sucursalesTable,
+} from "@/lib/db/schema";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import { egresoSchema } from "@/lib/validations/egreso";
-import { applyMovement } from "./stock";
-import type { Egreso } from "@/lib/types";
+import { applyMovementTx } from "./stock";
+import type {
+  Egreso,
+  Insumo,
+  MedioPago,
+  Proveedor,
+  RubroGasto,
+  Sucursal,
+} from "@/lib/types";
 import type { EgresoConDetalle } from "./egresos-helpers";
 
 export interface EgresoFiltros {
@@ -18,56 +39,227 @@ export interface EgresoFiltros {
   soloPendientes?: boolean;
 }
 
-function detallar(e: Egreso): EgresoConDetalle {
+function createId() {
+  return crypto.randomUUID();
+}
+
+function mapEgreso(row: typeof egresosTable.$inferSelect): Egreso {
   return {
-    egreso: e,
-    rubro: store.rubrosGasto.find((r) => r.id === e.rubro_id) ?? null,
-    sucursal: store.sucursales.find((s) => s.id === e.sucursal_id) ?? null,
-    insumo: e.insumo_id
-      ? store.insumos.find((i) => i.id === e.insumo_id) ?? null
-      : null,
-    proveedor: e.proveedor_id
-      ? store.proveedores.find((p) => p.id === e.proveedor_id) ?? null
-      : null,
-    mp: store.mediosPago.find((m) => m.id === e.mp_id) ?? null,
+    id: row.id,
+    fecha: row.fecha.toISOString(),
+    sucursal_id: row.sucursalId,
+    rubro_id: row.rubroId,
+    insumo_id: row.insumoId ?? undefined,
+    proveedor_id: row.proveedorId ?? undefined,
+    cantidad: row.cantidad ?? undefined,
+    valor: row.valor,
+    mp_id: row.mpId,
+    observacion: row.observacion ?? undefined,
+    pagado: row.pagado,
+    usuario_id: row.usuarioId,
   };
+}
+
+function mapRubro(row: typeof rubrosGastoTable.$inferSelect): RubroGasto {
+  return {
+    id: row.id,
+    rubro: row.rubro,
+    subrubro: row.subrubro ?? undefined,
+    activo: row.activo,
+  };
+}
+
+function mapSucursal(row: typeof sucursalesTable.$inferSelect): Sucursal {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    activo: row.activo,
+    slug: row.slug ?? undefined,
+    direccion: row.direccion ?? undefined,
+    telefono: row.telefono ?? undefined,
+    horario_resumen: row.horarioResumen ?? undefined,
+    rating: row.rating ?? undefined,
+    reviews: row.reviews ?? undefined,
+    mapa_url: row.mapaUrl ?? undefined,
+    descripcion_corta: row.descripcionCorta ?? undefined,
+  };
+}
+
+function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    proveedor_id: row.proveedorId ?? undefined,
+    unidad_medida: row.unidadMedida,
+    tamano_envase: row.tamanoEnvase,
+    precio_envase: row.precioEnvase,
+    precio_unitario: row.precioUnitario ?? null,
+    rinde: row.rinde ?? undefined,
+    umbral_stock_bajo: row.umbralStockBajo,
+    activo: row.activo,
+  };
+}
+
+function mapProveedor(row: typeof proveedoresTable.$inferSelect): Proveedor {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    telefono: row.telefono ?? undefined,
+    cuit: row.cuit ?? undefined,
+    deuda_pendiente: row.deudaPendiente,
+  };
+}
+
+function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
+  return {
+    id: row.id,
+    codigo: row.codigo,
+    nombre: row.nombre,
+    activo: row.activo,
+  };
+}
+
+async function loadEgresoLookups(egresos: Egreso[]) {
+  const db = getDb();
+  const rubroIds = Array.from(new Set(egresos.map((item) => item.rubro_id)));
+  const sucursalIds = Array.from(new Set(egresos.map((item) => item.sucursal_id)));
+  const insumoIds = Array.from(
+    new Set(egresos.map((item) => item.insumo_id).filter(Boolean)),
+  ) as string[];
+  const proveedorIds = Array.from(
+    new Set(egresos.map((item) => item.proveedor_id).filter(Boolean)),
+  ) as string[];
+  const medioPagoIds = Array.from(new Set(egresos.map((item) => item.mp_id)));
+
+  const [rubrosRows, sucursalesRows, insumosRows, proveedoresRows, mediosPagoRows] =
+    await Promise.all([
+      rubroIds.length > 0
+        ? db
+            .select()
+            .from(rubrosGastoTable)
+            .where(inArray(rubrosGastoTable.id, rubroIds))
+        : Promise.resolve([]),
+      sucursalIds.length > 0
+        ? db
+            .select()
+            .from(sucursalesTable)
+            .where(inArray(sucursalesTable.id, sucursalIds))
+        : Promise.resolve([]),
+      insumoIds.length > 0
+        ? db
+            .select()
+            .from(insumosTable)
+            .where(inArray(insumosTable.id, insumoIds))
+        : Promise.resolve([]),
+      proveedorIds.length > 0
+        ? db
+            .select()
+            .from(proveedoresTable)
+            .where(inArray(proveedoresTable.id, proveedorIds))
+        : Promise.resolve([]),
+      medioPagoIds.length > 0
+        ? db
+            .select()
+            .from(mediosPagoTable)
+            .where(inArray(mediosPagoTable.id, medioPagoIds))
+        : Promise.resolve([]),
+    ]);
+
+  return {
+    rubrosById: new Map(rubrosRows.map((item) => [item.id, mapRubro(item)])),
+    sucursalesById: new Map(
+      sucursalesRows.map((item) => [item.id, mapSucursal(item)]),
+    ),
+    insumosById: new Map(insumosRows.map((item) => [item.id, mapInsumo(item)])),
+    proveedoresById: new Map(
+      proveedoresRows.map((item) => [item.id, mapProveedor(item)]),
+    ),
+    mediosPagoById: new Map(
+      mediosPagoRows.map((item) => [item.id, mapMedioPago(item)]),
+    ),
+  };
+}
+
+function detallar(
+  egresos: Egreso[],
+  lookups: Awaited<ReturnType<typeof loadEgresoLookups>>,
+): EgresoConDetalle[] {
+  return egresos.map((egreso) => ({
+    egreso,
+    rubro: lookups.rubrosById.get(egreso.rubro_id) ?? null,
+    sucursal: lookups.sucursalesById.get(egreso.sucursal_id) ?? null,
+    insumo: egreso.insumo_id
+      ? (lookups.insumosById.get(egreso.insumo_id) ?? null)
+      : null,
+    proveedor: egreso.proveedor_id
+      ? (lookups.proveedoresById.get(egreso.proveedor_id) ?? null)
+      : null,
+    mp: lookups.mediosPagoById.get(egreso.mp_id) ?? null,
+  }));
 }
 
 export async function listEgresos(
   filtros: EgresoFiltros = {},
 ): Promise<EgresoConDetalle[]> {
-  await requireUser();
-  let arr = [...store.egresos];
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
 
+  if (filtros.sucursalId && !isSucursalAllowed(scope, filtros.sucursalId)) {
+    return [];
+  }
+
+  const filters = [inArray(egresosTable.sucursalId, scope.sucursalIdsPermitidas)];
   if (filtros.sucursalId) {
-    arr = arr.filter((e) => e.sucursal_id === filtros.sucursalId);
+    filters.push(eq(egresosTable.sucursalId, filtros.sucursalId));
   }
   if (filtros.rubroId) {
-    arr = arr.filter((e) => e.rubro_id === filtros.rubroId);
+    filters.push(eq(egresosTable.rubroId, filtros.rubroId));
   }
   if (filtros.proveedorId) {
-    arr = arr.filter((e) => e.proveedor_id === filtros.proveedorId);
+    filters.push(eq(egresosTable.proveedorId, filtros.proveedorId));
   }
   if (filtros.desde) {
-    arr = arr.filter((e) => e.fecha >= filtros.desde!);
+    filters.push(gte(egresosTable.fecha, new Date(filtros.desde)));
   }
   if (filtros.hasta) {
-    arr = arr.filter((e) => e.fecha <= filtros.hasta!);
+    filters.push(lte(egresosTable.fecha, new Date(filtros.hasta)));
   }
   if (filtros.soloPendientes) {
-    arr = arr.filter((e) => !e.pagado);
+    filters.push(eq(egresosTable.pagado, false));
   }
 
-  arr.sort((a, b) => b.fecha.localeCompare(a.fecha));
-  return arr.map(detallar);
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(egresosTable)
+    .where(and(...filters))
+    .orderBy(desc(egresosTable.fecha));
+
+  const egresos = rows.map(mapEgreso);
+  if (egresos.length === 0) return [];
+
+  const lookups = await loadEgresoLookups(egresos);
+  return detallar(egresos, lookups);
 }
 
 export async function getEgreso(
   egresoId: string,
 ): Promise<EgresoConDetalle | null> {
-  await requireUser();
-  const e = store.egresos.find((x) => x.id === egresoId);
-  return e ? detallar(e) : null;
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(egresosTable)
+    .where(eq(egresosTable.id, egresoId))
+    .limit(1);
+
+  if (!row) return null;
+  if (!scope.sucursalIdsPermitidas.includes(row.sucursalId)) return null;
+
+  const egreso = mapEgreso(row);
+  const lookups = await loadEgresoLookups([egreso]);
+  return detallar([egreso], lookups)[0] ?? null;
 }
 
 export type CreateEgresoResult =
@@ -75,15 +267,16 @@ export type CreateEgresoResult =
   | { ok: false; errors: Record<string, string[]> };
 
 /**
- * Crea un egreso. Reglas:
- * - Si rubro = Insumos y hay insumo_id + cantidad → registra entrada de stock (tipo "compra").
- * - Si !pagado y hay proveedor_id → suma a deuda_pendiente del proveedor.
+ * Crea un egreso.
+ * - Si hay insumo + cantidad, registra entrada de stock.
+ * - Si queda pendiente y tiene proveedor, suma a deuda_pendiente.
  */
 export async function createEgreso(
   _prev: CreateEgresoResult | null,
   formData: FormData,
 ): Promise<CreateEgresoResult> {
   const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
 
   const parsed = egresoSchema.safeParse({
     fecha: formData.get("fecha"),
@@ -103,74 +296,103 @@ export async function createEgreso(
   }
   const data = parsed.data;
 
-  // Bloqueo: la caja de la fecha objetivo ya está cerrada
-  const ymdFecha = data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)
-    ? data.fecha
-    : new Date().toISOString().slice(0, 10);
-  const cierreDelDia = store.cierresCaja.find(
-    (c) => c.sucursal_id === data.sucursal_id && c.fecha === ymdFecha,
-  );
-  if (cierreDelDia) {
+  if (!isSucursalAllowed(scope, data.sucursal_id)) {
     return {
       ok: false,
-      errors: {
-        fecha: [
-          `La caja del ${ymdFecha} ya está cerrada para esta sucursal. Reabrí el cierre o cargá el egreso con otra fecha.`,
-        ],
-      },
+      errors: { sucursal_id: ["No tienes acceso a esa sucursal"] },
     };
   }
 
-  // Construir fecha ISO: si vino YYYY-MM-DD, completar la hora actual
+  const ymdFecha =
+    data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)
+      ? data.fecha
+      : new Date().toISOString().slice(0, 10);
+
   let fechaIso: string;
   if (data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)) {
     const ahora = new Date();
-    const d = new Date(`${data.fecha}T00:00:00`);
-    d.setHours(ahora.getHours(), ahora.getMinutes(), ahora.getSeconds(), 0);
-    fechaIso = d.toISOString();
+    const fecha = new Date(`${data.fecha}T00:00:00`);
+    fecha.setHours(ahora.getHours(), ahora.getMinutes(), ahora.getSeconds(), 0);
+    fechaIso = fecha.toISOString();
   } else {
     fechaIso = new Date().toISOString();
   }
 
-  const egresoId = id();
-  const egreso: Egreso = {
-    id: egresoId,
-    fecha: fechaIso,
-    sucursal_id: data.sucursal_id,
-    rubro_id: data.rubro_id,
-    insumo_id: data.insumo_id,
-    proveedor_id: data.proveedor_id,
-    cantidad: data.cantidad,
-    valor: data.valor,
-    mp_id: data.mp_id,
-    observacion: data.observacion,
-    pagado: data.pagado,
-    usuario_id: user.id,
-  };
-  store.egresos.push(egreso);
+  const egresoId = createId();
+  const db = getDb();
+  try {
+    await db.transaction(async (tx) => {
+      const [cierreDelDia] = await tx
+        .select({ id: cierresCajaTable.id })
+        .from(cierresCajaTable)
+        .where(
+          and(
+            eq(cierresCajaTable.sucursalId, data.sucursal_id),
+            eq(cierresCajaTable.fecha, ymdFecha),
+          ),
+        )
+        .limit(1);
 
-  // Stock: si hay insumo + cantidad, sumar en sucursal
-  if (data.insumo_id && data.cantidad && data.cantidad > 0) {
-    await applyMovement({
-      insumo_id: data.insumo_id,
-      sucursal_id: data.sucursal_id,
-      delta: data.cantidad,
-      tipo: "compra",
-      ref_tipo: "egreso",
-      ref_id: egresoId,
-      usuario_id: user.id,
+      if (cierreDelDia) {
+        throw new Error(
+          `La caja del ${ymdFecha} ya esta cerrada para esta sucursal. Reabri el cierre o carga el egreso con otra fecha.`,
+        );
+      }
+
+      await tx.insert(egresosTable).values({
+        id: egresoId,
+        fecha: new Date(fechaIso),
+        sucursalId: data.sucursal_id,
+        rubroId: data.rubro_id,
+        insumoId: data.insumo_id ?? null,
+        proveedorId: data.proveedor_id ?? null,
+        cantidad: data.cantidad ?? null,
+        valor: data.valor,
+        mpId: data.mp_id,
+        observacion: data.observacion ?? null,
+        pagado: data.pagado,
+        usuarioId: user.id,
+      });
+
+      if (data.insumo_id && data.cantidad && data.cantidad > 0) {
+        await applyMovementTx(tx, {
+          insumo_id: data.insumo_id,
+          sucursal_id: data.sucursal_id,
+          delta: data.cantidad,
+          tipo: "compra",
+          ref_tipo: "egreso",
+          ref_id: egresoId,
+          usuario_id: user.id,
+        });
+      }
+
+      if (!data.pagado && data.proveedor_id) {
+        const [proveedor] = await tx
+          .select()
+          .from(proveedoresTable)
+          .where(eq(proveedoresTable.id, data.proveedor_id))
+          .limit(1);
+        if (proveedor) {
+          await tx
+            .update(proveedoresTable)
+            .set({ deudaPendiente: proveedor.deudaPendiente + data.valor })
+            .where(eq(proveedoresTable.id, data.proveedor_id));
+        }
+      }
     });
-  }
-
-  // Deuda proveedor
-  if (!data.pagado && data.proveedor_id) {
-    const prov = store.proveedores.find((p) => p.id === data.proveedor_id);
-    if (prov) prov.deuda_pendiente += data.valor;
+  } catch (error) {
+    return {
+      ok: false,
+      errors: {
+        _: [error instanceof Error ? error.message : "No se pudo crear el egreso"],
+      },
+    };
   }
 
   revalidatePath("/egresos");
   revalidatePath("/stock");
   revalidatePath("/dashboard");
+  revalidatePath("/caja");
   revalidatePath("/catalogos/proveedores");
   return { ok: true, egresoId };
 }
@@ -178,28 +400,47 @@ export async function createEgreso(
 export async function togglePagadoEgreso(
   egresoId: string,
 ): Promise<ActionResult> {
-  await requireRole(["admin", "encargada"]);
-  const e = store.egresos.find((x) => x.id === egresoId);
-  if (!e) return { ok: false, errors: { _: ["Egreso no encontrado"] } };
+  const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
+  const db = getDb();
+  const [egreso] = await db
+    .select()
+    .from(egresosTable)
+    .where(eq(egresosTable.id, egresoId))
+    .limit(1);
 
-  const eraPagado = e.pagado;
-  e.pagado = !e.pagado;
-
-  // Ajustar deuda del proveedor si aplica
-  if (e.proveedor_id) {
-    const prov = store.proveedores.find((p) => p.id === e.proveedor_id);
-    if (prov) {
-      if (eraPagado) {
-        // pasaba a pendiente → suma deuda
-        prov.deuda_pendiente += e.valor;
-      } else {
-        // pasaba a pagado → resta deuda
-        prov.deuda_pendiente = Math.max(0, prov.deuda_pendiente - e.valor);
-      }
-    }
+  if (!egreso) return { ok: false, errors: { _: ["Egreso no encontrado"] } };
+  if (!scope.sucursalIdsPermitidas.includes(egreso.sucursalId)) {
+    return { ok: false, errors: { _: ["No tienes acceso a ese egreso"] } };
   }
 
+  await db.transaction(async (tx) => {
+    await tx
+      .update(egresosTable)
+      .set({ pagado: !egreso.pagado })
+      .where(eq(egresosTable.id, egresoId));
+
+    if (egreso.proveedorId) {
+      const [proveedor] = await tx
+        .select()
+        .from(proveedoresTable)
+        .where(eq(proveedoresTable.id, egreso.proveedorId))
+        .limit(1);
+      if (proveedor) {
+        const nextDebt = egreso.pagado
+          ? proveedor.deudaPendiente + egreso.valor
+          : Math.max(0, proveedor.deudaPendiente - egreso.valor);
+        await tx
+          .update(proveedoresTable)
+          .set({ deudaPendiente: nextDebt })
+          .where(eq(proveedoresTable.id, egreso.proveedorId));
+      }
+    }
+  });
+
   revalidatePath("/egresos");
+  revalidatePath("/dashboard");
+  revalidatePath("/caja");
   revalidatePath("/catalogos/proveedores");
   return { ok: true };
 }

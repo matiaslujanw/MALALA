@@ -1,7 +1,11 @@
 "use server";
 
+import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import { requireSupabaseRuntime } from "@/lib/db/env";
+import { proveedores as proveedoresTable } from "@/lib/db/schema";
+import type { Proveedor } from "@/lib/types";
 import { proveedorSchema } from "@/lib/validations/proveedor";
 import {
   fieldErrors,
@@ -9,18 +13,44 @@ import {
   requireRole,
   type ActionResult,
 } from "./_helpers";
-import type { Proveedor } from "@/lib/types";
+
+function mapProveedor(row: typeof proveedoresTable.$inferSelect): Proveedor {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    telefono: row.telefono ?? undefined,
+    cuit: row.cuit ?? undefined,
+    deuda_pendiente: row.deudaPendiente,
+  };
+}
 
 export async function listProveedores(): Promise<Proveedor[]> {
-  return [...store.proveedores].sort((a, b) =>
-    a.nombre.localeCompare(b.nombre),
+  requireSupabaseRuntime(
+    "Los proveedores del sistema solo se cargan desde Supabase.",
   );
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(proveedoresTable)
+    .orderBy(asc(proveedoresTable.nombre));
+  return rows.map(mapProveedor);
 }
 
 export async function getProveedor(
   proveedorId: string,
 ): Promise<Proveedor | null> {
-  return store.proveedores.find((p) => p.id === proveedorId) ?? null;
+  requireSupabaseRuntime(
+    "Los proveedores del sistema solo se cargan desde Supabase.",
+  );
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(proveedoresTable)
+    .where(eq(proveedoresTable.id, proveedorId))
+    .limit(1);
+  return row ? mapProveedor(row) : null;
 }
 
 function parse(formData: FormData) {
@@ -35,17 +65,23 @@ export async function createProveedor(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole(["admin", "encargada"]);
+  requireSupabaseRuntime(
+    "La creacion de proveedores requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  store.proveedores.push({
-    id: id(),
+  const db = getDb();
+  await db.insert(proveedoresTable).values({
+    id: crypto.randomUUID(),
     nombre: parsed.data.nombre,
-    telefono: normPhone(parsed.data.telefono),
-    cuit: parsed.data.cuit,
-    deuda_pendiente: 0,
+    telefono: normPhone(parsed.data.telefono) ?? null,
+    cuit: parsed.data.cuit ?? null,
+    deudaPendiente: 0,
   });
+
   revalidatePath("/catalogos/proveedores");
+  revalidatePath("/egresos");
   return { ok: true };
 }
 
@@ -54,16 +90,26 @@ export async function updateProveedor(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole(["admin", "encargada"]);
-  const idx = store.proveedores.findIndex((p) => p.id === proveedorId);
-  if (idx === -1) return { ok: false, errors: { _: ["No encontrado"] } };
+  requireSupabaseRuntime(
+    "La edicion de proveedores requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
-  store.proveedores[idx] = {
-    ...store.proveedores[idx],
-    nombre: parsed.data.nombre,
-    telefono: normPhone(parsed.data.telefono),
-    cuit: parsed.data.cuit,
-  };
+
+  const db = getDb();
+  const existing = await getProveedor(proveedorId);
+  if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  await db
+    .update(proveedoresTable)
+    .set({
+      nombre: parsed.data.nombre,
+      telefono: normPhone(parsed.data.telefono) ?? null,
+      cuit: parsed.data.cuit ?? null,
+    })
+    .where(eq(proveedoresTable.id, proveedorId));
+
   revalidatePath("/catalogos/proveedores");
+  revalidatePath("/egresos");
   return { ok: true };
 }
