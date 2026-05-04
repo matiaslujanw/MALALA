@@ -530,7 +530,7 @@ export async function getTurnosAgendaRangeData(args: {
     profesionales: profesionalesDeSucursal,
     sucursales,
     sucursalId,
-    horarios: horarios.map(mapHorario),
+    horarios,
   };
 }
 
