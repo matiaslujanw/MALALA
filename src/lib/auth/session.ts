@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import { profiles, sucursales } from "@/lib/db/schema";
 import type { Sucursal, Usuario } from "@/lib/types";
+import { cache } from "react";
 
 const COOKIE_SUCURSAL = "malala_sucursal";
 const COOKIE_OPTS = {
@@ -15,7 +16,7 @@ const COOKIE_OPTS = {
   maxAge: 60 * 60 * 24 * 30,
 };
 
-async function getSupabaseCurrentUser(): Promise<Usuario | null> {
+const getSupabaseCurrentUser = cache(async (): Promise<Usuario | null> => {
   const cookieStore = await cookies();
   const hasSupabaseSessionCookie = cookieStore
     .getAll()
@@ -64,7 +65,7 @@ async function getSupabaseCurrentUser(): Promise<Usuario | null> {
     sucursal_ids_permitidas: sucursalIdsPermitidas,
     activo: profile.activo,
   };
-}
+});
 
 export async function getCurrentUser(): Promise<Usuario | null> {
   return getSupabaseCurrentUser();
@@ -76,7 +77,7 @@ export async function requireUser(): Promise<Usuario> {
   return user;
 }
 
-async function getSupabaseActiveSucursal(user: Usuario): Promise<Sucursal | null> {
+const getSupabaseActiveSucursal = cache(async (user: Usuario): Promise<Sucursal | null> => {
   const c = await cookies();
   const overrideId = c.get(COOKIE_SUCURSAL)?.value;
   const permitidas =
@@ -110,7 +111,7 @@ async function getSupabaseActiveSucursal(user: Usuario): Promise<Sucursal | null
     mapa_url: sucursal.mapaUrl ?? undefined,
     descripcion_corta: sucursal.descripcionCorta ?? undefined,
   };
-}
+});
 
 export async function getActiveSucursalForUser(
   user: Usuario,

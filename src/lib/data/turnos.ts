@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, lte, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client/postgres";
 import {
   empleados as empleadosTable,
@@ -210,6 +210,7 @@ export async function getTurnosRaw(args?: {
   profesionalId?: string;
   estado?: TurnoEstado | string;
   desdeFechaTurno?: string;
+  hastaFechaTurno?: string;
 }) {
   const db = getDb();
   const filters = [];
@@ -231,6 +232,9 @@ export async function getTurnosRaw(args?: {
   }
   if (args?.desdeFechaTurno) {
     filters.push(gte(turnosTable.fechaTurno, args.desdeFechaTurno));
+  }
+  if (args?.hastaFechaTurno) {
+    filters.push(lte(turnosTable.fechaTurno, args.hastaFechaTurno));
   }
 
   const rows = await db
@@ -467,6 +471,66 @@ export async function getTurnosAgendaData(args?: {
     resumen,
     profesionales: profesionalesDeSucursal,
     sucursales,
+  };
+}
+
+export async function getTurnosAgendaRangeData(args: {
+  fechaDesde: string;
+  fechaHasta: string;
+  sucursalId?: string;
+  profesionalId?: string;
+  estado?: string;
+}) {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  const sucursales = await getSucursalesActivas(scope.sucursalIdsPermitidas);
+  const sucursalId =
+    clampSucursalId(scope, args.sucursalId) ?? sucursales[0]?.id ?? "";
+
+  const effectiveProfesionalId =
+    scope.rol === "empleado" ? scope.empleadoId : args.profesionalId;
+
+  const { servicios, profesionales: allProfs } = await getTurnoContextForScope(
+    scope.sucursalIdsPermitidas,
+  );
+
+  const rawTurnos = await getTurnosRaw({
+    desdeFechaTurno: args.fechaDesde,
+    hastaFechaTurno: args.fechaHasta,
+    sucursalIds: scope.sucursalIdsPermitidas,
+    sucursalId,
+    profesionalId: effectiveProfesionalId,
+    estado: args.estado,
+  });
+
+  const filtered =
+    scope.rol === "empleado" && scope.empleadoId
+      ? rawTurnos.filter((t) => t.profesional_id === scope.empleadoId)
+      : rawTurnos;
+
+  const detallados = filtered
+    .sort((a, b) => a.hora.localeCompare(b.hora))
+    .map((turno) =>
+      buildTurnoDetalle({ turno, servicios, sucursales, profesionales: allProfs }),
+    );
+
+  const turnosPorFecha: Record<string, typeof detallados> = {};
+  for (const t of detallados) {
+    (turnosPorFecha[t.fecha_turno] ??= []).push(t);
+  }
+
+  const profesionalesDeSucursal = allProfs
+    .filter((p) => p.sucursal_id === sucursalId)
+    .filter((p) => scope.rol !== "empleado" || p.empleado_id === scope.empleadoId);
+
+  const horarios = await getHorarios(sucursalId);
+
+  return {
+    turnosPorFecha,
+    profesionales: profesionalesDeSucursal,
+    sucursales,
+    sucursalId,
+    horarios: horarios.map(mapHorario),
   };
 }
 

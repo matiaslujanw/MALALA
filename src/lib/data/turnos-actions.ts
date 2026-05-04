@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
@@ -45,8 +45,8 @@ function buildCreatePayload(formData: FormData) {
     hora: formData.get("hora"),
     cliente_nombre: formData.get("cliente_nombre"),
     cliente_telefono: formData.get("cliente_telefono"),
-    cliente_email: formData.get("cliente_email"),
-    observacion: formData.get("observacion"),
+    cliente_email: formData.get("cliente_email") ?? undefined,
+    observacion: formData.get("observacion") ?? undefined,
     sin_preferencia:
       formData.get("sin_preferencia") === "true" ||
       formData.get("sin_preferencia") === "on",
@@ -90,6 +90,10 @@ async function createTurnoInternal(
 
   try {
     await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${parsed.data.sucursal_id}), hashtext(${parsed.data.fecha_turno}))`
+      );
+
       const [horariosRows, profRows, servRows, blockedRows] = await Promise.all([
         tx
           .select()
@@ -217,12 +221,11 @@ export async function createPublicTurnoAction(
   return createTurnoInternal(formData, "publico");
 }
 
-export async function createAdminTurnoAction(formData: FormData) {
+export async function createAdminTurnoAction(
+  _prevState: TurnoActionState | null,
+  formData: FormData,
+) {
   return createTurnoInternal(formData, "interno");
-}
-
-export async function submitAdminTurnoAction(formData: FormData): Promise<void> {
-  await createAdminTurnoAction(formData);
 }
 
 export async function updateTurnoEstadoAction(
@@ -323,6 +326,10 @@ export async function reprogramTurnoAction(
 
   try {
     await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${current.sucursalId}), hashtext(${parsed.data.fecha_turno}))`
+      );
+
       const [horariosRows, profRows, servRows, blockedRows] = await Promise.all([
         tx
           .select()
