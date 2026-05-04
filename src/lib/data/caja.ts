@@ -1,20 +1,19 @@
 "use server";
 
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
+import { cierresCaja as cierresCajaTable, profiles as profilesTable, sucursales as sucursalesTable } from "@/lib/db/schema";
 import { fieldErrors, requireRole } from "./_helpers";
 import { cierreCajaSchema, DENOMINACIONES_ARS } from "@/lib/validations/caja";
 import type { CierreCaja, Cliente, Empleado, MedioPago } from "@/lib/types";
-import {
-  computeBreakdown,
-  detallarLineas,
-} from "./ingresos-helpers";
+import { listEgresos } from "./egresos";
+import { computeBreakdown } from "./ingresos-helpers";
+import { listIngresos } from "./ingresos";
+import { listMediosPago } from "./medios-pago";
 
-/**
- * Resumen de movimientos del día por medio de pago, para una sucursal.
- * Incluye ingresos (ventas no anuladas) y egresos (sólo pagados).
- */
 export interface ResumenMpRow {
   mp: MedioPago;
   ingresos: number;
@@ -23,27 +22,24 @@ export interface ResumenMpRow {
 }
 
 export interface ResumenDelDia {
-  fecha: string; // YYYY-MM-DD
+  fecha: string;
   sucursal_id: string;
   porMp: ResumenMpRow[];
   totalIngresos: number;
   totalEgresos: number;
   totalNeto: number;
-  // Atajos por código común para el cierre
   ef: { ingresos: number; egresos: number; neto: number };
   tr: { ingresos: number; egresos: number; neto: number };
   tc: { ingresos: number; egresos: number; neto: number };
   td: { ingresos: number; egresos: number; neto: number };
-  // Cantidades de movimientos
   cantIngresos: number;
   cantEgresos: number;
-  // Detalle del día
   tickets: TicketResumen[];
   comisionesPorEmpleado: ComisionEmpleadoRow[];
   totalComisiones: number;
   costoInsumos: number;
-  paraElLocal: number; // total cobrado − comisiones (sin descontar insumos)
-  netoNegocio: number; // total cobrado − comisiones − costo insumos
+  paraElLocal: number;
+  netoNegocio: number;
 }
 
 export interface TicketResumen {
@@ -53,19 +49,24 @@ export interface TicketResumen {
   total: number;
   comisiones: number;
   cantLineas: number;
-  empleados: string[]; // nombres únicos
+  empleados: string[];
 }
 
 export interface ComisionEmpleadoRow {
   empleado: Empleado;
   total: number;
   lineas: number;
-  pctDelTotal: number; // % sobre el total cobrado del día
+  pctDelTotal: number;
+}
+
+function createId() {
+  return crypto.randomUUID();
 }
 
 function isoStartOfDay(fecha: string): string {
   return new Date(`${fecha}T00:00:00`).toISOString();
 }
+
 function isoEndOfDay(fecha: string): string {
   return new Date(`${fecha}T23:59:59.999`).toISOString();
 }
@@ -74,117 +75,142 @@ function emptyMpTotals() {
   return { ingresos: 0, egresos: 0, neto: 0 };
 }
 
+function mapCierre(row: typeof cierresCajaTable.$inferSelect): CierreCaja {
+  return {
+    id: row.id,
+    sucursal_id: row.sucursalId,
+    fecha: row.fecha,
+    saldo_inicial_ef: row.saldoInicialEf,
+    saldo_banco: row.saldoBanco,
+    billetes: row.billetes,
+    ingresos_ef: row.ingresosEf,
+    egresos_ef: row.egresosEf,
+    ingresos_banc: row.ingresosBanc,
+    egresos_banc: row.egresosBanc,
+    cobros_tc: row.cobrosTc,
+    cobros_td: row.cobrosTd,
+    vouchers: row.vouchers,
+    giftcards: row.giftcards,
+    autoconsumos: row.autoconsumos,
+    cheques: row.cheques,
+    aportes: row.aportes,
+    ingresos_cc: row.ingresosCc,
+    anticipos: row.anticipos,
+    observacion: row.observacion ?? undefined,
+    cerrado_por: row.cerradoPor,
+    fecha_cierre: row.fechaCierre.toISOString(),
+  };
+}
+
 export async function getResumenDelDia(
   sucursalId: string,
-  fecha: string, // YYYY-MM-DD
+  fecha: string,
 ): Promise<ResumenDelDia> {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) {
+    throw new Error("No tienes acceso a esta caja");
+  }
+
   const desde = isoStartOfDay(fecha);
   const hasta = isoEndOfDay(fecha);
 
-  const ingresosDelDia = store.ingresos.filter(
-    (i) =>
-      !i.anulado &&
-      i.sucursal_id === sucursalId &&
-      i.fecha >= desde &&
-      i.fecha <= hasta,
-  );
-  const egresosDelDia = store.egresos.filter(
-    (e) =>
-      e.pagado &&
-      e.sucursal_id === sucursalId &&
-      e.fecha >= desde &&
-      e.fecha <= hasta,
-  );
-
-  const acc = new Map<string, { ingresos: number; egresos: number }>();
-  for (const mp of store.mediosPago) acc.set(mp.id, { ingresos: 0, egresos: 0 });
-
-  for (const ing of ingresosDelDia) {
-    const a = acc.get(ing.mp1_id);
-    if (a) a.ingresos += ing.valor1;
-    if (ing.mp2_id && ing.valor2 != null) {
-      const b = acc.get(ing.mp2_id);
-      if (b) b.ingresos += ing.valor2;
-    }
-  }
-  for (const eg of egresosDelDia) {
-    const a = acc.get(eg.mp_id);
-    if (a) a.egresos += eg.valor;
-  }
-
-  const porMp: ResumenMpRow[] = store.mediosPago.map((mp) => {
-    const a = acc.get(mp.id) ?? { ingresos: 0, egresos: 0 };
-    return { mp, ingresos: a.ingresos, egresos: a.egresos, neto: a.ingresos - a.egresos };
+  const mediosPago = await listMediosPago();
+  const ingresosDelDia = await listIngresos({
+    sucursalId,
+    desde,
+    hasta,
+  });
+  const egresosDelDia = await listEgresos({
+    sucursalId,
+    desde,
+    hasta,
   });
 
-  const totalIngresos = porMp.reduce((s, r) => s + r.ingresos, 0);
-  const totalEgresos = porMp.reduce((s, r) => s + r.egresos, 0);
+  const egresosPagados = egresosDelDia.filter((item) => item.egreso.pagado);
+  const acc = new Map<string, { ingresos: number; egresos: number }>();
+  for (const mp of mediosPago) acc.set(mp.id, { ingresos: 0, egresos: 0 });
 
+  for (const row of ingresosDelDia) {
+    const mp1 = acc.get(row.ingreso.mp1_id);
+    if (mp1) mp1.ingresos += row.ingreso.valor1;
+    if (row.ingreso.mp2_id && row.ingreso.valor2 != null) {
+      const mp2 = acc.get(row.ingreso.mp2_id);
+      if (mp2) mp2.ingresos += row.ingreso.valor2;
+    }
+  }
+
+  for (const row of egresosPagados) {
+    const mp = acc.get(row.egreso.mp_id);
+    if (mp) mp.egresos += row.egreso.valor;
+  }
+
+  const porMp: ResumenMpRow[] = mediosPago.map((mp) => {
+    const totals = acc.get(mp.id) ?? { ingresos: 0, egresos: 0 };
+    return {
+      mp,
+      ingresos: totals.ingresos,
+      egresos: totals.egresos,
+      neto: totals.ingresos - totals.egresos,
+    };
+  });
+
+  const totalIngresos = porMp.reduce((sum, row) => sum + row.ingresos, 0);
+  const totalEgresos = porMp.reduce((sum, row) => sum + row.egresos, 0);
   const byCodigo = (codigo: string) => {
-    const row = porMp.find((r) => r.mp.codigo === codigo);
+    const row = porMp.find((item) => item.mp.codigo === codigo);
     return row
       ? { ingresos: row.ingresos, egresos: row.egresos, neto: row.neto }
       : emptyMpTotals();
   };
 
-  // Tickets del día con desglose de comisiones
   const tickets: TicketResumen[] = [];
-  const comAcc = new Map<string, { total: number; lineas: number }>();
+  const comAcc = new Map<string, { empleado: Empleado; total: number; lineas: number }>();
   let totalComisionesAll = 0;
   let costoInsumosAll = 0;
 
-  for (const ing of ingresosDelDia) {
-    const lineas = detallarLineas(ing.id);
-    const breakdown = computeBreakdown(ing, lineas);
+  for (const row of ingresosDelDia) {
+    const breakdown = computeBreakdown(row.ingreso, row.lineas);
     totalComisionesAll += breakdown.comisiones;
     costoInsumosAll += breakdown.costoInsumos;
 
     const empleadosNombres = new Set<string>();
-    for (const l of lineas) {
-      if (!l.empleado) continue;
-      empleadosNombres.add(l.empleado.nombre);
-      const cur = comAcc.get(l.empleado.id) ?? { total: 0, lineas: 0 };
-      cur.total += l.comision_monto;
-      cur.lineas += 1;
-      comAcc.set(l.empleado.id, cur);
+    for (const linea of row.lineas) {
+      if (!linea.empleado) continue;
+      empleadosNombres.add(linea.empleado.nombre);
+      const current = comAcc.get(linea.empleado.id) ?? {
+        empleado: linea.empleado,
+        total: 0,
+        lineas: 0,
+      };
+      current.total += linea.comision_monto;
+      current.lineas += 1;
+      comAcc.set(linea.empleado.id, current);
     }
 
     tickets.push({
-      id: ing.id,
-      fecha: ing.fecha,
-      cliente: ing.cliente_id
-        ? store.clientes.find((c) => c.id === ing.cliente_id) ?? null
-        : null,
-      total: ing.total,
+      id: row.ingreso.id,
+      fecha: row.ingreso.fecha,
+      cliente: row.cliente,
+      total: row.ingreso.total,
       comisiones: breakdown.comisiones,
-      cantLineas: lineas.length,
+      cantLineas: row.lineas.length,
       empleados: Array.from(empleadosNombres),
     });
   }
 
-  const comisionesPorEmpleado: ComisionEmpleadoRow[] = Array.from(
-    comAcc.entries(),
-  )
-    .map(([empId, v]) => {
-      const emp = store.empleados.find((e) => e.id === empId);
-      return emp
-        ? {
-            empleado: emp,
-            total: v.total,
-            lineas: v.lineas,
-            pctDelTotal:
-              totalIngresos > 0 ? (v.total / totalIngresos) * 100 : 0,
-          }
-        : null;
-    })
-    .filter((x): x is ComisionEmpleadoRow => x !== null)
+  const comisionesPorEmpleado = Array.from(comAcc.values())
+    .map((item) => ({
+      empleado: item.empleado,
+      total: item.total,
+      lineas: item.lineas,
+      pctDelTotal: totalIngresos > 0 ? (item.total / totalIngresos) * 100 : 0,
+    }))
     .sort((a, b) => b.total - a.total);
 
   const paraElLocal = totalIngresos - totalComisionesAll;
   const netoNegocio = paraElLocal - costoInsumosAll;
 
-  // Tickets ordenados por hora ascendente
   tickets.sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   return {
@@ -199,7 +225,7 @@ export async function getResumenDelDia(
     tc: byCodigo("TC"),
     td: byCodigo("TD"),
     cantIngresos: ingresosDelDia.length,
-    cantEgresos: egresosDelDia.length,
+    cantEgresos: egresosPagados.length,
     tickets,
     comisionesPorEmpleado,
     totalComisiones: totalComisionesAll,
@@ -226,16 +252,20 @@ function efectivoContadoDe(billetes: Record<string, number>): number {
   }, 0);
 }
 
-function detallarCierre(c: CierreCaja): CierreConDetalle {
-  const sucursal = store.sucursales.find((s) => s.id === c.sucursal_id);
-  const usuario = store.usuarios.find((u) => u.id === c.cerrado_por);
-  const efectivoContado = efectivoContadoDe(c.billetes);
+function detallarCierre(args: {
+  cierre: CierreCaja;
+  sucursalNombre: string;
+  usuarioNombre: string;
+}): CierreConDetalle {
+  const efectivoContado = efectivoContadoDe(args.cierre.billetes);
   const efectivoEsperado =
-    c.saldo_inicial_ef + c.ingresos_ef - c.egresos_ef;
+    args.cierre.saldo_inicial_ef +
+    args.cierre.ingresos_ef -
+    args.cierre.egresos_ef;
   return {
-    cierre: c,
-    sucursal_nombre: sucursal?.nombre ?? "—",
-    cerrado_por_nombre: usuario?.nombre ?? "—",
+    cierre: args.cierre,
+    sucursal_nombre: args.sucursalNombre,
+    cerrado_por_nombre: args.usuarioNombre,
     efectivoContado,
     efectivoEsperado,
     diferenciaEf: efectivoContado - efectivoEsperado,
@@ -246,45 +276,132 @@ export async function listCierres(opts?: {
   sucursalId?: string;
   limit?: number;
 }): Promise<CierreConDetalle[]> {
-  await requireUser();
-  let arr = [...store.cierresCaja];
-  if (opts?.sucursalId) arr = arr.filter((c) => c.sucursal_id === opts.sucursalId);
-  arr.sort((a, b) => b.fecha.localeCompare(a.fecha));
-  if (opts?.limit) arr = arr.slice(0, opts.limit);
-  return arr.map(detallarCierre);
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja) return [];
+  if (opts?.sucursalId && !isSucursalAllowed(scope, opts.sucursalId)) return [];
+
+  const db = getDb();
+  const filters = [inArray(cierresCajaTable.sucursalId, scope.sucursalIdsPermitidas)];
+  if (opts?.sucursalId) {
+    filters.push(eq(cierresCajaTable.sucursalId, opts.sucursalId));
+  }
+
+  const rows = await db
+    .select({
+      cierre: cierresCajaTable,
+      sucursalNombre: sucursalesTable.nombre,
+      usuarioNombre: profilesTable.nombre,
+    })
+    .from(cierresCajaTable)
+    .innerJoin(
+      sucursalesTable,
+      eq(cierresCajaTable.sucursalId, sucursalesTable.id),
+    )
+    .leftJoin(profilesTable, eq(cierresCajaTable.cerradoPor, profilesTable.userId))
+    .where(and(...filters))
+    .orderBy(desc(cierresCajaTable.fecha))
+    .limit(opts?.limit ?? 100);
+
+  return rows.map((row) =>
+    detallarCierre({
+      cierre: mapCierre(row.cierre),
+      sucursalNombre: row.sucursalNombre,
+      usuarioNombre: row.usuarioNombre ?? "Sistema",
+    }),
+  );
 }
 
 export async function getCierre(cierreId: string): Promise<CierreConDetalle | null> {
-  await requireUser();
-  const c = store.cierresCaja.find((x) => x.id === cierreId);
-  return c ? detallarCierre(c) : null;
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja) return null;
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      cierre: cierresCajaTable,
+      sucursalNombre: sucursalesTable.nombre,
+      usuarioNombre: profilesTable.nombre,
+    })
+    .from(cierresCajaTable)
+    .innerJoin(
+      sucursalesTable,
+      eq(cierresCajaTable.sucursalId, sucursalesTable.id),
+    )
+    .leftJoin(profilesTable, eq(cierresCajaTable.cerradoPor, profilesTable.userId))
+    .where(eq(cierresCajaTable.id, cierreId))
+    .limit(1);
+
+  if (!row) return null;
+  if (!scope.sucursalIdsPermitidas.includes(row.cierre.sucursalId)) return null;
+
+  return detallarCierre({
+    cierre: mapCierre(row.cierre),
+    sucursalNombre: row.sucursalNombre,
+    usuarioNombre: row.usuarioNombre ?? "Sistema",
+  });
 }
 
 export async function getCierreDeFecha(
   sucursalId: string,
   fecha: string,
 ): Promise<CierreCaja | null> {
-  await requireUser();
-  return (
-    store.cierresCaja.find(
-      (c) => c.sucursal_id === sucursalId && c.fecha === fecha,
-    ) ?? null
-  );
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return null;
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(cierresCajaTable)
+    .where(
+      and(
+        eq(cierresCajaTable.sucursalId, sucursalId),
+        eq(cierresCajaTable.fecha, fecha),
+      ),
+    )
+    .limit(1);
+
+  return row ? mapCierre(row) : null;
 }
 
-/**
- * Devuelve el último cierre de la sucursal estrictamente anterior a `fecha`.
- * Sirve para arrastrar el saldo final como saldo inicial del día siguiente.
- */
 export async function getUltimoCierreAntesDe(
   sucursalId: string,
-  fecha: string, // YYYY-MM-DD
+  fecha: string,
 ): Promise<CierreConDetalle | null> {
-  await requireUser();
-  const previos = store.cierresCaja
-    .filter((c) => c.sucursal_id === sucursalId && c.fecha < fecha)
-    .sort((a, b) => b.fecha.localeCompare(a.fecha));
-  return previos[0] ? detallarCierre(previos[0]) : null;
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return null;
+
+  const db = getDb();
+  const [row] = await db
+    .select({
+      cierre: cierresCajaTable,
+      sucursalNombre: sucursalesTable.nombre,
+      usuarioNombre: profilesTable.nombre,
+    })
+    .from(cierresCajaTable)
+    .innerJoin(
+      sucursalesTable,
+      eq(cierresCajaTable.sucursalId, sucursalesTable.id),
+    )
+    .leftJoin(profilesTable, eq(cierresCajaTable.cerradoPor, profilesTable.userId))
+    .where(
+      and(
+        eq(cierresCajaTable.sucursalId, sucursalId),
+        lt(cierresCajaTable.fecha, fecha),
+      ),
+    )
+    .orderBy(desc(cierresCajaTable.fecha))
+    .limit(1);
+
+  if (!row) return null;
+  return detallarCierre({
+    cierre: mapCierre(row.cierre),
+    sucursalNombre: row.sucursalNombre,
+    usuarioNombre: row.usuarioNombre ?? "Sistema",
+  });
 }
 
 export interface SugerenciasArrastre {
@@ -312,36 +429,34 @@ export async function getSugerenciasArrastre(
   };
 }
 
-/**
- * Devuelve el cierre que afecta a la fecha indicada, si lo hay.
- * Útil para bloquear cargas con fecha ya cerrada.
- */
 export async function getCierreQueBloqueaFecha(
   sucursalId: string,
   fechaIso: string,
 ): Promise<CierreCaja | null> {
   await requireUser();
-  const ymd = fechaIso.slice(0, 10);
-  return (
-    store.cierresCaja.find(
-      (c) => c.sucursal_id === sucursalId && c.fecha === ymd,
-    ) ?? null
-  );
+  return getCierreDeFecha(sucursalId, fechaIso.slice(0, 10));
 }
 
-/**
- * Reapertura: elimina el cierre, dejando el día como "abierto" otra vez.
- * Sólo admin.
- */
 export async function reabrirCierre(
   cierreId: string,
 ): Promise<{ ok: true } | { ok: false; errors: Record<string, string[]> }> {
-  await requireRole(["admin"]);
-  const idx = store.cierresCaja.findIndex((c) => c.id === cierreId);
-  if (idx < 0) {
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
+  const db = getDb();
+  const [cierre] = await db
+    .select()
+    .from(cierresCajaTable)
+    .where(eq(cierresCajaTable.id, cierreId))
+    .limit(1);
+
+  if (!cierre) {
     return { ok: false, errors: { _: ["Cierre no encontrado"] } };
   }
-  store.cierresCaja.splice(idx, 1);
+  if (!scope.sucursalIdsPermitidas.includes(cierre.sucursalId)) {
+    return { ok: false, errors: { _: ["No tienes acceso a ese cierre"] } };
+  }
+
+  await db.delete(cierresCajaTable).where(eq(cierresCajaTable.id, cierreId));
   revalidatePath("/caja");
   revalidatePath("/dashboard");
   return { ok: true };
@@ -356,14 +471,14 @@ export async function createCierre(
   formData: FormData,
 ): Promise<CreateCierreResult> {
   const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
 
-  // Reconstruir billetes desde inputs `billete_<denom>`
   const billetes: Record<string, number> = {};
   for (const denom of DENOMINACIONES_ARS) {
     const raw = formData.get(`billete_${denom}`);
-    const n = typeof raw === "string" && raw !== "" ? Number(raw) : 0;
-    if (Number.isFinite(n) && n > 0) {
-      billetes[String(denom)] = Math.floor(n);
+    const cantidad = typeof raw === "string" && raw !== "" ? Number(raw) : 0;
+    if (Number.isFinite(cantidad) && cantidad > 0) {
+      billetes[String(denom)] = Math.floor(cantidad);
     }
   }
 
@@ -388,10 +503,25 @@ export async function createCierre(
   }
   const data = parsed.data;
 
-  // Un cierre por sucursal+fecha
-  const dup = store.cierresCaja.find(
-    (c) => c.sucursal_id === data.sucursal_id && c.fecha === data.fecha,
-  );
+  if (!isSucursalAllowed(scope, data.sucursal_id)) {
+    return {
+      ok: false,
+      errors: { sucursal_id: ["No tienes acceso a esa sucursal"] },
+    };
+  }
+
+  const db = getDb();
+  const [dup] = await db
+    .select({ id: cierresCajaTable.id })
+    .from(cierresCajaTable)
+    .where(
+      and(
+        eq(cierresCajaTable.sucursalId, data.sucursal_id),
+        eq(cierresCajaTable.fecha, data.fecha),
+      ),
+    )
+    .limit(1);
+
   if (dup) {
     return {
       ok: false,
@@ -399,36 +529,35 @@ export async function createCierre(
     };
   }
 
-  // Tomar totales del día como snapshot
   const resumen = await getResumenDelDia(data.sucursal_id, data.fecha);
+  const cierreId = createId();
 
-  const cierre: CierreCaja = {
-    id: id(),
-    sucursal_id: data.sucursal_id,
+  await db.insert(cierresCajaTable).values({
+    id: cierreId,
+    sucursalId: data.sucursal_id,
     fecha: data.fecha,
-    saldo_inicial_ef: data.saldo_inicial_ef,
-    saldo_banco: data.saldo_banco,
+    saldoInicialEf: data.saldo_inicial_ef,
+    saldoBanco: data.saldo_banco,
     billetes: data.billetes,
-    ingresos_ef: resumen.ef.ingresos,
-    egresos_ef: resumen.ef.egresos,
-    ingresos_banc: resumen.tr.ingresos,
-    egresos_banc: resumen.tr.egresos,
-    cobros_tc: resumen.tc.ingresos,
-    cobros_td: resumen.td.ingresos,
+    ingresosEf: resumen.ef.ingresos,
+    egresosEf: resumen.ef.egresos,
+    ingresosBanc: resumen.tr.ingresos,
+    egresosBanc: resumen.tr.egresos,
+    cobrosTc: resumen.tc.ingresos,
+    cobrosTd: resumen.td.ingresos,
     vouchers: data.vouchers,
     giftcards: data.giftcards,
     autoconsumos: data.autoconsumos,
     cheques: data.cheques,
     aportes: data.aportes,
-    ingresos_cc: data.ingresos_cc,
+    ingresosCc: data.ingresos_cc,
     anticipos: data.anticipos,
-    observacion: data.observacion,
-    cerrado_por: user.id,
-    fecha_cierre: new Date().toISOString(),
-  };
-  store.cierresCaja.push(cierre);
+    observacion: data.observacion ?? null,
+    cerradoPor: user.id,
+    fechaCierre: new Date(),
+  });
 
   revalidatePath("/caja");
   revalidatePath("/dashboard");
-  return { ok: true, cierreId: cierre.id };
+  return { ok: true, cierreId };
 }

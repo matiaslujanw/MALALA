@@ -75,25 +75,14 @@ const items = [
 export default async function CatalogosPage() {
   await requireUser();
 
-  const [
-    servicios,
-    insumos,
-    recetas,
-    clientes,
-    empleados,
-    proveedores,
-    mediosPago,
-    rubrosGasto,
-  ] = await Promise.all([
-    listServicios(),
-    listInsumos(),
-    listRecetasResumen(),
-    listClientes(),
-    listEmpleados(),
-    listProveedores(),
-    listMediosPago(),
-    listRubrosGasto(),
-  ]);
+  const servicios = await listServicios();
+  const insumos = await listInsumos();
+  const recetas = await listRecetasResumen();
+  const clientes = await listClientes();
+  const empleados = await listEmpleados();
+  const proveedores = await listProveedores();
+  const mediosPago = await listMediosPago();
+  const rubrosGasto = await listRubrosGasto();
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
 

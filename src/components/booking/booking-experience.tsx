@@ -17,7 +17,7 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { createPublicTurnoAction } from "@/lib/data/turnos";
+import { createPublicTurnoAction } from "@/lib/data/turnos-actions";
 import {
   buildAvailableSlots,
   listOpenDatesForSucursal,

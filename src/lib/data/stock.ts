@@ -1,20 +1,75 @@
 "use server";
 
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
 import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
+import {
+  insumos as insumosTable,
+  movimientosStock as movimientosStockTable,
+  profiles as profilesTable,
+  stockSucursal as stockSucursalTable,
+  sucursales as sucursalesTable,
+} from "@/lib/db/schema";
 import {
   ajusteManualSchema,
   transferenciaSchema,
 } from "@/lib/validations/stock";
-import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
+import { failure, fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import type {
   Insumo,
   MovimientoStock,
   StockSucursal,
   TipoMovimientoStock,
 } from "@/lib/types";
+
+function createId() {
+  return crypto.randomUUID();
+}
+
+function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    proveedor_id: row.proveedorId ?? undefined,
+    unidad_medida: row.unidadMedida,
+    tamano_envase: row.tamanoEnvase,
+    precio_envase: row.precioEnvase,
+    precio_unitario: row.precioUnitario ?? null,
+    rinde: row.rinde ?? undefined,
+    umbral_stock_bajo: row.umbralStockBajo,
+    activo: row.activo,
+  };
+}
+
+function mapStock(row: typeof stockSucursalTable.$inferSelect): StockSucursal {
+  return {
+    id: row.id,
+    insumo_id: row.insumoId,
+    sucursal_id: row.sucursalId,
+    cantidad: row.cantidad,
+  };
+}
+
+function mapMovimiento(
+  row: typeof movimientosStockTable.$inferSelect,
+): MovimientoStock {
+  return {
+    id: row.id,
+    insumo_id: row.insumoId,
+    sucursal_id: row.sucursalId,
+    tipo: row.tipo,
+    cantidad: row.cantidad,
+    motivo: row.motivo ?? undefined,
+    ref_tipo: row.refTipo ?? undefined,
+    ref_id: row.refId ?? undefined,
+    usuario_id: row.usuarioId,
+    fecha: row.fecha.toISOString(),
+  };
+}
+
+type DbTx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
 export type StockRow = {
   insumo: Insumo;
@@ -30,20 +85,31 @@ export async function listStockBySucursal(
   if (!scope.puedeVerStock || !isSucursalAllowed(scope, sucursalId)) {
     return [];
   }
-  const insumos = store.insumos.filter((i) => i.activo);
-  return insumos
-    .map((insumo) => {
-      const row = store.stockSucursal.find(
-        (s) => s.insumo_id === insumo.id && s.sucursal_id === sucursalId,
-      );
-      const cantidad = row?.cantidad ?? 0;
+
+  const db = getDb();
+  const insumosRows = await db
+    .select()
+    .from(insumosTable)
+    .where(eq(insumosTable.activo, true))
+    .orderBy(asc(insumosTable.nombre));
+  const stockRows = await db
+    .select()
+    .from(stockSucursalTable)
+    .where(eq(stockSucursalTable.sucursalId, sucursalId));
+
+  const stockByInsumo = new Map(stockRows.map((item) => [item.insumoId, item]));
+
+  return insumosRows
+    .map((row) => {
+      const insumo = mapInsumo(row);
+      const stock = stockByInsumo.get(insumo.id);
+      const cantidad = stock?.cantidad ?? 0;
       let estado: StockRow["estado"] = "ok";
       if (cantidad < 0) estado = "negativo";
       else if (cantidad < insumo.umbral_stock_bajo) estado = "bajo";
       return { insumo, cantidad, estado };
     })
     .sort((a, b) => {
-      // negativos primero, luego bajos, luego ok
       const order = { negativo: 0, bajo: 1, ok: 2 };
       if (a.estado !== b.estado) return order[a.estado] - order[b.estado];
       return a.insumo.nombre.localeCompare(b.insumo.nombre);
@@ -52,9 +118,77 @@ export async function listStockBySucursal(
 
 /**
  * Aplica un delta al stock de un insumo en una sucursal y registra el movimiento.
- * No es estrictamente atómico (memoria), pero el orden garantiza consistencia
- * dentro de un mismo proceso. Cuando vayamos a Postgres, esto es 1 transaction.
+ * Debe ejecutarse dentro de una transacción cuando forma parte de un flujo mayor.
  */
+export async function applyMovementTx(
+  tx: DbTx,
+  args: {
+    insumo_id: string;
+    sucursal_id: string;
+    delta: number;
+    tipo: TipoMovimientoStock;
+    motivo?: string;
+    ref_tipo?: string;
+    ref_id?: string;
+    usuario_id: string;
+  },
+): Promise<{ stock: StockSucursal; movimiento: MovimientoStock }> {
+  const [existing] = await tx
+    .select()
+    .from(stockSucursalTable)
+    .where(
+      and(
+        eq(stockSucursalTable.insumoId, args.insumo_id),
+        eq(stockSucursalTable.sucursalId, args.sucursal_id),
+      ),
+    )
+    .limit(1);
+
+  const nextCantidad = (existing?.cantidad ?? 0) + args.delta;
+  let stockRow: typeof stockSucursalTable.$inferSelect;
+
+  if (existing) {
+    const [updated] = await tx
+      .update(stockSucursalTable)
+      .set({ cantidad: nextCantidad })
+      .where(eq(stockSucursalTable.id, existing.id))
+      .returning();
+    stockRow = updated;
+  } else {
+    const [inserted] = await tx
+      .insert(stockSucursalTable)
+      .values({
+        id: createId(),
+        insumoId: args.insumo_id,
+        sucursalId: args.sucursal_id,
+        cantidad: nextCantidad,
+      })
+      .returning();
+    stockRow = inserted;
+  }
+
+  const [movimientoRow] = await tx
+    .insert(movimientosStockTable)
+    .values({
+      id: createId(),
+      insumoId: args.insumo_id,
+      sucursalId: args.sucursal_id,
+      tipo: args.tipo,
+      cantidad: args.delta,
+      motivo: args.motivo ?? null,
+      refTipo: args.ref_tipo ?? null,
+      refId: args.ref_id ?? null,
+      usuarioId: args.usuario_id,
+      fecha: new Date(),
+    })
+    .returning();
+
+  return {
+    stock: mapStock(stockRow),
+    movimiento: mapMovimiento(movimientoRow),
+  };
+}
+
 export async function applyMovement(args: {
   insumo_id: string;
   sucursal_id: string;
@@ -65,36 +199,8 @@ export async function applyMovement(args: {
   ref_id?: string;
   usuario_id: string;
 }): Promise<{ stock: StockSucursal; movimiento: MovimientoStock }> {
-  let row = store.stockSucursal.find(
-    (s) =>
-      s.insumo_id === args.insumo_id && s.sucursal_id === args.sucursal_id,
-  );
-  if (!row) {
-    row = {
-      id: id(),
-      insumo_id: args.insumo_id,
-      sucursal_id: args.sucursal_id,
-      cantidad: 0,
-    };
-    store.stockSucursal.push(row);
-  }
-  row.cantidad += args.delta;
-
-  const movimiento: MovimientoStock = {
-    id: id(),
-    insumo_id: args.insumo_id,
-    sucursal_id: args.sucursal_id,
-    tipo: args.tipo,
-    cantidad: args.delta,
-    motivo: args.motivo,
-    ref_tipo: args.ref_tipo,
-    ref_id: args.ref_id,
-    usuario_id: args.usuario_id,
-    fecha: new Date().toISOString(),
-  };
-  store.movimientosStock.push(movimiento);
-
-  return { stock: row, movimiento };
+  const db = getDb();
+  return db.transaction((tx) => applyMovementTx(tx, args));
 }
 
 export async function createAjusteManual(
@@ -120,6 +226,7 @@ export async function createAjusteManual(
 
   revalidatePath("/stock");
   revalidatePath("/stock/movimientos");
+  revalidatePath("/dashboard");
   return { ok: true };
 }
 
@@ -136,32 +243,38 @@ export async function createTransferencia(
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  const refId = id();
-  // Salida en origen
-  await applyMovement({
-    insumo_id: parsed.data.insumo_id,
-    sucursal_id: parsed.data.sucursal_origen_id,
-    delta: -parsed.data.cantidad,
-    tipo: "transferencia_salida",
-    motivo: parsed.data.motivo,
-    ref_tipo: "transferencia",
-    ref_id: refId,
-    usuario_id: user.id,
-  });
-  // Entrada en destino
-  await applyMovement({
-    insumo_id: parsed.data.insumo_id,
-    sucursal_id: parsed.data.sucursal_destino_id,
-    delta: parsed.data.cantidad,
-    tipo: "transferencia_entrada",
-    motivo: parsed.data.motivo,
-    ref_tipo: "transferencia",
-    ref_id: refId,
-    usuario_id: user.id,
+  if (parsed.data.sucursal_origen_id === parsed.data.sucursal_destino_id) {
+    return failure("La transferencia requiere sucursales distintas");
+  }
+
+  const refId = createId();
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await applyMovementTx(tx, {
+      insumo_id: parsed.data.insumo_id,
+      sucursal_id: parsed.data.sucursal_origen_id,
+      delta: -parsed.data.cantidad,
+      tipo: "transferencia_salida",
+      motivo: parsed.data.motivo,
+      ref_tipo: "transferencia",
+      ref_id: refId,
+      usuario_id: user.id,
+    });
+    await applyMovementTx(tx, {
+      insumo_id: parsed.data.insumo_id,
+      sucursal_id: parsed.data.sucursal_destino_id,
+      delta: parsed.data.cantidad,
+      tipo: "transferencia_entrada",
+      motivo: parsed.data.motivo,
+      ref_tipo: "transferencia",
+      ref_id: refId,
+      usuario_id: user.id,
+    });
   });
 
   revalidatePath("/stock");
   revalidatePath("/stock/movimientos");
+  revalidatePath("/dashboard");
   return { ok: true };
 }
 
@@ -180,26 +293,46 @@ export async function listMovimientos(opts?: {
   const scope = buildAccessScope(user);
   if (!scope.puedeVerStock) return [];
 
-  let arr = [...store.movimientosStock];
-  arr = arr.filter((m) => scope.sucursalIdsPermitidas.includes(m.sucursal_id));
+  if (opts?.sucursalId && !isSucursalAllowed(scope, opts.sucursalId)) {
+    return [];
+  }
+
+  const filters = [
+    inArray(movimientosStockTable.sucursalId, scope.sucursalIdsPermitidas),
+  ];
   if (opts?.sucursalId) {
-    if (!isSucursalAllowed(scope, opts.sucursalId)) return [];
-    arr = arr.filter((m) => m.sucursal_id === opts.sucursalId);
+    filters.push(eq(movimientosStockTable.sucursalId, opts.sucursalId));
   }
   if (opts?.insumoId) {
-    arr = arr.filter((m) => m.insumo_id === opts.insumoId);
+    filters.push(eq(movimientosStockTable.insumoId, opts.insumoId));
   }
-  arr.sort((a, b) => b.fecha.localeCompare(a.fecha));
-  if (opts?.limit) arr = arr.slice(0, opts.limit);
 
-  const insMap = new Map(store.insumos.map((i) => [i.id, i.nombre]));
-  const sucMap = new Map(store.sucursales.map((s) => [s.id, s.nombre]));
-  const userMap = new Map(store.usuarios.map((u) => [u.id, u.nombre]));
+  const db = getDb();
+  const rows = await db
+    .select({
+      movimiento: movimientosStockTable,
+      insumoNombre: insumosTable.nombre,
+      sucursalNombre: sucursalesTable.nombre,
+      usuarioNombre: profilesTable.nombre,
+    })
+    .from(movimientosStockTable)
+    .innerJoin(insumosTable, eq(movimientosStockTable.insumoId, insumosTable.id))
+    .innerJoin(
+      sucursalesTable,
+      eq(movimientosStockTable.sucursalId, sucursalesTable.id),
+    )
+    .leftJoin(
+      profilesTable,
+      eq(movimientosStockTable.usuarioId, profilesTable.userId),
+    )
+    .where(and(...filters))
+    .orderBy(desc(movimientosStockTable.fecha))
+    .limit(opts?.limit ?? 200);
 
-  return arr.map((m) => ({
-    ...m,
-    insumo_nombre: insMap.get(m.insumo_id) ?? "—",
-    sucursal_nombre: sucMap.get(m.sucursal_id) ?? "—",
-    usuario_nombre: userMap.get(m.usuario_id) ?? "—",
+  return rows.map((row) => ({
+    ...mapMovimiento(row.movimiento),
+    insumo_nombre: row.insumoNombre,
+    sucursal_nombre: row.sucursalNombre,
+    usuario_nombre: row.usuarioNombre ?? "Sistema",
   }));
 }

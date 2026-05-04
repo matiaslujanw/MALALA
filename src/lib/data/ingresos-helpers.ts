@@ -2,13 +2,14 @@
  * Funciones puras para el cálculo financiero de ingresos.
  * Sin "use server" para poder usarse desde server components y otros sitios.
  */
-import { store } from "@/lib/mock/store";
 import type {
   Cliente,
   Empleado,
   Ingreso,
   IngresoLinea,
+  Insumo,
   MedioPago,
+  Receta,
   Servicio,
 } from "@/lib/types";
 
@@ -27,32 +28,6 @@ export interface IngresoBreakdown {
   neto: number;
 }
 
-export function costoInsumosDeServicio(servicioId: string): number {
-  const items = store.recetas.filter((r) => r.servicio_id === servicioId);
-  return items.reduce((acc, r) => {
-    const insumo = store.insumos.find((i) => i.id === r.insumo_id);
-    if (!insumo || insumo.precio_unitario == null) return acc;
-    return acc + r.cantidad * insumo.precio_unitario;
-  }, 0);
-}
-
-export function computeBreakdown(
-  ingreso: Ingreso,
-  lineas: IngresoLinea[],
-): IngresoBreakdown {
-  const comisiones = lineas.reduce((acc, l) => acc + l.comision_monto, 0);
-  const costoInsumos = lineas.reduce(
-    (acc, l) => acc + costoInsumosDeServicio(l.servicio_id) * l.cantidad,
-    0,
-  );
-  return {
-    total: ingreso.total,
-    comisiones,
-    costoInsumos,
-    neto: ingreso.total - comisiones - costoInsumos,
-  };
-}
-
 export interface IngresoLineaConDetalle extends IngresoLinea {
   servicio: Servicio | null;
   empleado: Empleado | null;
@@ -68,15 +43,74 @@ export interface IngresoConDetalle {
   breakdown: IngresoBreakdown;
 }
 
-export function detallarLineas(ingresoId: string): IngresoLineaConDetalle[] {
-  const lineas = store.ingresoLineas.filter((l) => l.ingreso_id === ingresoId);
-  return lineas.map((l) => ({
-    ...l,
-    servicio: store.servicios.find((s) => s.id === l.servicio_id) ?? null,
-    empleado: l.empleado_id
-      ? store.empleados.find((e) => e.id === l.empleado_id) ?? null
+interface IngresoLookups {
+  serviciosById: Map<string, Servicio>;
+  empleadosById: Map<string, Empleado>;
+  costoInsumosByServicio: Map<string, number>;
+}
+
+export function buildCostoInsumosByServicio(
+  recetas: Receta[],
+  insumos: Insumo[],
+): Map<string, number> {
+  const insumosById = new Map(insumos.map((item) => [item.id, item]));
+  const costoByServicio = new Map<string, number>();
+
+  for (const receta of recetas) {
+    const insumo = insumosById.get(receta.insumo_id);
+    if (!insumo || insumo.precio_unitario == null) continue;
+    costoByServicio.set(
+      receta.servicio_id,
+      (costoByServicio.get(receta.servicio_id) ?? 0) +
+        receta.cantidad * insumo.precio_unitario,
+    );
+  }
+
+  return costoByServicio;
+}
+
+export function costoInsumosDeServicio(
+  servicioId: string,
+  costoInsumosByServicio: Map<string, number>,
+): number {
+  return costoInsumosByServicio.get(servicioId) ?? 0;
+}
+
+export function computeBreakdown(
+  ingreso: Ingreso,
+  lineas: Array<IngresoLinea | IngresoLineaConDetalle>,
+  costoInsumosByServicio?: Map<string, number>,
+): IngresoBreakdown {
+  const comisiones = lineas.reduce((acc, linea) => acc + linea.comision_monto, 0);
+  const costoInsumos = lineas.reduce((acc, linea) => {
+    if ("costoInsumos" in linea) {
+      return acc + linea.costoInsumos;
+    }
+    const costoServicio = costoInsumosByServicio?.get(linea.servicio_id) ?? 0;
+    return acc + costoServicio * linea.cantidad;
+  }, 0);
+
+  return {
+    total: ingreso.total,
+    comisiones,
+    costoInsumos,
+    neto: ingreso.total - comisiones - costoInsumos,
+  };
+}
+
+export function detallarLineas(
+  lineas: IngresoLinea[],
+  lookups: IngresoLookups,
+): IngresoLineaConDetalle[] {
+  return lineas.map((linea) => ({
+    ...linea,
+    servicio: lookups.serviciosById.get(linea.servicio_id) ?? null,
+    empleado: linea.empleado_id
+      ? (lookups.empleadosById.get(linea.empleado_id) ?? null)
       : null,
-    costoInsumos: costoInsumosDeServicio(l.servicio_id) * l.cantidad,
+    costoInsumos:
+      (lookups.costoInsumosByServicio.get(linea.servicio_id) ?? 0) *
+      linea.cantidad,
   }));
 }
 
@@ -89,10 +123,13 @@ export interface AggregatedTotals {
 }
 
 export function aggregate(rows: IngresoConDetalle[]): AggregatedTotals {
-  const total = rows.reduce((acc, r) => acc + r.breakdown.total, 0);
-  const comisiones = rows.reduce((acc, r) => acc + r.breakdown.comisiones, 0);
+  const total = rows.reduce((acc, row) => acc + row.breakdown.total, 0);
+  const comisiones = rows.reduce(
+    (acc, row) => acc + row.breakdown.comisiones,
+    0,
+  );
   const costoInsumos = rows.reduce(
-    (acc, r) => acc + r.breakdown.costoInsumos,
+    (acc, row) => acc + row.breakdown.costoInsumos,
     0,
   );
   const neto = total - comisiones - costoInsumos;
@@ -109,18 +146,20 @@ export function comisionesPorEmpleado(
     string,
     { empleado: Empleado; total: number; lineas: number }
   >();
-  for (const r of rows) {
-    for (const l of r.lineas) {
-      if (!l.empleado) continue;
-      const cur = acc.get(l.empleado.id) ?? {
-        empleado: l.empleado,
+
+  for (const row of rows) {
+    for (const linea of row.lineas) {
+      if (!linea.empleado) continue;
+      const cur = acc.get(linea.empleado.id) ?? {
+        empleado: linea.empleado,
         total: 0,
         lineas: 0,
       };
-      cur.total += l.comision_monto;
+      cur.total += linea.comision_monto;
       cur.lineas += 1;
-      acc.set(l.empleado.id, cur);
+      acc.set(linea.empleado.id, cur);
     }
   }
+
   return Array.from(acc.values()).sort((a, b) => b.total - a.total);
 }

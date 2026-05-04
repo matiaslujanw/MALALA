@@ -1,11 +1,10 @@
 import { getCurrentUser } from "./session";
-import { store } from "@/lib/mock/store";
 import type { AccessScope, Usuario } from "@/lib/types";
 
 export function buildAccessScope(user: Usuario): AccessScope {
   const sucursalIdsPermitidas =
-    user.rol === "admin"
-      ? store.sucursales.filter((s) => s.activo).map((s) => s.id)
+    user.sucursal_ids_permitidas?.length
+      ? user.sucursal_ids_permitidas
       : [user.sucursal_default_id];
 
   return {
@@ -25,6 +24,10 @@ export function buildAccessScope(user: Usuario): AccessScope {
 export async function getAccessScope(): Promise<AccessScope | null> {
   const user = await getCurrentUser();
   return user ? buildAccessScope(user) : null;
+}
+
+export function getAccessScopeForUser(user: Usuario): AccessScope {
+  return buildAccessScope(user);
 }
 
 export function isSucursalAllowed(scope: AccessScope, sucursalId?: string | null) {

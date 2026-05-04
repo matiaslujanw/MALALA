@@ -1,8 +1,12 @@
 "use server";
 
-import { store } from "@/lib/mock/store";
 import { requireUser } from "@/lib/auth/session";
-import { computeBreakdown, detallarLineas } from "./ingresos-helpers";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
+import { getCierreDeFecha } from "./caja";
+import { listEgresos } from "./egresos";
+import { computeBreakdown } from "./ingresos-helpers";
+import { listIngresos } from "./ingresos";
+import { listStockBySucursal } from "./stock";
 import type { Empleado, Servicio } from "@/lib/types";
 
 function startOfDay(d: Date): Date {
@@ -18,8 +22,7 @@ function endOfDay(d: Date): Date {
 }
 
 function startOfMonth(d: Date): Date {
-  const x = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-  return x;
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
 }
 
 function ymd(d: Date): string {
@@ -30,25 +33,20 @@ function ymd(d: Date): string {
 }
 
 export interface DashboardKpis {
-  // Hoy
   ventasHoy: number;
   ticketsHoy: number;
   ticketPromedioHoy: number;
   netoHoy: number;
   comisionesHoy: number;
-  // Mes
   ventasMes: number;
   ticketsMes: number;
   netoMes: number;
   comisionesMes: number;
   egresosMes: number;
-  // Stock
   stockBajo: number;
   stockNegativo: number;
-  // Egresos
   egresosPendientes: number;
   egresosPendientesMonto: number;
-  // Caja
   cierreHoyId: string | null;
 }
 
@@ -76,158 +74,155 @@ export interface DashboardData {
 export async function getDashboardData(
   sucursalId: string,
 ): Promise<DashboardData> {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!isSucursalAllowed(scope, sucursalId)) {
+    throw new Error("No tienes acceso a esa sucursal");
+  }
 
   const now = new Date();
   const inicioHoy = startOfDay(now).toISOString();
   const finHoy = endOfDay(now).toISOString();
   const inicioMes = startOfMonth(now).toISOString();
+  const inicio14 = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13)).toISOString();
 
-  // Ingresos no anulados de la sucursal
-  const ingresos = store.ingresos.filter(
-    (i) => !i.anulado && i.sucursal_id === sucursalId,
-  );
+  const ingresosHoy = await listIngresos({
+    sucursalId,
+    desde: inicioHoy,
+    hasta: finHoy,
+  });
+  const ingresosMes = await listIngresos({
+    sucursalId,
+    desde: inicioMes,
+    hasta: now.toISOString(),
+  });
+  const ingresosUltimos14 = await listIngresos({
+    sucursalId,
+    desde: inicio14,
+    hasta: now.toISOString(),
+  });
+  const egresosMesRows = await listEgresos({
+    sucursalId,
+    desde: inicioMes,
+    hasta: now.toISOString(),
+  });
+  const pendientes = await listEgresos({
+    sucursalId,
+    soloPendientes: true,
+  });
+  const stockRows = await listStockBySucursal(sucursalId);
+  const cierreHoy = await getCierreDeFecha(sucursalId, ymd(now));
 
-  const ingresosHoy = ingresos.filter(
-    (i) => i.fecha >= inicioHoy && i.fecha <= finHoy,
-  );
-  const ingresosMes = ingresos.filter((i) => i.fecha >= inicioMes);
-
-  // Breakdowns
-  const detalleHoy = ingresosHoy.map((i) => ({
-    ingreso: i,
-    breakdown: computeBreakdown(i, detallarLineas(i.id)),
+  const detalleHoy = ingresosHoy.map((row) => ({
+    ingreso: row.ingreso,
+    breakdown: computeBreakdown(row.ingreso, row.lineas),
   }));
-  const detalleMes = ingresosMes.map((i) => ({
-    ingreso: i,
-    lineas: detallarLineas(i.id),
-    breakdown: computeBreakdown(i, detallarLineas(i.id)),
+  const detalleMes = ingresosMes.map((row) => ({
+    ingreso: row.ingreso,
+    lineas: row.lineas,
+    breakdown: computeBreakdown(row.ingreso, row.lineas),
   }));
 
-  const ventasHoy = detalleHoy.reduce((s, x) => s + x.breakdown.total, 0);
+  const ventasHoy = detalleHoy.reduce((sum, row) => sum + row.breakdown.total, 0);
   const ticketsHoy = detalleHoy.length;
-  const netoHoy = detalleHoy.reduce((s, x) => s + x.breakdown.neto, 0);
+  const netoHoy = detalleHoy.reduce((sum, row) => sum + row.breakdown.neto, 0);
   const comisionesHoy = detalleHoy.reduce(
-    (s, x) => s + x.breakdown.comisiones,
+    (sum, row) => sum + row.breakdown.comisiones,
     0,
   );
 
-  const ventasMes = detalleMes.reduce((s, x) => s + x.breakdown.total, 0);
+  const ventasMes = detalleMes.reduce((sum, row) => sum + row.breakdown.total, 0);
   const ticketsMes = detalleMes.length;
-  const netoMes = detalleMes.reduce((s, x) => s + x.breakdown.neto, 0);
+  const netoMes = detalleMes.reduce((sum, row) => sum + row.breakdown.neto, 0);
   const comisionesMes = detalleMes.reduce(
-    (s, x) => s + x.breakdown.comisiones,
+    (sum, row) => sum + row.breakdown.comisiones,
     0,
   );
 
-  // Egresos del mes
-  const egresosMesArr = store.egresos.filter(
-    (e) => e.sucursal_id === sucursalId && e.fecha >= inicioMes,
+  const egresosMes = egresosMesRows.reduce((sum, row) => sum + row.egreso.valor, 0);
+  const egresosPendientesMonto = pendientes.reduce(
+    (sum, row) => sum + row.egreso.valor,
+    0,
   );
-  const egresosMes = egresosMesArr.reduce((s, e) => s + e.valor, 0);
 
-  // Egresos pendientes (todo el tiempo)
-  const pendientes = store.egresos.filter(
-    (e) => e.sucursal_id === sucursalId && !e.pagado,
-  );
-  const egresosPendientesMonto = pendientes.reduce((s, e) => s + e.valor, 0);
-
-  // Stock bajo / negativo
-  let stockBajo = 0;
-  let stockNegativo = 0;
-  for (const insumo of store.insumos.filter((i) => i.activo)) {
-    const row = store.stockSucursal.find(
-      (s) => s.insumo_id === insumo.id && s.sucursal_id === sucursalId,
+  const ventasUltimos14 = [];
+  for (let i = 13; i >= 0; i -= 1) {
+    const fecha = new Date(now);
+    fecha.setDate(fecha.getDate() - i);
+    const fechaYmd = ymd(fecha);
+    const delDia = ingresosUltimos14.filter(
+      (row) => row.ingreso.fecha.slice(0, 10) === fechaYmd,
     );
-    const cant = row?.cantidad ?? 0;
-    if (cant < 0) stockNegativo++;
-    else if (cant < insumo.umbral_stock_bajo) stockBajo++;
-  }
-
-  // Cierre de hoy
-  const fechaHoyYMD = ymd(now);
-  const cierreHoy = store.cierresCaja.find(
-    (c) => c.sucursal_id === sucursalId && c.fecha === fechaHoyYMD,
-  );
-
-  // Ventas últimos 14 días
-  const ventasUltimos14: Array<{ fecha: string; total: number; tickets: number }> =
-    [];
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const desde = startOfDay(d).toISOString();
-    const hasta = endOfDay(d).toISOString();
-    const delDia = ingresos.filter((x) => x.fecha >= desde && x.fecha <= hasta);
-    const total = delDia.reduce((s, x) => s + x.total, 0);
     ventasUltimos14.push({
-      fecha: ymd(d),
-      total,
+      fecha: fechaYmd,
+      total: delDia.reduce((sum, row) => sum + row.ingreso.total, 0),
       tickets: delDia.length,
     });
   }
 
-  // Top servicios del mes
-  const servAcc = new Map<string, { cantidad: number; total: number }>();
-  for (const x of detalleMes) {
-    for (const l of x.lineas) {
-      if (!l.servicio) continue;
-      const cur = servAcc.get(l.servicio.id) ?? { cantidad: 0, total: 0 };
-      cur.cantidad += l.cantidad;
-      cur.total += l.subtotal;
-      servAcc.set(l.servicio.id, cur);
+  const servAcc = new Map<string, { servicio: Servicio; cantidad: number; total: number }>();
+  for (const row of ingresosMes) {
+    for (const linea of row.lineas) {
+      if (!linea.servicio) continue;
+      const current = servAcc.get(linea.servicio.id) ?? {
+        servicio: linea.servicio,
+        cantidad: 0,
+        total: 0,
+      };
+      current.cantidad += linea.cantidad;
+      current.total += linea.subtotal;
+      servAcc.set(linea.servicio.id, current);
     }
   }
-  const topServicios = Array.from(servAcc.entries())
-    .map(([id, v]) => ({
-      servicio: store.servicios.find((s) => s.id === id)!,
-      cantidad: v.cantidad,
-      total: v.total,
-    }))
-    .filter((x) => x.servicio)
+  const topServicios = Array.from(servAcc.values())
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
-  // Top empleados por comisión del mes
-  const empAcc = new Map<string, { comisiones: number; lineas: number }>();
-  for (const x of detalleMes) {
-    for (const l of x.lineas) {
-      if (!l.empleado) continue;
-      const cur = empAcc.get(l.empleado.id) ?? { comisiones: 0, lineas: 0 };
-      cur.comisiones += l.comision_monto;
-      cur.lineas += 1;
-      empAcc.set(l.empleado.id, cur);
+  const empAcc = new Map<string, { empleado: Empleado; comisiones: number; lineas: number }>();
+  for (const row of ingresosMes) {
+    for (const linea of row.lineas) {
+      if (!linea.empleado) continue;
+      const current = empAcc.get(linea.empleado.id) ?? {
+        empleado: linea.empleado,
+        comisiones: 0,
+        lineas: 0,
+      };
+      current.comisiones += linea.comision_monto;
+      current.lineas += 1;
+      empAcc.set(linea.empleado.id, current);
     }
   }
-  const topEmpleados = Array.from(empAcc.entries())
-    .map(([id, v]) => ({
-      empleado: store.empleados.find((e) => e.id === id)!,
-      comisiones: v.comisiones,
-      lineas: v.lineas,
-    }))
-    .filter((x) => x.empleado)
+  const topEmpleados = Array.from(empAcc.values())
     .sort((a, b) => b.comisiones - a.comisiones)
     .slice(0, 5);
 
-  // Ventas por medio de pago (mes)
-  const mpAcc = new Map<string, number>();
-  for (const i of ingresosMes) {
-    mpAcc.set(i.mp1_id, (mpAcc.get(i.mp1_id) ?? 0) + i.valor1);
-    if (i.mp2_id && i.valor2) {
-      mpAcc.set(i.mp2_id, (mpAcc.get(i.mp2_id) ?? 0) + i.valor2);
+  const mpAcc = new Map<string, { codigo: string; nombre: string; total: number }>();
+  for (const row of ingresosMes) {
+    if (row.mp1) {
+      const current = mpAcc.get(row.mp1.id) ?? {
+        codigo: row.mp1.codigo,
+        nombre: row.mp1.nombre,
+        total: 0,
+      };
+      current.total += row.ingreso.valor1;
+      mpAcc.set(row.mp1.id, current);
+    }
+    if (row.mp2 && row.ingreso.valor2) {
+      const current = mpAcc.get(row.mp2.id) ?? {
+        codigo: row.mp2.codigo,
+        nombre: row.mp2.nombre,
+        total: 0,
+      };
+      current.total += row.ingreso.valor2;
+      mpAcc.set(row.mp2.id, current);
     }
   }
-  const totalMp = Array.from(mpAcc.values()).reduce((s, v) => s + v, 0);
-  const ventasPorMp = Array.from(mpAcc.entries())
-    .map(([id, total]) => {
-      const mp = store.mediosPago.find((m) => m.id === id);
-      return {
-        codigo: mp?.codigo ?? "—",
-        nombre: mp?.nombre ?? "—",
-        total,
-        pct: totalMp > 0 ? (total / totalMp) * 100 : 0,
-      };
-    })
+  const totalMp = Array.from(mpAcc.values()).reduce((sum, item) => sum + item.total, 0);
+  const ventasPorMp = Array.from(mpAcc.values())
+    .map((item) => ({
+      ...item,
+      pct: totalMp > 0 ? (item.total / totalMp) * 100 : 0,
+    }))
     .sort((a, b) => b.total - a.total);
 
   return {
@@ -242,8 +237,8 @@ export async function getDashboardData(
       netoMes,
       comisionesMes,
       egresosMes,
-      stockBajo,
-      stockNegativo,
+      stockBajo: stockRows.filter((row) => row.estado === "bajo").length,
+      stockNegativo: stockRows.filter((row) => row.estado === "negativo").length,
       egresosPendientes: pendientes.length,
       egresosPendientesMonto,
       cierreHoyId: cierreHoy?.id ?? null,

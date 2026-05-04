@@ -10,7 +10,7 @@ import {
   TIPO_LABELS,
 } from "@/lib/data/auditoria-helpers";
 import { listSucursales } from "@/lib/data/sucursales";
-import { store } from "@/lib/mock/store";
+import { listUsuariosApp } from "@/lib/data/usuarios";
 import { formatARS } from "@/lib/utils";
 import { getAnalyticsSnapshot } from "@/lib/data/analytics";
 
@@ -89,10 +89,14 @@ export default async function ReportesPage({
   });
 
   const agg = aggregateAudit(events);
-  const sucursales = await listSucursales();
-  const usuarios = [...store.usuarios].sort((a, b) =>
-    a.nombre.localeCompare(b.nombre),
-  );
+  const [sucursales, usuarios] = await Promise.all([
+    listSucursales(),
+    listUsuariosApp({
+      sucursalIds: analytics.scope.puedeVerGlobal
+        ? undefined
+        : analytics.scope.sucursalIdsPermitidas,
+    }),
+  ]);
 
   // Totales monetarios para trazabilidad rápida
   const totalIngresos = events

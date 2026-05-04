@@ -53,6 +53,7 @@ export interface Usuario {
   rol: Rol;
   sucursal_default_id: ID;
   empleado_id?: ID;
+  sucursal_ids_permitidas?: ID[];
   activo: boolean;
 }
 

@@ -1,13 +1,33 @@
 "use server";
 
+import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import { mediosPago as mediosPagoTable } from "@/lib/db/schema";
 import { medioPagoSchema } from "@/lib/validations/medio-pago";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import type { MedioPago } from "@/lib/types";
 
+function createId() {
+  return crypto.randomUUID();
+}
+
+function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
+  return {
+    id: row.id,
+    codigo: row.codigo,
+    nombre: row.nombre,
+    activo: row.activo,
+  };
+}
+
 export async function listMediosPago(): Promise<MedioPago[]> {
-  return [...store.mediosPago].sort((a, b) => a.codigo.localeCompare(b.codigo));
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(mediosPagoTable)
+    .orderBy(asc(mediosPagoTable.codigo), asc(mediosPagoTable.nombre));
+  return rows.map(mapMedioPago);
 }
 
 export async function createMedioPago(
@@ -21,10 +41,22 @@ export async function createMedioPago(
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  if (store.mediosPago.some((m) => m.codigo === parsed.data.codigo)) {
-    return { ok: false, errors: { codigo: ["Ya existe ese código"] } };
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: mediosPagoTable.id })
+    .from(mediosPagoTable)
+    .where(eq(mediosPagoTable.codigo, parsed.data.codigo))
+    .limit(1);
+  if (existing) {
+    return { ok: false, errors: { codigo: ["Ya existe ese codigo"] } };
   }
-  store.mediosPago.push({ id: id(), ...parsed.data });
+
+  await db.insert(mediosPagoTable).values({
+    id: createId(),
+    codigo: parsed.data.codigo,
+    nombre: parsed.data.nombre,
+    activo: true,
+  });
   revalidatePath("/catalogos/medios-pago");
   return { ok: true };
 }
@@ -33,9 +65,18 @@ export async function toggleMedioPagoActivo(
   mpId: string,
 ): Promise<ActionResult> {
   await requireRole(["admin"]);
-  const m = store.mediosPago.find((x) => x.id === mpId);
-  if (!m) return { ok: false, errors: { _: ["No encontrado"] } };
-  m.activo = !m.activo;
+  const db = getDb();
+  const [medioPago] = await db
+    .select()
+    .from(mediosPagoTable)
+    .where(eq(mediosPagoTable.id, mpId))
+    .limit(1);
+  if (!medioPago) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  await db
+    .update(mediosPagoTable)
+    .set({ activo: !medioPago.activo })
+    .where(eq(mediosPagoTable.id, mpId));
   revalidatePath("/catalogos/medios-pago");
   return { ok: true };
 }

@@ -1,11 +1,42 @@
 "use server";
 
-import { store } from "@/lib/mock/store";
+import { asc, eq } from "drizzle-orm";
+import { getDb } from "@/lib/db/client/postgres";
+import { requireSupabaseRuntime } from "@/lib/db/env";
+import { sucursales as sucursalesTable } from "@/lib/db/schema";
 import type { Sucursal } from "@/lib/types";
 
-export async function listSucursales(opts?: { soloActivas?: boolean }): Promise<Sucursal[]> {
-  const arr = opts?.soloActivas
-    ? store.sucursales.filter((s) => s.activo)
-    : [...store.sucursales];
-  return arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
+function mapSucursal(row: typeof sucursalesTable.$inferSelect): Sucursal {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    activo: row.activo,
+    slug: row.slug ?? undefined,
+    direccion: row.direccion ?? undefined,
+    telefono: row.telefono ?? undefined,
+    horario_resumen: row.horarioResumen ?? undefined,
+    rating: row.rating ?? undefined,
+    reviews: row.reviews ?? undefined,
+    mapa_url: row.mapaUrl ?? undefined,
+    descripcion_corta: row.descripcionCorta ?? undefined,
+  };
+}
+
+export async function listSucursales(opts?: {
+  soloActivas?: boolean;
+}): Promise<Sucursal[]> {
+  requireSupabaseRuntime(
+    "Las sucursales solo se cargan desde la base real en este runtime.",
+  );
+
+  const db = getDb();
+  const rows = opts?.soloActivas
+    ? await db
+        .select()
+        .from(sucursalesTable)
+        .where(eq(sucursalesTable.activo, true))
+        .orderBy(asc(sucursalesTable.nombre))
+    : await db.select().from(sucursalesTable).orderBy(asc(sucursalesTable.nombre));
+
+  return rows.map(mapSucursal);
 }

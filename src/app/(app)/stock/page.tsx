@@ -2,7 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRightLeft, History, SlidersHorizontal } from "lucide-react";
 import { listStockBySucursal } from "@/lib/data/stock";
-import { getAccessScope } from "@/lib/auth/access";
+import { getAccessScopeForUser } from "@/lib/auth/access";
+import { requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 import { listSucursales } from "@/lib/data/sucursales";
 
@@ -22,7 +23,8 @@ export default async function StockPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const scope = await getAccessScope();
+  const user = await requireUser();
+  const scope = getAccessScopeForUser(user);
   if (!scope?.puedeVerStock) {
     redirect("/dashboard");
   }
@@ -33,10 +35,8 @@ export default async function StockPage({
       ? sp.sucursal
       : scope.sucursalIdsPermitidas[0]) ?? "";
 
-  const [rows, sucursales] = await Promise.all([
-    listStockBySucursal(sucursalId),
-    listSucursales({ soloActivas: true }),
-  ]);
+  const rows = await listStockBySucursal(sucursalId);
+  const sucursales = await listSucursales({ soloActivas: true });
   const negativos = rows.filter((r) => r.estado === "negativo").length;
   const bajos = rows.filter((r) => r.estado === "bajo").length;
   const totalValuado = rows.reduce((acc, row) => {

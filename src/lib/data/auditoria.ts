@@ -1,7 +1,21 @@
 "use server";
 
-import { store } from "@/lib/mock/store";
-import { requireRole } from "./_helpers";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
+import { requireRole, s } from "./_helpers";
+import { getDb } from "@/lib/db/client/postgres";
+import {
+  cierresCaja as cierresCajaTable,
+  clientes as clientesTable,
+  egresos as egresosTable,
+  ingresos as ingresosTable,
+  insumos as insumosTable,
+  movimientosStock as movimientosStockTable,
+  profiles as profilesTable,
+  proveedores as proveedoresTable,
+  rubrosGasto as rubrosGastoTable,
+  sucursales as sucursalesTable,
+} from "@/lib/db/schema";
 
 export type AuditEventType =
   | "venta"
@@ -14,7 +28,7 @@ export type AuditEventType =
 
 export interface AuditEvent {
   id: string;
-  fecha: string; // ISO
+  fecha: string;
   tipo: AuditEventType;
   usuario_id: string;
   usuario_nombre: string;
@@ -24,14 +38,13 @@ export interface AuditEvent {
   titulo: string;
   detalle: string;
   monto?: number;
-  href?: string; // a dónde linkea (ticket, egreso, cierre, etc.)
-  // Tags para filtrar y enriquecer
+  href?: string;
   meta?: Record<string, string | number>;
 }
 
 export interface AuditFiltros {
-  desde?: string; // ISO
-  hasta?: string; // ISO
+  desde?: string;
+  hasta?: string;
   usuarioId?: string;
   sucursalId?: string;
   tipos?: AuditEventType[];
@@ -39,168 +52,292 @@ export interface AuditFiltros {
   limit?: number;
 }
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 0,
-  }).format(n);
+function toDateStart(value?: string) {
+  return value ? new Date(value) : undefined;
+}
+
+function toDateEnd(value?: string) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (value.length <= 10) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date;
+}
+
+function buildSearch(detail: string, title: string, user: string, search?: string) {
+  if (!search) return true;
+  const q = search.toLowerCase();
+  return (
+    detail.toLowerCase().includes(q) ||
+    title.toLowerCase().includes(q) ||
+    user.toLowerCase().includes(q)
+  );
 }
 
 export async function getAuditTimeline(
   filtros: AuditFiltros = {},
 ): Promise<AuditEvent[]> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
+  if (filtros.sucursalId && !isSucursalAllowed(scope, filtros.sucursalId)) {
+    return [];
+  }
 
-  const userMap = new Map(
-    store.usuarios.map((u) => [u.id, { nombre: u.nombre, rol: u.rol }]),
-  );
-  const sucMap = new Map(store.sucursales.map((s) => [s.id, s.nombre]));
-  const insumoMap = new Map(store.insumos.map((i) => [i.id, i.nombre]));
-  const rubroMap = new Map(
-    store.rubrosGasto.map((r) => [
-      r.id,
-      r.subrubro ? `${r.rubro} · ${r.subrubro}` : r.rubro,
-    ]),
-  );
-  const proveedorMap = new Map(store.proveedores.map((p) => [p.id, p.nombre]));
-  const clienteMap = new Map(store.clientes.map((c) => [c.id, c.nombre]));
+  const db = getDb();
+  const desde = toDateStart(filtros.desde);
+  const hasta = toDateEnd(filtros.hasta);
+  const sucursalId = filtros.sucursalId ?? null;
+  const search = s(filtros.search);
+  const tipos = filtros.tipos?.length ? new Set(filtros.tipos) : null;
+
+  const ingresoFilters = [inArray(ingresosTable.sucursalId, scope.sucursalIdsPermitidas)];
+  const egresoFilters = [inArray(egresosTable.sucursalId, scope.sucursalIdsPermitidas)];
+  const cierreFilters = [inArray(cierresCajaTable.sucursalId, scope.sucursalIdsPermitidas)];
+  const movimientoFilters = [
+    inArray(movimientosStockTable.sucursalId, scope.sucursalIdsPermitidas),
+  ];
+
+  if (sucursalId) {
+    ingresoFilters.push(eq(ingresosTable.sucursalId, sucursalId));
+    egresoFilters.push(eq(egresosTable.sucursalId, sucursalId));
+    cierreFilters.push(eq(cierresCajaTable.sucursalId, sucursalId));
+    movimientoFilters.push(eq(movimientosStockTable.sucursalId, sucursalId));
+  }
+  if (filtros.usuarioId) {
+    ingresoFilters.push(eq(ingresosTable.usuarioId, filtros.usuarioId));
+    egresoFilters.push(eq(egresosTable.usuarioId, filtros.usuarioId));
+    cierreFilters.push(eq(cierresCajaTable.cerradoPor, filtros.usuarioId));
+    movimientoFilters.push(eq(movimientosStockTable.usuarioId, filtros.usuarioId));
+  }
+  if (desde) {
+    ingresoFilters.push(gte(ingresosTable.fecha, desde));
+    egresoFilters.push(gte(egresosTable.fecha, desde));
+    cierreFilters.push(gte(cierresCajaTable.fechaCierre, desde));
+    movimientoFilters.push(gte(movimientosStockTable.fecha, desde));
+  }
+  if (hasta) {
+    ingresoFilters.push(lte(ingresosTable.fecha, hasta));
+    egresoFilters.push(lte(egresosTable.fecha, hasta));
+    cierreFilters.push(lte(cierresCajaTable.fechaCierre, hasta));
+    movimientoFilters.push(lte(movimientosStockTable.fecha, hasta));
+  }
+
+  const ingresosRows = await db
+    .select({
+      id: ingresosTable.id,
+      fecha: ingresosTable.fecha,
+      usuarioId: ingresosTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: ingresosTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      total: ingresosTable.total,
+      anulado: ingresosTable.anulado,
+      clienteNombre: clientesTable.nombre,
+    })
+    .from(ingresosTable)
+    .leftJoin(profilesTable, eq(ingresosTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(ingresosTable.sucursalId, sucursalesTable.id))
+    .leftJoin(clientesTable, eq(ingresosTable.clienteId, clientesTable.id))
+    .where(and(...ingresoFilters))
+    .orderBy(desc(ingresosTable.fecha));
+
+  const egresosRows = await db
+    .select({
+      id: egresosTable.id,
+      fecha: egresosTable.fecha,
+      usuarioId: egresosTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: egresosTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      valor: egresosTable.valor,
+      pagado: egresosTable.pagado,
+      rubro: rubrosGastoTable.rubro,
+      subrubro: rubrosGastoTable.subrubro,
+      proveedorNombre: proveedoresTable.nombre,
+      insumoNombre: insumosTable.nombre,
+      cantidad: egresosTable.cantidad,
+    })
+    .from(egresosTable)
+    .leftJoin(profilesTable, eq(egresosTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(egresosTable.sucursalId, sucursalesTable.id))
+    .leftJoin(rubrosGastoTable, eq(egresosTable.rubroId, rubrosGastoTable.id))
+    .leftJoin(proveedoresTable, eq(egresosTable.proveedorId, proveedoresTable.id))
+    .leftJoin(insumosTable, eq(egresosTable.insumoId, insumosTable.id))
+    .where(and(...egresoFilters))
+    .orderBy(desc(egresosTable.fecha));
+
+  const cierresRows = await db
+    .select({
+      id: cierresCajaTable.id,
+      fecha: cierresCajaTable.fecha,
+      fechaCierre: cierresCajaTable.fechaCierre,
+      cerradoPor: cierresCajaTable.cerradoPor,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: cierresCajaTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      billetes: cierresCajaTable.billetes,
+      saldoInicialEf: cierresCajaTable.saldoInicialEf,
+      ingresosEf: cierresCajaTable.ingresosEf,
+      egresosEf: cierresCajaTable.egresosEf,
+    })
+    .from(cierresCajaTable)
+    .leftJoin(profilesTable, eq(cierresCajaTable.cerradoPor, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(cierresCajaTable.sucursalId, sucursalesTable.id))
+    .where(and(...cierreFilters))
+    .orderBy(desc(cierresCajaTable.fechaCierre));
+
+  const movimientosRows = await db
+    .select({
+      id: movimientosStockTable.id,
+      fecha: movimientosStockTable.fecha,
+      usuarioId: movimientosStockTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: movimientosStockTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      tipo: movimientosStockTable.tipo,
+      cantidad: movimientosStockTable.cantidad,
+      motivo: movimientosStockTable.motivo,
+      insumoNombre: insumosTable.nombre,
+    })
+    .from(movimientosStockTable)
+    .leftJoin(profilesTable, eq(movimientosStockTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(movimientosStockTable.sucursalId, sucursalesTable.id))
+    .leftJoin(insumosTable, eq(movimientosStockTable.insumoId, insumosTable.id))
+    .where(and(...movimientoFilters))
+    .orderBy(desc(movimientosStockTable.fecha));
 
   const events: AuditEvent[] = [];
 
-  const addEvent = (e: Omit<AuditEvent, "usuario_nombre" | "usuario_rol" | "sucursal_nombre">) => {
-    const u = userMap.get(e.usuario_id);
-    events.push({
-      ...e,
-      usuario_nombre: u?.nombre ?? "—",
-      usuario_rol: u?.rol ?? "—",
-      sucursal_nombre: sucMap.get(e.sucursal_id) ?? "—",
-    });
-  };
-
-  // Ventas
-  for (const ing of store.ingresos) {
-    const cliente = ing.cliente_id ? clienteMap.get(ing.cliente_id) : null;
-    addEvent({
-      id: `venta:${ing.id}`,
-      fecha: ing.fecha,
-      tipo: "venta",
-      usuario_id: ing.usuario_id,
-      sucursal_id: ing.sucursal_id,
-      titulo: ing.anulado ? "Venta anulada" : "Venta",
-      detalle: cliente ?? "Consumidor Final",
-      monto: ing.total,
-      href: `/ventas/${ing.id}`,
-      meta: { anulado: ing.anulado ? 1 : 0 },
-    });
-  }
-
-  // Egresos
-  for (const eg of store.egresos) {
-    const partes: string[] = [];
-    const rubro = rubroMap.get(eg.rubro_id);
-    if (rubro) partes.push(rubro);
-    if (eg.insumo_id) {
-      const ins = insumoMap.get(eg.insumo_id);
-      if (ins) partes.push(`${ins}${eg.cantidad ? ` × ${eg.cantidad}` : ""}`);
+  if (!tipos || tipos.has("venta")) {
+    for (const row of ingresosRows) {
+      const title = row.anulado ? "Venta anulada" : "Venta";
+      const detail = row.clienteNombre ?? "Consumidor Final";
+      const actor = row.usuarioNombre ?? "Sistema";
+      if (!buildSearch(detail, title, actor, search)) continue;
+      events.push({
+        id: `venta:${row.id}`,
+        fecha: row.fecha.toISOString(),
+        tipo: "venta",
+        usuario_id: row.usuarioId,
+        usuario_nombre: actor,
+        usuario_rol: row.usuarioRol ?? "-",
+        sucursal_id: row.sucursalId,
+        sucursal_nombre: row.sucursalNombre ?? "-",
+        titulo: title,
+        detalle: detail,
+        monto: row.total,
+        href: `/ventas/${row.id}`,
+        meta: { anulado: row.anulado ? 1 : 0 },
+      });
     }
-    if (eg.proveedor_id) {
-      const p = proveedorMap.get(eg.proveedor_id);
-      if (p) partes.push(p);
+  }
+
+  if (!tipos || tipos.has("egreso")) {
+    for (const row of egresosRows) {
+      const detail = [
+        row.subrubro ? `${row.rubro} · ${row.subrubro}` : row.rubro,
+        row.insumoNombre
+          ? `${row.insumoNombre}${row.cantidad ? ` x ${row.cantidad}` : ""}`
+          : null,
+        row.proveedorNombre ?? null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const actor = row.usuarioNombre ?? "Sistema";
+      const title = row.pagado ? "Egreso (pagado)" : "Egreso (pendiente)";
+      if (!buildSearch(detail || "-", title, actor, search)) continue;
+      events.push({
+        id: `egreso:${row.id}`,
+        fecha: row.fecha.toISOString(),
+        tipo: "egreso",
+        usuario_id: row.usuarioId,
+        usuario_nombre: actor,
+        usuario_rol: row.usuarioRol ?? "-",
+        sucursal_id: row.sucursalId,
+        sucursal_nombre: row.sucursalNombre ?? "-",
+        titulo: title,
+        detalle: detail || "-",
+        monto: row.valor,
+        href: "/egresos",
+        meta: { pagado: row.pagado ? 1 : 0 },
+      });
     }
-    addEvent({
-      id: `egreso:${eg.id}`,
-      fecha: eg.fecha,
-      tipo: "egreso",
-      usuario_id: eg.usuario_id,
-      sucursal_id: eg.sucursal_id,
-      titulo: eg.pagado ? "Egreso (pagado)" : "Egreso (pendiente)",
-      detalle: partes.join(" · ") || "—",
-      monto: eg.valor,
-      href: "/egresos",
-      meta: { pagado: eg.pagado ? 1 : 0 },
-    });
   }
 
-  // Cierres de caja
-  for (const c of store.cierresCaja) {
-    const efectivoContado = Object.entries(c.billetes).reduce(
-      (acc, [d, q]) => acc + Number(d) * (q || 0),
-      0,
-    );
-    const esperado = c.saldo_inicial_ef + c.ingresos_ef - c.egresos_ef;
-    const dif = efectivoContado - esperado;
-    addEvent({
-      id: `cierre:${c.id}`,
-      fecha: c.fecha_cierre,
-      tipo: "cierre",
-      usuario_id: c.cerrado_por,
-      sucursal_id: c.sucursal_id,
-      titulo: "Cierre de caja",
-      detalle: `Día ${c.fecha} · diferencia ${fmt(dif)}`,
-      monto: efectivoContado,
-      href: `/caja/${c.id}`,
-      meta: { diferencia: dif },
-    });
+  if (!tipos || tipos.has("cierre")) {
+    for (const row of cierresRows) {
+      const efectivoContado = Object.entries((row.billetes ?? {}) as Record<string, number>).reduce(
+        (acc, [denominacion, cantidad]) => acc + Number(denominacion) * Number(cantidad || 0),
+        0,
+      );
+      const esperado = row.saldoInicialEf + row.ingresosEf - row.egresosEf;
+      const diferencia = efectivoContado - esperado;
+      const actor = row.usuarioNombre ?? "Sistema";
+      const title = "Cierre de caja";
+      const detail = `Dia ${row.fecha} · diferencia ${diferencia}`;
+      if (!buildSearch(detail, title, actor, search)) continue;
+      events.push({
+        id: `cierre:${row.id}`,
+        fecha: row.fechaCierre.toISOString(),
+        tipo: "cierre",
+        usuario_id: row.cerradoPor,
+        usuario_nombre: actor,
+        usuario_rol: row.usuarioRol ?? "-",
+        sucursal_id: row.sucursalId,
+        sucursal_nombre: row.sucursalNombre ?? "-",
+        titulo: title,
+        detalle: detail,
+        monto: efectivoContado,
+        href: `/caja/${row.id}`,
+        meta: { diferencia },
+      });
+    }
   }
 
-  // Movimientos de stock
-  for (const m of store.movimientosStock) {
-    const ins = insumoMap.get(m.insumo_id) ?? "Insumo";
+  for (const row of movimientosRows) {
+    const actor = row.usuarioNombre ?? "Sistema";
     let tipo: AuditEventType = "stock_ajuste";
     let titulo = "Ajuste manual de stock";
-    if (m.tipo === "compra") {
+    if (row.tipo === "compra") {
       tipo = "stock_compra";
       titulo = "Compra (suma stock)";
-    } else if (m.tipo === "venta") {
+    } else if (row.tipo === "venta") {
       tipo = "stock_venta";
       titulo = "Consumo por venta";
     } else if (
-      m.tipo === "transferencia_entrada" ||
-      m.tipo === "transferencia_salida"
+      row.tipo === "transferencia_entrada" ||
+      row.tipo === "transferencia_salida"
     ) {
       tipo = "stock_transferencia";
       titulo =
-        m.tipo === "transferencia_entrada"
+        row.tipo === "transferencia_entrada"
           ? "Transferencia · entrada"
           : "Transferencia · salida";
     }
-    addEvent({
-      id: `stockmov:${m.id}`,
-      fecha: m.fecha,
+    if (tipos && !tipos.has(tipo)) continue;
+
+    const detail = `${row.insumoNombre ?? "Insumo"} · ${row.cantidad > 0 ? "+" : ""}${row.cantidad}${row.motivo ? ` · ${row.motivo}` : ""}`;
+    if (!buildSearch(detail, titulo, actor, search)) continue;
+    events.push({
+      id: `stockmov:${row.id}`,
+      fecha: row.fecha.toISOString(),
       tipo,
-      usuario_id: m.usuario_id,
-      sucursal_id: m.sucursal_id,
+      usuario_id: row.usuarioId,
+      usuario_nombre: actor,
+      usuario_rol: row.usuarioRol ?? "-",
+      sucursal_id: row.sucursalId,
+      sucursal_nombre: row.sucursalNombre ?? "-",
       titulo,
-      detalle: `${ins} · ${m.cantidad > 0 ? "+" : ""}${m.cantidad}${m.motivo ? ` · ${m.motivo}` : ""}`,
-      meta: { cantidad: m.cantidad },
+      detalle: detail,
+      meta: { cantidad: row.cantidad },
     });
   }
 
-  // Filtros
-  let filtered = events;
-  if (filtros.desde) filtered = filtered.filter((e) => e.fecha >= filtros.desde!);
-  if (filtros.hasta) filtered = filtered.filter((e) => e.fecha <= filtros.hasta!);
-  if (filtros.usuarioId)
-    filtered = filtered.filter((e) => e.usuario_id === filtros.usuarioId);
-  if (filtros.sucursalId)
-    filtered = filtered.filter((e) => e.sucursal_id === filtros.sucursalId);
-  if (filtros.tipos && filtros.tipos.length > 0) {
-    const set = new Set(filtros.tipos);
-    filtered = filtered.filter((e) => set.has(e.tipo));
-  }
-  if (filtros.search) {
-    const q = filtros.search.toLowerCase();
-    filtered = filtered.filter(
-      (e) =>
-        e.titulo.toLowerCase().includes(q) ||
-        e.detalle.toLowerCase().includes(q) ||
-        e.usuario_nombre.toLowerCase().includes(q),
-    );
-  }
-
-  filtered.sort((a, b) => b.fecha.localeCompare(a.fecha));
-  if (filtros.limit) filtered = filtered.slice(0, filtros.limit);
-  return filtered;
+  events.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  return filtros.limit ? events.slice(0, filtros.limit) : events;
 }
-

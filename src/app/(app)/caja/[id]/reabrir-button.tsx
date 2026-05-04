@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { reabrirCierre } from "@/lib/data/caja";
+import { reabrirCierre } from "@/lib/data/caja-actions";
 
 export function ReabrirCierreButton({ cierreId }: { cierreId: string }) {
   const [pending, start] = useTransition();

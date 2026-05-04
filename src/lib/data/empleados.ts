@@ -1,26 +1,67 @@
 "use server";
 
+import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { id, store } from "@/lib/mock/store";
+import { getDb } from "@/lib/db/client/postgres";
+import { requireSupabaseRuntime } from "@/lib/db/env";
+import { empleados as empleadosTable } from "@/lib/db/schema";
+import type { Empleado } from "@/lib/types";
 import { empleadoSchema } from "@/lib/validations/empleado";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
-import type { Empleado } from "@/lib/types";
+
+function mapEmpleado(row: typeof empleadosTable.$inferSelect): Empleado {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    activo: row.activo,
+    sucursal_principal_id: row.sucursalPrincipalId,
+    tipo_comision: row.tipoComision,
+    porcentaje_default: row.porcentajeDefault,
+    sueldo_asegurado: row.sueldoAsegurado,
+    observacion: row.observacion ?? undefined,
+  };
+}
 
 export async function listEmpleados(opts?: {
   incluirInactivos?: boolean;
   sucursalId?: string;
 }): Promise<Empleado[]> {
-  let arr = opts?.incluirInactivos
-    ? [...store.empleados]
-    : store.empleados.filter((e) => e.activo);
+  requireSupabaseRuntime(
+    "Los empleados del back office solo se leen desde Supabase.",
+  );
+
+  const db = getDb();
+  const filters = [];
+  if (!opts?.incluirInactivos) filters.push(eq(empleadosTable.activo, true));
   if (opts?.sucursalId) {
-    arr = arr.filter((e) => e.sucursal_principal_id === opts.sucursalId);
+    filters.push(eq(empleadosTable.sucursalPrincipalId, opts.sucursalId));
   }
-  return arr.sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const rows =
+    filters.length > 0
+      ? await db
+          .select()
+          .from(empleadosTable)
+          .where(and(...filters))
+          .orderBy(asc(empleadosTable.nombre))
+      : await db.select().from(empleadosTable).orderBy(asc(empleadosTable.nombre));
+
+  return rows.map(mapEmpleado);
 }
 
 export async function getEmpleado(empleadoId: string): Promise<Empleado | null> {
-  return store.empleados.find((e) => e.id === empleadoId) ?? null;
+  requireSupabaseRuntime(
+    "Los empleados del back office solo se leen desde Supabase.",
+  );
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(empleadosTable)
+    .where(eq(empleadosTable.id, empleadoId))
+    .limit(1);
+
+  return row ? mapEmpleado(row) : null;
 }
 
 function parse(formData: FormData) {
@@ -39,10 +80,24 @@ export async function createEmpleado(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole(["admin"]);
+  requireSupabaseRuntime(
+    "La creacion de empleados requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
-  store.empleados.push({ id: id(), ...parsed.data });
+  const db = getDb();
+  await db.insert(empleadosTable).values({
+    id: crypto.randomUUID(),
+    nombre: parsed.data.nombre,
+    activo: parsed.data.activo,
+    sucursalPrincipalId: parsed.data.sucursal_principal_id,
+    tipoComision: parsed.data.tipo_comision,
+    porcentajeDefault: parsed.data.porcentaje_default,
+    sueldoAsegurado: parsed.data.sueldo_asegurado,
+    observacion: parsed.data.observacion ?? null,
+  });
+
   revalidatePath("/catalogos/empleados");
   return { ok: true };
 }
@@ -52,11 +107,29 @@ export async function updateEmpleado(
   formData: FormData,
 ): Promise<ActionResult> {
   await requireRole(["admin"]);
-  const idx = store.empleados.findIndex((e) => e.id === empleadoId);
-  if (idx === -1) return { ok: false, errors: { _: ["No encontrado"] } };
+  requireSupabaseRuntime(
+    "La edicion de empleados requiere Supabase configurado.",
+  );
   const parsed = parse(formData);
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
-  store.empleados[idx] = { ...store.empleados[idx], ...parsed.data };
+
+  const db = getDb();
+  const existing = await getEmpleado(empleadoId);
+  if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  await db
+    .update(empleadosTable)
+    .set({
+      nombre: parsed.data.nombre,
+      activo: parsed.data.activo,
+      sucursalPrincipalId: parsed.data.sucursal_principal_id,
+      tipoComision: parsed.data.tipo_comision,
+      porcentajeDefault: parsed.data.porcentaje_default,
+      sueldoAsegurado: parsed.data.sueldo_asegurado,
+      observacion: parsed.data.observacion ?? null,
+    })
+    .where(eq(empleadosTable.id, empleadoId));
+
   revalidatePath("/catalogos/empleados");
   return { ok: true };
 }
@@ -65,9 +138,19 @@ export async function toggleEmpleadoActivo(
   empleadoId: string,
 ): Promise<ActionResult> {
   await requireRole(["admin"]);
-  const e = store.empleados.find((x) => x.id === empleadoId);
-  if (!e) return { ok: false, errors: { _: ["No encontrado"] } };
-  e.activo = !e.activo;
+  requireSupabaseRuntime(
+    "La activacion de empleados requiere Supabase configurado.",
+  );
+
+  const empleado = await getEmpleado(empleadoId);
+  if (!empleado) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  const db = getDb();
+  await db
+    .update(empleadosTable)
+    .set({ activo: !empleado.activo })
+    .where(eq(empleadosTable.id, empleadoId));
+
   revalidatePath("/catalogos/empleados");
   return { ok: true };
 }
