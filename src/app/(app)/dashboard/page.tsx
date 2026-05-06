@@ -20,16 +20,17 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await requireUser();
-  const sp = await searchParams;
-  const analytics = await getAnalyticsSnapshot({
-    desde: sp.desde,
-    hasta: sp.hasta,
-    sucursalId: sp.sucursal,
-    empleadoId: sp.empleado,
-  });
-  const sucursales = await listSucursales({ soloActivas: true });
-  const empleados = await listEmpleados();
+  const [user, sp] = await Promise.all([requireUser(), searchParams]);
+  const [analytics, sucursales, empleados] = await Promise.all([
+    getAnalyticsSnapshot({
+      desde: sp.desde,
+      hasta: sp.hasta,
+      sucursalId: sp.sucursal,
+      empleadoId: sp.empleado,
+    }),
+    listSucursales({ soloActivas: true }),
+    listEmpleados(),
+  ]);
 
   const isEmployee = analytics.scope.rol === "empleado";
 

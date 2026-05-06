@@ -52,24 +52,26 @@ export default async function TurnosPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await requireUser();
-  const activeSucursal = await getActiveSucursal();
-  const sp = await searchParams;
+  const [user, activeSucursal, sp] = await Promise.all([
+    requireUser(),
+    getActiveSucursal(),
+    searchParams,
+  ]);
   const fecha = sp.fecha ?? new Date().toISOString().slice(0, 10);
   const sucursalId = sp.sucursal ?? activeSucursal?.id ?? "";
   const vista = (sp.vista as VistaAgenda) || "diaria";
 
-  const agenda = await getTurnosAgendaData({
-    fecha,
-    sucursalId,
-    profesionalId: sp.profesional || undefined,
-    estado: sp.estado || undefined,
-  });
-  const servicios = await listServicios();
-  const turnoSeleccionado = sp.turno ? await getTurno(sp.turno) : null;
-
-  // Fetch horarios for diaria timeline
-  const horarios = (vista === "diaria") ? await getHorarios(sucursalId) : [];
+  const [agenda, servicios, turnoSeleccionado, horarios] = await Promise.all([
+    getTurnosAgendaData({
+      fecha,
+      sucursalId,
+      profesionalId: sp.profesional || undefined,
+      estado: sp.estado || undefined,
+    }),
+    listServicios(),
+    sp.turno ? getTurno(sp.turno) : Promise.resolve(null),
+    vista === "diaria" ? getHorarios(sucursalId) : Promise.resolve([]),
+  ]);
 
   // Fetch range data for semanal/mensual
   let rangeData: Awaited<ReturnType<typeof getTurnosAgendaRangeData>> | null = null;
