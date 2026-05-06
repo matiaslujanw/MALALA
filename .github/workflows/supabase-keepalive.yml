@@ -1,0 +1,41 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "0 6,18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call Supabase keepalive RPC
+        env:
+          SUPABASE_PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_PROJECT_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing required secrets: SUPABASE_PROJECT_URL and/or SUPABASE_ANON_KEY"
+            exit 1
+          fi
+
+          RESPONSE="$(curl --silent --show-error --fail-with-body \
+            --request POST \
+            --url "${SUPABASE_PROJECT_URL%/}/rest/v1/rpc/keepalive" \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            --header "Accept: application/json" \
+            --header "Accept-Profile: api" \
+            --header "Content-Profile: api" \
+            --header "Content-Type: application/json" \
+            --data '{}')"
+
+          echo "Supabase keepalive response: ${RESPONSE}"
+          echo "${RESPONSE}" | grep '"ok"[[:space:]]*:[[:space:]]*true' >/dev/null
