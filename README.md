@@ -34,3 +34,13 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Supabase keepalive
+
+This repository includes a minimal Supabase Free keepalive so production does not get paused for inactivity.
+
+- migration: [supabase/migrations/202605060001_supabase_keepalive.sql](supabase/migrations/202605060001_supabase_keepalive.sql)
+- scheduler: [.github/workflows/supabase-keepalive.yml](.github/workflows/supabase-keepalive.yml)
+- setup and manual test: [docs/ops/supabase-keepalive.md](docs/ops/supabase-keepalive.md)
+
+The scheduler calls a dedicated Supabase RPC and does not touch business endpoints or product flows.

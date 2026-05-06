@@ -85,3 +85,18 @@ npm run db:seed
 npm run lint
 npx tsc --noEmit
 ```
+
+## 8. Keepalive para Supabase Free
+
+Este repo incluye un keepalive externo para evitar pausas por inactividad en Supabase Free.
+
+- migracion SQL: `C:\repos\MALALA\supabase\migrations\202605060001_supabase_keepalive.sql`
+- workflow: `C:\repos\MALALA\.github\workflows\supabase-keepalive.yml`
+- documentacion detallada: `C:\repos\MALALA\docs\ops\supabase-keepalive.md`
+
+Secrets requeridos en GitHub Actions:
+
+- `SUPABASE_PROJECT_URL`
+- `SUPABASE_ANON_KEY`
+
+El job pega al RPC `api.keepalive()` y no toca tablas de negocio ni endpoints de la aplicacion.
