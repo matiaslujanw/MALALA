@@ -9,7 +9,22 @@ import {
   listCierres,
 } from "@/lib/data/caja";
 import { listSucursales } from "@/lib/data/sucursales";
-import { formatARS } from "@/lib/utils";
+import { formatARS, formatLongDate } from "@/lib/utils";
+
+function formatYMD(ymd: string): string {
+  const [y, m, d] = ymd.split("-");
+  if (!y || !m || !d) return ymd;
+  return `${d}/${m}/${y}`;
+}
+
+function ymdToLocalDate(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 interface SearchParams {
   sucursal?: string;
@@ -59,6 +74,9 @@ export default async function CajaPage({
     <div className="space-y-8 max-w-6xl">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            {capitalize(formatLongDate(ymdToLocalDate(hoy)))} · {formatYMD(hoy)}
+          </p>
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
             Caja
           </h1>
@@ -114,9 +132,14 @@ export default async function CajaPage({
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Movimientos de hoy
-        </h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Movimientos de hoy
+          </h2>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {formatYMD(hoy)}
+          </span>
+        </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
           <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
@@ -203,8 +226,6 @@ export default async function CajaPage({
                   <th className="px-4 py-3 text-left font-medium">Fecha</th>
                   <th className="px-4 py-3 text-left font-medium">Cerrado por</th>
                   <th className="px-4 py-3 text-right font-medium">EF esperado</th>
-                  <th className="px-4 py-3 text-right font-medium">EF contado</th>
-                  <th className="px-4 py-3 text-right font-medium">Diferencia</th>
                   <th className="w-20 px-4 py-3"></th>
                 </tr>
               </thead>
@@ -212,29 +233,13 @@ export default async function CajaPage({
                 {cierres.map((item) => (
                   <tr key={item.cierre.id} className="hover:bg-cream/30">
                     <td className="px-4 py-3 font-medium tabular-nums">
-                      {item.cierre.fecha}
+                      {formatYMD(item.cierre.fecha)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {item.cerrado_por_nombre}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {formatARS(item.efectivoEsperado)}
-                    </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatARS(item.efectivoContado)}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right font-medium tabular-nums"
-                      style={{
-                        color:
-                          item.diferenciaEf === 0
-                            ? "var(--sage-700)"
-                            : item.diferenciaEf > 0
-                              ? "var(--ink)"
-                              : "var(--danger)",
-                      }}
-                    >
-                      {formatARS(item.diferenciaEf)}
+                      {formatARS(item.efectivoEsperado)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link

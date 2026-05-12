@@ -19,6 +19,7 @@ const NAV: NavDef[] = [
   { href: "/ventas", label: "Ventas", iconKey: "ShoppingBag", visible: () => true },
   { href: "/turnos", label: "Turnos", iconKey: "CalendarDays", visible: () => true },
   { href: "/caja", label: "Caja", iconKey: "Wallet", visible: (s) => s.puedeVerCaja },
+  { href: "/liquidaciones", label: "Liquidaciones", iconKey: "HandCoins", visible: (s) => s.puedeVerCaja },
   { href: "/stock", label: "Stock", iconKey: "Package", visible: (s) => s.puedeVerStock },
   { href: "/egresos", label: "Egresos", iconKey: "Receipt", visible: (s) => s.rol !== "empleado" },
   { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", visible: (s) => s.puedeVerCatalogos },

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, X, AlertTriangle } from "lucide-react";
 import { createIngreso } from "@/lib/data/ingresos-actions";
+import { createClienteQuick } from "@/lib/data/clientes";
 import type {
   Cliente,
   Empleado,
@@ -12,6 +13,7 @@ import type {
   Servicio,
 } from "@/lib/types";
 import { formatARS } from "@/lib/utils";
+import { CurrencyInput } from "@/components/forms/currency-input";
 
 interface LineaForm {
   tempId: string;
@@ -50,8 +52,56 @@ export function NuevaVentaForm({
   const [pending, startTransition] = useTransition();
 
   // Header
+  const [clientesList, setClientesList] = useState<Cliente[]>(clientes);
   const [clienteId, setClienteId] = useState("");
   const [observacion, setObservacion] = useState("");
+
+  // Modal nuevo cliente
+  const [showNewCliente, setShowNewCliente] = useState(false);
+  const [newClienteNombre, setNewClienteNombre] = useState("");
+  const [newClienteTel, setNewClienteTel] = useState("");
+  const [newClienteSaving, setNewClienteSaving] = useState(false);
+  const [newClienteError, setNewClienteError] = useState<string | null>(null);
+  const newClienteNombreRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showNewCliente) {
+      setTimeout(() => newClienteNombreRef.current?.focus(), 50);
+    }
+  }, [showNewCliente]);
+
+  async function handleCreateCliente() {
+    setNewClienteError(null);
+    const nombre = newClienteNombre.trim();
+    if (!nombre) {
+      setNewClienteError("Nombre requerido");
+      return;
+    }
+    setNewClienteSaving(true);
+    try {
+      const res = await createClienteQuick({
+        nombre,
+        telefono: newClienteTel.trim() || undefined,
+      });
+      if (!res.ok) {
+        setNewClienteError(
+          Object.values(res.errors).flat().join(", ") || "Error al crear",
+        );
+        return;
+      }
+      setClientesList((prev) =>
+        [...prev, res.cliente].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+      );
+      setClienteId(res.cliente.id);
+      setShowNewCliente(false);
+      setNewClienteNombre("");
+      setNewClienteTel("");
+    } catch (e) {
+      setNewClienteError(e instanceof Error ? e.message : "Error inesperado");
+    } finally {
+      setNewClienteSaving(false);
+    }
+  }
 
   // Líneas
   const [lineas, setLineas] = useState<LineaForm[]>([newLinea()]);
@@ -212,6 +262,7 @@ export function NuevaVentaForm({
   const serviciosActivos = servicios.filter((s) => s.activo);
 
   return (
+    <>
     <form action={handleSubmit} className="space-y-8">
       {/* Header: cliente + sucursal info */}
       <section className="bg-card border border-border rounded-md p-5 space-y-4">
@@ -230,20 +281,20 @@ export function NuevaVentaForm({
                 className="flex-1 px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— Consumidor Final —</option>
-                {clientes.map((c) => (
+                {clientesList.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}
                     {c.telefono ? ` · ${c.telefono}` : ""}
                   </option>
                 ))}
               </select>
-              <Link
-                href="/catalogos/clientes/nuevo"
-                target="_blank"
+              <button
+                type="button"
+                onClick={() => setShowNewCliente(true)}
                 className="px-3 py-2 border border-border rounded-md text-xs uppercase tracking-wider hover:bg-cream transition-colors whitespace-nowrap"
               >
                 + Nuevo
-              </Link>
+              </button>
             </div>
           </div>
           <div className="space-y-1.5">
@@ -323,31 +374,20 @@ export function NuevaVentaForm({
                       </select>
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                      <CurrencyInput
                         value={l.precio}
-                        onChange={(e) =>
-                          updateLinea(idx, { precio: Number(e.target.value) })
-                        }
+                        onChange={(v) => updateLinea(idx, { precio: v })}
+                        min={0}
                         className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={l.comision_pct}
-                        onChange={(e) =>
-                          updateLinea(idx, {
-                            comision_pct: Number(e.target.value),
-                          })
-                        }
-                        className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
+                      <div
+                        className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-cream/40 text-sm text-muted-foreground"
+                        title="La comisión está fijada por empleado"
+                      >
+                        {l.comision_pct || 0}%
+                      </div>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       <span
@@ -409,14 +449,24 @@ export function NuevaVentaForm({
               <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Valor
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={descValor}
-                onChange={(e) => setDescValor(Number(e.target.value))}
-                className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+              {descTipo === "monto" ? (
+                <CurrencyInput
+                  value={descValor}
+                  onChange={setDescValor}
+                  min={0}
+                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              ) : (
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={descValor}
+                  onChange={(e) => setDescValor(Number(e.target.value))}
+                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
             </div>
           </div>
           {errors.descuento_valor && (
@@ -540,13 +590,10 @@ export function NuevaVentaForm({
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Valor 1
             </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <CurrencyInput
               value={valor1}
-              onChange={(e) => {
-                const v = Number(e.target.value);
+              min={0}
+              onChange={(v) => {
                 setValor1(v);
                 if (mp2Id) setValor2(Math.max(0, total - v));
               }}
@@ -589,12 +636,13 @@ export function NuevaVentaForm({
               <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Valor 2
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
+              <CurrencyInput
                 value={valor2}
-                onChange={(e) => setValor2(Number(e.target.value))}
+                min={0}
+                onChange={(v) => {
+                  setValor2(v);
+                  setValor1(Math.max(0, total - v));
+                }}
                 className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -687,5 +735,93 @@ export function NuevaVentaForm({
         </Link>
       </div>
     </form>
+
+    {showNewCliente && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        onClick={() => !newClienteSaving && setShowNewCliente(false)}
+      >
+        <div
+          className="bg-card border border-border rounded-md shadow-lg w-full max-w-md p-6 space-y-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between">
+            <h3 className="font-display text-lg tracking-[0.15em] uppercase">
+              Nuevo cliente
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowNewCliente(false)}
+              disabled={newClienteSaving}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4 stroke-[1.5]" />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Nombre *
+              </label>
+              <input
+                ref={newClienteNombreRef}
+                type="text"
+                value={newClienteNombre}
+                onChange={(e) => setNewClienteNombre(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateCliente();
+                  }
+                }}
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Teléfono
+              </label>
+              <input
+                type="tel"
+                value={newClienteTel}
+                onChange={(e) => setNewClienteTel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateCliente();
+                  }
+                }}
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+
+          {newClienteError && (
+            <p className="text-xs text-destructive">{newClienteError}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowNewCliente(false)}
+              disabled={newClienteSaving}
+              className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateCliente}
+              disabled={newClienteSaving}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+            >
+              {newClienteSaving ? "Guardando…" : "Crear"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

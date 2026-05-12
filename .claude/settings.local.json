@@ -23,7 +23,14 @@
       "Bash(git merge *)",
       "mcp__Claude_Preview__preview_start",
       "Skill(claude-api)",
-      "Skill(claude-api:*)"
+      "Skill(claude-api:*)",
+      "Bash(npx next *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix\\(admin-chat\\): corregir llamada a getResumenDelDia con args posicionales *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'ui\\(sidebar\\): fijar sidebar al viewport con boton Salir siempre visible *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git pull *)"
     ]
   }
 }
