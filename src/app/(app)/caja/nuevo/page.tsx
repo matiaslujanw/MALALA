@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
-import { CierreCajaForm } from "@/components/forms/cierre-caja-form";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
-  createCierre,
   getCierreDeFecha,
   getResumenDelDia,
-  getSugerenciasArrastre,
 } from "@/lib/data/caja";
+import { formatARS } from "@/lib/utils";
+import { CierreCajaSimpleForm } from "@/components/forms/cierre-caja-simple-form";
 
 function todayYMD(): string {
   const d = new Date();
@@ -35,13 +34,10 @@ export default async function NuevoCierrePage({
   const existente = await getCierreDeFecha(sucursal.id, fecha);
   if (existente) redirect(`/caja/${existente.id}`);
 
-  const [resumen, arrastre] = await Promise.all([
-    getResumenDelDia(sucursal.id, fecha),
-    getSugerenciasArrastre(sucursal.id, fecha),
-  ]);
+  const resumen = await getResumenDelDia(sucursal.id, fecha);
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-3xl">
       <header className="space-y-2">
         <Link
           href="/caja"
@@ -58,14 +54,38 @@ export default async function NuevoCierrePage({
         </p>
       </header>
 
-      <CierreCajaForm
-        sucursalId={sucursal.id}
-        sucursalNombre={sucursal.nombre}
-        fecha={fecha}
-        resumen={resumen}
-        arrastre={arrastre}
-        action={createCierre}
-      />
+      <section className="space-y-3">
+        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+          Resumen esperado del día
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
+          <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
+          <Kpi label="Tarjeta crédito" value={formatARS(resumen.tc.ingresos)} />
+          <Kpi label="Tarjeta débito" value={formatARS(resumen.td.ingresos)} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Al cerrar se guarda esta foto del día. Las comisiones a pagar a empleados
+          se gestionan desde{" "}
+          <Link href="/liquidaciones" className="underline">
+            Liquidaciones
+          </Link>
+          .
+        </p>
+      </section>
+
+      <CierreCajaSimpleForm sucursalId={sucursal.id} fecha={fecha} />
+    </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 font-display text-xl tabular-nums">{value}</p>
     </div>
   );
 }

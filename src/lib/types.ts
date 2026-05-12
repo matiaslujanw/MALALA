@@ -273,6 +273,38 @@ export interface CierreCaja {
   fecha_cierre: string;
 }
 
+export type LiquidacionEstado = "pendiente" | "pagada" | "anulada";
+
+export interface Liquidacion {
+  id: ID;
+  sucursal_id: ID;
+  empleado_id: ID;
+  periodo_desde: string; // YYYY-MM-DD
+  periodo_hasta: string; // YYYY-MM-DD
+  total_servicios: number;
+  dias_trabajados: number;
+  total_comision: number;
+  estado: LiquidacionEstado;
+  mp_id?: ID;
+  fecha_pago?: string; // ISO
+  observacion?: string;
+  egreso_id?: ID;
+  usuario_id: ID;
+  creado_en: string; // ISO
+}
+
+export interface LiquidacionLinea {
+  id: ID;
+  liquidacion_id: ID;
+  ingreso_linea_id?: ID;
+  ingreso_id?: ID;
+  fecha: string; // YYYY-MM-DD
+  servicio_nombre: string;
+  precio: number;
+  comision_pct: number;
+  comision_monto: number;
+}
+
 export interface AccessScope {
   rol: Rol;
   sucursalIdsPermitidas: ID[];

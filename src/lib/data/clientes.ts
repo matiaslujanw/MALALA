@@ -109,6 +109,56 @@ export async function createCliente(formData: FormData): Promise<ActionResult> {
   return { ok: true };
 }
 
+export type CreateClienteQuickResult =
+  | { ok: true; cliente: Cliente }
+  | { ok: false; errors: Record<string, string[]> };
+
+export async function createClienteQuick(input: {
+  nombre: string;
+  telefono?: string;
+  observacion?: string;
+}): Promise<CreateClienteQuickResult> {
+  await requireRole(["admin", "encargada", "empleado"]);
+  requireSupabaseRuntime(
+    "La creacion de clientes requiere Supabase configurado.",
+  );
+  const parsed = clienteSchema.safeParse({
+    nombre: input.nombre,
+    telefono: input.telefono,
+    observacion: input.observacion,
+    activo: true,
+  });
+  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+
+  const id = crypto.randomUUID();
+  const telefono = normPhone(parsed.data.telefono) ?? null;
+  const db = getDb();
+  await db.insert(clientesTable).values({
+    id,
+    nombre: parsed.data.nombre,
+    telefono,
+    observacion: parsed.data.observacion ?? null,
+    activo: parsed.data.activo,
+    saldoCc: 0,
+  });
+
+  revalidatePath("/catalogos/clientes");
+  revalidatePath("/ventas");
+  revalidatePath("/ventas/nueva");
+
+  return {
+    ok: true,
+    cliente: {
+      id,
+      nombre: parsed.data.nombre,
+      telefono: telefono ?? undefined,
+      observacion: parsed.data.observacion ?? undefined,
+      activo: true,
+      saldo_cc: 0,
+    },
+  };
+}
+
 export async function updateCliente(
   clienteId: string,
   formData: FormData,

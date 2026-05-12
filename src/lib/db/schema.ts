@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -10,6 +11,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -53,6 +55,11 @@ export const tipoMovimientoStockEnum = pgEnum("tipo_movimiento_stock", [
   "transferencia_salida",
 ]);
 export const origenTurnoEnum = pgEnum("origen_turno", ["publico", "interno"]);
+export const liquidacionEstadoEnum = pgEnum("liquidacion_estado", [
+  "pendiente",
+  "pagada",
+  "anulada",
+]);
 
 export const sucursales = pgTable("sucursales", {
   id: text("id").primaryKey(),
@@ -362,6 +369,69 @@ export const turnoEventos = pgTable("turno_eventos", {
   detalle: text("detalle"),
 });
 
+export const liquidaciones = pgTable(
+  "liquidaciones",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    empleadoId: text("empleado_id")
+      .notNull()
+      .references(() => empleados.id),
+    periodoDesde: date("periodo_desde").notNull(),
+    periodoHasta: date("periodo_hasta").notNull(),
+    totalServicios: integer("total_servicios").notNull().default(0),
+    diasTrabajados: integer("dias_trabajados").notNull().default(0),
+    totalComision: doublePrecision("total_comision").notNull().default(0),
+    estado: liquidacionEstadoEnum("estado").notNull().default("pendiente"),
+    mpId: text("mp_id").references(() => mediosPago.id),
+    fechaPago: timestamp("fecha_pago", { withTimezone: true }),
+    observacion: text("observacion"),
+    egresoId: text("egreso_id"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    sucursalPeriodoIdx: index("liquidaciones_sucursal_periodo_idx").on(
+      table.sucursalId,
+      table.periodoDesde,
+      table.periodoHasta,
+    ),
+    empleadoEstadoIdx: index("liquidaciones_empleado_estado_idx").on(
+      table.empleadoId,
+      table.estado,
+    ),
+  }),
+);
+
+export const liquidacionLineas = pgTable(
+  "liquidacion_lineas",
+  {
+    id: text("id").primaryKey(),
+    liquidacionId: text("liquidacion_id")
+      .notNull()
+      .references(() => liquidaciones.id, { onDelete: "cascade" }),
+    ingresoLineaId: text("ingreso_linea_id").references(() => ingresoLineas.id, {
+      onDelete: "set null",
+    }),
+    ingresoId: text("ingreso_id"),
+    fecha: date("fecha").notNull(),
+    servicioNombre: text("servicio_nombre").notNull(),
+    precio: doublePrecision("precio").notNull(),
+    comisionPct: doublePrecision("comision_pct").notNull(),
+    comisionMonto: doublePrecision("comision_monto").notNull(),
+  },
+  (table) => ({
+    liqIdx: index("liquidacion_lineas_liq_idx").on(table.liquidacionId),
+    ingresoLineaUnq: uniqueIndex("liquidacion_lineas_unq_ingreso_linea_idx").on(
+      table.ingresoLineaId,
+    ),
+  }),
+);
+
 export const schema = {
   authUsers,
   profiles,
@@ -384,4 +454,6 @@ export const schema = {
   cierresCaja,
   turnos,
   turnoEventos,
+  liquidaciones,
+  liquidacionLineas,
 };
