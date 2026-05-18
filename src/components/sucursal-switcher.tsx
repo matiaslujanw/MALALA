@@ -8,7 +8,15 @@ interface Props {
 }
 
 export function SucursalSwitcher({ user, active, sucursales }: Props) {
-  if (user.rol !== "admin") {
+  const permitidasIds = user.sucursal_ids_permitidas?.length
+    ? user.sucursal_ids_permitidas
+    : [user.sucursal_default_id];
+  const sucursalesPermitidas = sucursales.filter((s) =>
+    permitidasIds.includes(s.id),
+  );
+
+  // Si solo tiene acceso a una sucursal, mostrar solo el nombre (sin selector)
+  if (sucursalesPermitidas.length <= 1) {
     return (
       <div className="flex items-center gap-2 text-sm">
         <span className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -33,7 +41,7 @@ export function SucursalSwitcher({ user, active, sucursales }: Props) {
         defaultValue={active.id}
         className="text-sm border border-border rounded-md px-3 py-1.5 bg-card"
       >
-        {sucursales.map((sucursal) => (
+        {sucursalesPermitidas.map((sucursal) => (
           <option key={sucursal.id} value={sucursal.id}>
             {sucursal.nombre}
           </option>

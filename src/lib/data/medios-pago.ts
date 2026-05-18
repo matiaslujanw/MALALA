@@ -1,11 +1,16 @@
 "use server";
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
-import { mediosPago as mediosPagoTable } from "@/lib/db/schema";
+import {
+  cuentasBancarias as cuentasBancariasTable,
+  mediosPago as mediosPagoTable,
+} from "@/lib/db/schema";
 import { medioPagoSchema } from "@/lib/validations/medio-pago";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
+import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import type { MedioPago } from "@/lib/types";
 
 function createId() {
@@ -15,56 +20,151 @@ function createId() {
 function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     codigo: row.codigo,
     nombre: row.nombre,
     activo: row.activo,
+    cuenta_id: row.cuentaId ?? undefined,
   };
 }
 
-export async function listMediosPago(): Promise<MedioPago[]> {
+export interface ListMediosPagoOpts {
+  sucursalId?: string;
+  soloActivos?: boolean;
+}
+
+export async function listMediosPago(
+  opts: ListMediosPagoOpts = {},
+): Promise<MedioPago[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const db = getDb();
+
+  const filters = [inArray(mediosPagoTable.sucursalId, scope.sucursalIdsPermitidas)];
+  if (opts.sucursalId) {
+    if (!isSucursalAllowed(scope, opts.sucursalId)) return [];
+    filters.push(eq(mediosPagoTable.sucursalId, opts.sucursalId));
+  }
+  if (opts.soloActivos) {
+    filters.push(eq(mediosPagoTable.activo, true));
+  }
+
   const rows = await db
     .select()
     .from(mediosPagoTable)
-    .orderBy(asc(mediosPagoTable.codigo), asc(mediosPagoTable.nombre));
+    .where(and(...filters))
+    .orderBy(
+      asc(mediosPagoTable.sucursalId),
+      asc(mediosPagoTable.codigo),
+      asc(mediosPagoTable.nombre),
+    );
   return rows.map(mapMedioPago);
 }
 
 export async function createMedioPago(
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
   const parsed = medioPagoSchema.safeParse({
+    sucursal_id: formData.get("sucursal_id"),
     codigo: formData.get("codigo"),
     nombre: formData.get("nombre"),
     activo: true,
+    cuenta_id: formData.get("cuenta_id"),
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+  if (!isSucursalAllowed(scope, parsed.data.sucursal_id)) {
+    return { ok: false, errors: { sucursal_id: ["No tenés acceso a esa sucursal"] } };
+  }
 
   const db = getDb();
   const [existing] = await db
     .select({ id: mediosPagoTable.id })
     .from(mediosPagoTable)
-    .where(eq(mediosPagoTable.codigo, parsed.data.codigo))
+    .where(
+      and(
+        eq(mediosPagoTable.sucursalId, parsed.data.sucursal_id),
+        eq(mediosPagoTable.codigo, parsed.data.codigo),
+      ),
+    )
     .limit(1);
   if (existing) {
-    return { ok: false, errors: { codigo: ["Ya existe ese codigo"] } };
+    return { ok: false, errors: { codigo: ["Ya existe ese código en la sucursal"] } };
+  }
+
+  if (parsed.data.cuenta_id) {
+    const [cuenta] = await db
+      .select({ sucursalId: cuentasBancariasTable.sucursalId })
+      .from(cuentasBancariasTable)
+      .where(eq(cuentasBancariasTable.id, parsed.data.cuenta_id))
+      .limit(1);
+    if (!cuenta || cuenta.sucursalId !== parsed.data.sucursal_id) {
+      return {
+        ok: false,
+        errors: { cuenta_id: ["La cuenta no pertenece a la sucursal"] },
+      };
+    }
   }
 
   await db.insert(mediosPagoTable).values({
     id: createId(),
+    sucursalId: parsed.data.sucursal_id,
     codigo: parsed.data.codigo,
     nombre: parsed.data.nombre,
     activo: true,
+    cuentaId: parsed.data.cuenta_id ?? null,
   });
   revalidatePath("/catalogos/medios-pago");
+  return { ok: true };
+}
+
+export async function updateMedioPagoCuenta(
+  mpId: string,
+  cuentaId: string | null,
+): Promise<ActionResult> {
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
+  const db = getDb();
+
+  const [mp] = await db
+    .select()
+    .from(mediosPagoTable)
+    .where(eq(mediosPagoTable.id, mpId))
+    .limit(1);
+  if (!mp) return { ok: false, errors: { _: ["Medio no encontrado"] } };
+  if (!isSucursalAllowed(scope, mp.sucursalId)) {
+    return { ok: false, errors: { _: ["Sin acceso al medio"] } };
+  }
+
+  if (cuentaId) {
+    const [cuenta] = await db
+      .select({ sucursalId: cuentasBancariasTable.sucursalId })
+      .from(cuentasBancariasTable)
+      .where(eq(cuentasBancariasTable.id, cuentaId))
+      .limit(1);
+    if (!cuenta || cuenta.sucursalId !== mp.sucursalId) {
+      return {
+        ok: false,
+        errors: { cuenta_id: ["La cuenta debe pertenecer a la misma sucursal"] },
+      };
+    }
+  }
+
+  await db
+    .update(mediosPagoTable)
+    .set({ cuentaId })
+    .where(eq(mediosPagoTable.id, mpId));
+  revalidatePath("/catalogos/medios-pago");
+  revalidatePath("/bancos");
   return { ok: true };
 }
 
 export async function toggleMedioPagoActivo(
   mpId: string,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
   const db = getDb();
   const [medioPago] = await db
     .select()
@@ -72,6 +172,9 @@ export async function toggleMedioPagoActivo(
     .where(eq(mediosPagoTable.id, mpId))
     .limit(1);
   if (!medioPago) return { ok: false, errors: { _: ["No encontrado"] } };
+  if (!isSucursalAllowed(scope, medioPago.sucursalId)) {
+    return { ok: false, errors: { _: ["Sin acceso al medio"] } };
+  }
 
   await db
     .update(mediosPagoTable)

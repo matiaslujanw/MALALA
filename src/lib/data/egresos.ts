@@ -20,6 +20,11 @@ import {
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import { egresoSchema } from "@/lib/validations/egreso";
 import { applyMovementTx } from "./stock";
+import {
+  deleteMovimientosByRefTx,
+  emitMovimientoBancarioTx,
+  getCuentaIdForMpTx,
+} from "./movimientos-bancarios-helpers";
 import type {
   Egreso,
   Insumo,
@@ -113,9 +118,11 @@ function mapProveedor(row: typeof proveedoresTable.$inferSelect): Proveedor {
 function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     codigo: row.codigo,
     nombre: row.nombre,
     activo: row.activo,
+    cuenta_id: row.cuentaId ?? undefined,
   };
 }
 
@@ -366,6 +373,23 @@ export async function createEgreso(
         });
       }
 
+      if (data.pagado) {
+        const cuentaId = await getCuentaIdForMpTx(tx, data.mp_id);
+        if (cuentaId) {
+          await emitMovimientoBancarioTx(tx, {
+            cuentaId,
+            fecha: new Date(fechaIso),
+            monto: -Math.abs(data.valor),
+            tipo: "egreso",
+            sucursalId: data.sucursal_id,
+            refTipo: "egreso",
+            refId: egresoId,
+            descripcion: data.observacion ?? "Egreso",
+            usuarioId: user.id,
+          });
+        }
+      }
+
       if (!data.pagado && data.proveedor_id) {
         const [proveedor] = await tx
           .select()
@@ -394,6 +418,7 @@ export async function createEgreso(
   revalidatePath("/dashboard");
   revalidatePath("/caja");
   revalidatePath("/catalogos/proveedores");
+  revalidatePath("/bancos");
   return { ok: true, egresoId };
 }
 
@@ -415,10 +440,30 @@ export async function togglePagadoEgreso(
   }
 
   await db.transaction(async (tx) => {
+    const nuevoPagado = !egreso.pagado;
     await tx
       .update(egresosTable)
-      .set({ pagado: !egreso.pagado })
+      .set({ pagado: nuevoPagado })
       .where(eq(egresosTable.id, egresoId));
+
+    if (nuevoPagado) {
+      const cuentaId = await getCuentaIdForMpTx(tx, egreso.mpId);
+      if (cuentaId) {
+        await emitMovimientoBancarioTx(tx, {
+          cuentaId,
+          fecha: new Date(),
+          monto: -Math.abs(egreso.valor),
+          tipo: "egreso",
+          sucursalId: egreso.sucursalId,
+          refTipo: "egreso",
+          refId: egreso.id,
+          descripcion: egreso.observacion ?? "Pago a proveedor",
+          usuarioId: user.id,
+        });
+      }
+    } else {
+      await deleteMovimientosByRefTx(tx, "egreso", egreso.id);
+    }
 
     if (egreso.proveedorId) {
       const [proveedor] = await tx
@@ -442,5 +487,6 @@ export async function togglePagadoEgreso(
   revalidatePath("/dashboard");
   revalidatePath("/caja");
   revalidatePath("/catalogos/proveedores");
+  revalidatePath("/bancos");
   return { ok: true };
 }

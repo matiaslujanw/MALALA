@@ -29,7 +29,11 @@ export function failure(msg: string): ActionResult {
 
 export async function requireRole(roles: Rol[]): Promise<Usuario> {
   const user = await requireUser();
-  if (!roles.includes(user.rol)) {
+  // superadmin es superset de admin: si el endpoint permite admin, también permite superadmin
+  const efectivos: Rol[] = roles.includes("admin")
+    ? ([...roles, "superadmin"] as Rol[])
+    : roles;
+  if (!efectivos.includes(user.rol)) {
     throw new Error(`Permiso denegado. Se requiere: ${roles.join(", ")}`);
   }
   return user;

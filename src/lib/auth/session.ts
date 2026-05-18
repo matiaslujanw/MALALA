@@ -46,7 +46,7 @@ const getSupabaseCurrentUser = cache(async (): Promise<Usuario | null> => {
   if (!profile || !profile.activo) return null;
 
   const sucursalIdsPermitidas =
-    profile.rol === "admin"
+    profile.rol === "superadmin"
       ? (
           await db
             .select({ id: sucursales.id })

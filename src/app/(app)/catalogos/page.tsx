@@ -8,6 +8,7 @@ import {
   CreditCard,
   Receipt,
   NotebookText,
+  Landmark,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -18,6 +19,7 @@ import {
   listProveedores,
   listRubrosGasto,
   listServicios,
+  listCuentas,
 } from "./_counts";
 import { listRecetasResumen } from "@/lib/data/recetas";
 
@@ -65,6 +67,12 @@ const items = [
     desc: "EF, TR, TC, TD, MP",
   },
   {
+    href: "/catalogos/cuentas-bancarias",
+    label: "Cuentas bancarias",
+    Icon: Landmark,
+    desc: "Galicia, Macro, caja efectivo…",
+  },
+  {
     href: "/catalogos/rubros-gasto",
     label: "Rubros de gasto",
     Icon: Receipt,
@@ -83,6 +91,7 @@ export default async function CatalogosPage() {
   const proveedores = await listProveedores();
   const mediosPago = await listMediosPago();
   const rubrosGasto = await listRubrosGasto();
+  const cuentas = await listCuentas();
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
 
@@ -94,6 +103,7 @@ export default async function CatalogosPage() {
     "/catalogos/empleados": empleados.length,
     "/catalogos/proveedores": proveedores.length,
     "/catalogos/medios-pago": mediosPago.length,
+    "/catalogos/cuentas-bancarias": cuentas.length,
     "/catalogos/rubros-gasto": rubrosGasto.length,
   };
 

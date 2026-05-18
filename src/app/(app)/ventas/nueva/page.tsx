@@ -17,10 +17,10 @@ export default async function NuevaVentaPage() {
     listClientes(),
     listServicios(),
     listEmpleados(),
-    listMediosPago(),
+    listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
   ]);
 
-  const mediosActivos = mediosPago.filter((m) => m.activo);
+  const mediosActivos = mediosPago;
 
   return (
     <div className="space-y-8 max-w-5xl">
