@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, lte, inArray } from "drizzle-orm";
 import { getDb } from "@/lib/db/client/postgres";
 import {
+  clientes as clientesTable,
   empleados as empleadosTable,
   horariosSucursal as horariosSucursalTable,
   profesionalesAgenda as profesionalesAgendaTable,
@@ -8,6 +9,7 @@ import {
   sucursales as sucursalesTable,
   turnos as turnosTable,
 } from "@/lib/db/schema";
+import type { Cliente } from "@/lib/types";
 import {
   buildAccessScope,
   clampSucursalId,
@@ -92,17 +94,35 @@ export function mapHorario(
   };
 }
 
+export function mapCliente(
+  row: typeof clientesTable.$inferSelect,
+): Cliente {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    telefono: row.telefono ?? undefined,
+    telefono_e164: row.telefonoE164 ?? undefined,
+    email: row.email ?? undefined,
+    observacion: row.observacion ?? undefined,
+    activo: row.activo,
+    saldo_cc: row.saldoCc,
+  };
+}
+
 export function mapTurno(
   row: typeof turnosTable.$inferSelect,
+  cliente: typeof clientesTable.$inferSelect,
 ): Turno {
   return {
     id: row.id,
     sucursal_id: row.sucursalId,
     servicio_id: row.servicioId,
     profesional_id: row.profesionalId,
-    cliente_nombre: row.clienteNombre,
-    cliente_telefono: row.clienteTelefono,
-    cliente_email: row.clienteEmail ?? undefined,
+    cliente_id: row.clienteId,
+    cliente_nombre: cliente.nombre,
+    cliente_telefono: cliente.telefono ?? cliente.telefonoE164 ?? "",
+    cliente_telefono_e164: cliente.telefonoE164 ?? "",
+    cliente_email: cliente.email ?? undefined,
     fecha_turno: row.fechaTurno,
     hora: row.hora,
     duracion_min: row.duracionMin,
@@ -115,6 +135,10 @@ export function mapTurno(
     actualizado_por_usuario_id: row.actualizadoPorUsuarioId ?? undefined,
     origen: row.origen,
     sin_preferencia: row.sinPreferencia,
+    token_acceso: row.tokenAcceso,
+    token_expira_en: row.tokenExpiraEn.toISOString(),
+    confirmacion_enviada_en: row.confirmacionEnviadaEn?.toISOString(),
+    recordatorio_2h_enviado_en: row.recordatorio2hEnviadoEn?.toISOString(),
   };
 }
 
@@ -238,12 +262,13 @@ export async function getTurnosRaw(args?: {
   }
 
   const rows = await db
-    .select()
+    .select({ turno: turnosTable, cliente: clientesTable })
     .from(turnosTable)
+    .innerJoin(clientesTable, eq(turnosTable.clienteId, clientesTable.id))
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(asc(turnosTable.fechaTurno), asc(turnosTable.hora));
 
-  return rows.map(mapTurno);
+  return rows.map((row) => mapTurno(row.turno, row.cliente));
 }
 
 async function getTurnoContextForScope(scopeIds?: string[]) {
@@ -399,15 +424,16 @@ export async function getTurno(turnoId: string) {
   const scope = buildAccessScope(user);
   const db = getDb();
   const row = await db
-    .select()
+    .select({ turno: turnosTable, cliente: clientesTable })
     .from(turnosTable)
+    .innerJoin(clientesTable, eq(turnosTable.clienteId, clientesTable.id))
     .where(eq(turnosTable.id, turnoId))
     .limit(1);
 
   const current = row[0];
   if (!current) return null;
 
-  const turno = mapTurno(current);
+  const turno = mapTurno(current.turno, current.cliente);
   if (!scope.sucursalIdsPermitidas.includes(turno.sucursal_id)) return null;
   if (scope.rol === "empleado" && scope.empleadoId !== turno.profesional_id) {
     return null;

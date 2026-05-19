@@ -72,6 +72,8 @@ export interface Cliente {
   id: ID;
   nombre: string;
   telefono?: string;
+  telefono_e164?: string;
+  email?: string;
   observacion?: string;
   activo: boolean;
   saldo_cc: number;
@@ -123,8 +125,10 @@ export interface Turno {
   sucursal_id: ID;
   servicio_id: ID;
   profesional_id: ID;
+  cliente_id: ID;
   cliente_nombre: string;
   cliente_telefono: string;
+  cliente_telefono_e164: string;
   cliente_email?: string;
   fecha_turno: string; // YYYY-MM-DD
   hora: string; // HH:mm
@@ -138,6 +142,10 @@ export interface Turno {
   actualizado_por_usuario_id?: ID;
   origen: "publico" | "interno";
   sin_preferencia: boolean;
+  token_acceso: string;
+  token_expira_en: string;
+  confirmacion_enviada_en?: string;
+  recordatorio_2h_enviado_en?: string;
 }
 
 export interface TurnoEvento {

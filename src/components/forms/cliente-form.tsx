@@ -35,7 +35,14 @@ export function ClienteForm({ cliente, action, submitLabel }: Props) {
             name="telefono"
             defaultValue={cliente?.telefono}
             error={errors.telefono}
-            hint="Se normaliza a formato internacional"
+            hint="Formato AR — se normaliza a +54 9..."
+          />
+          <Field
+            label="Email"
+            name="email"
+            defaultValue={cliente?.email}
+            error={errors.email}
+            type="email"
           />
           <Field
             label="Observación"

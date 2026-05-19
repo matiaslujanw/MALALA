@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircle,
   Package,
   Receipt,
   ShoppingBag,
@@ -44,6 +45,7 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   Receipt,
   BookOpen,
   BarChart3,
+  MessageCircle,
 };
 
 export function AppSidebar({ userName, userRol, navItems }: SidebarProps) {

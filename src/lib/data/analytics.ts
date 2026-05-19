@@ -343,7 +343,7 @@ export async function getAnalyticsSnapshot(
   };
 
   for (const turno of turnosRows) {
-    registerCustomer(turno.clienteTelefono || turno.clienteNombre);
+    registerCustomer(turno.clienteId);
   }
   for (const ingreso of ingresosRows) {
     registerCustomer(ingreso.clienteId);

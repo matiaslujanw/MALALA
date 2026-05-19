@@ -68,6 +68,17 @@ export const tipoMovBancarioEnum = pgEnum("tipo_mov_bancario", [
   "transferencia_salida",
   "ajuste",
 ]);
+export const whatsappEnvioTipoEnum = pgEnum("whatsapp_envio_tipo", [
+  "confirmacion",
+  "recordatorio_2h",
+  "cancelacion",
+  "reprogramacion",
+  "prueba",
+]);
+export const whatsappEnvioEstadoEnum = pgEnum("whatsapp_envio_estado", [
+  "ok",
+  "error",
+]);
 
 export const sucursales = pgTable("sucursales", {
   id: text("id").primaryKey(),
@@ -116,14 +127,22 @@ export const profiles = pgTable(
   }),
 );
 
-export const clientes = pgTable("clientes", {
-  id: text("id").primaryKey(),
-  nombre: text("nombre").notNull(),
-  telefono: text("telefono"),
-  observacion: text("observacion"),
-  activo: boolean("activo").notNull().default(true),
-  saldoCc: doublePrecision("saldo_cc").notNull().default(0),
-});
+export const clientes = pgTable(
+  "clientes",
+  {
+    id: text("id").primaryKey(),
+    nombre: text("nombre").notNull(),
+    telefono: text("telefono"),
+    telefonoE164: text("telefono_e164"),
+    email: text("email"),
+    observacion: text("observacion"),
+    activo: boolean("activo").notNull().default(true),
+    saldoCc: doublePrecision("saldo_cc").notNull().default(0),
+  },
+  (table) => ({
+    telefonoE164Idx: uniqueIndex("clientes_telefono_e164_uq").on(table.telefonoE164),
+  }),
+);
 
 export const proveedores = pgTable("proveedores", {
   id: text("id").primaryKey(),
@@ -380,33 +399,44 @@ export const cierresCaja = pgTable("cierres_caja", {
   fechaCierre: timestamp("fecha_cierre", { withTimezone: true }).notNull(),
 });
 
-export const turnos = pgTable("turnos", {
-  id: text("id").primaryKey(),
-  sucursalId: text("sucursal_id")
-    .notNull()
-    .references(() => sucursales.id),
-  servicioId: text("servicio_id")
-    .notNull()
-    .references(() => servicios.id),
-  profesionalId: text("profesional_id")
-    .notNull()
-    .references(() => empleados.id),
-  clienteNombre: text("cliente_nombre").notNull(),
-  clienteTelefono: text("cliente_telefono").notNull(),
-  clienteEmail: text("cliente_email"),
-  fechaTurno: text("fecha_turno").notNull(),
-  hora: text("hora").notNull(),
-  duracionMin: integer("duracion_min").notNull(),
-  estado: turnoEstadoEnum("estado").notNull(),
-  canal: turnoCanalEnum("canal").notNull(),
-  observacion: text("observacion"),
-  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull(),
-  creadoPorUsuarioId: uuid("creado_por_usuario_id").references(() => profiles.userId),
-  actualizadoEn: timestamp("actualizado_en", { withTimezone: true }),
-  actualizadoPorUsuarioId: uuid("actualizado_por_usuario_id").references(() => profiles.userId),
-  origen: origenTurnoEnum("origen").notNull(),
-  sinPreferencia: boolean("sin_preferencia").notNull().default(false),
-});
+export const turnos = pgTable(
+  "turnos",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    servicioId: text("servicio_id")
+      .notNull()
+      .references(() => servicios.id),
+    profesionalId: text("profesional_id")
+      .notNull()
+      .references(() => empleados.id),
+    clienteId: text("cliente_id")
+      .notNull()
+      .references(() => clientes.id),
+    fechaTurno: text("fecha_turno").notNull(),
+    hora: text("hora").notNull(),
+    duracionMin: integer("duracion_min").notNull(),
+    estado: turnoEstadoEnum("estado").notNull(),
+    canal: turnoCanalEnum("canal").notNull(),
+    observacion: text("observacion"),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull(),
+    creadoPorUsuarioId: uuid("creado_por_usuario_id").references(() => profiles.userId),
+    actualizadoEn: timestamp("actualizado_en", { withTimezone: true }),
+    actualizadoPorUsuarioId: uuid("actualizado_por_usuario_id").references(() => profiles.userId),
+    origen: origenTurnoEnum("origen").notNull(),
+    sinPreferencia: boolean("sin_preferencia").notNull().default(false),
+    tokenAcceso: text("token_acceso").notNull(),
+    tokenExpiraEn: timestamp("token_expira_en", { withTimezone: true }).notNull(),
+    confirmacionEnviadaEn: timestamp("confirmacion_enviada_en", { withTimezone: true }),
+    recordatorio2hEnviadoEn: timestamp("recordatorio_2h_enviado_en", { withTimezone: true }),
+  },
+  (table) => ({
+    tokenAccesoIdx: uniqueIndex("turnos_token_acceso_uq").on(table.tokenAcceso),
+    clienteIdx: index("turnos_cliente_id_idx").on(table.clienteId),
+  }),
+);
 
 export const turnoEventos = pgTable("turno_eventos", {
   id: text("id").primaryKey(),
@@ -418,6 +448,45 @@ export const turnoEventos = pgTable("turno_eventos", {
   fecha: timestamp("fecha", { withTimezone: true }).notNull(),
   detalle: text("detalle"),
 });
+
+export const integracionesManychat = pgTable("integraciones_manychat", {
+  sucursalId: text("sucursal_id")
+    .primaryKey()
+    .references(() => sucursales.id, { onDelete: "cascade" }),
+  apiKey: text("api_key").notNull(),
+  numeroWhatsappE164: text("numero_whatsapp_e164").notNull(),
+  flowNsConfirmacion: text("flow_ns_confirmacion"),
+  flowNsRecordatorio2h: text("flow_ns_recordatorio_2h"),
+  flowNsCancelacion: text("flow_ns_cancelacion"),
+  flowNsReprogramacion: text("flow_ns_reprogramacion"),
+  activo: boolean("activo").notNull().default(true),
+  creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  actualizadoEn: timestamp("actualizado_en", { withTimezone: true }),
+});
+
+export const whatsappEnvios = pgTable(
+  "whatsapp_envios",
+  {
+    id: text("id").primaryKey(),
+    turnoId: text("turno_id").references(() => turnos.id, { onDelete: "set null" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    clienteId: text("cliente_id").references(() => clientes.id, { onDelete: "set null" }),
+    telefonoDestinoE164: text("telefono_destino_e164").notNull(),
+    tipo: whatsappEnvioTipoEnum("tipo").notNull(),
+    estado: whatsappEnvioEstadoEnum("estado").notNull(),
+    flowNs: text("flow_ns"),
+    payload: jsonb("payload"),
+    respuesta: jsonb("respuesta"),
+    errorDetalle: text("error_detalle"),
+    enviadoEn: timestamp("enviado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    turnoIdx: index("whatsapp_envios_turno_idx").on(table.turnoId),
+    tipoIdx: index("whatsapp_envios_tipo_idx").on(table.tipo),
+  }),
+);
 
 export const liquidaciones = pgTable(
   "liquidaciones",
@@ -506,6 +575,8 @@ export const schema = {
   cierresCaja,
   turnos,
   turnoEventos,
+  integracionesManychat,
+  whatsappEnvios,
   liquidaciones,
   liquidacionLineas,
 };

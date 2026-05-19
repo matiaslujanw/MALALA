@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
+  clientes as clientesTable,
   empleados as empleadosTable,
   horariosSucursal as horariosSucursalTable,
   profesionalesAgenda as profesionalesAgendaTable,
@@ -19,6 +20,8 @@ import {
   turnoEstadoSchema,
   turnoReprogramacionSchema,
 } from "@/lib/validations/turno";
+import { normalizarTelefonoAR, PhoneNormalizationError } from "@/lib/phone";
+import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
 import {
   getTurnoCatalogRefs,
   mapEmpleado,
@@ -30,6 +33,20 @@ import {
 
 function createId() {
   return crypto.randomUUID();
+}
+
+function createToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Buffer.from(bytes)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function tokenExpiraEnDate(fechaTurno: string, hora: string): Date {
+  return new Date(`${fechaTurno}T${hora}:00-03:00`);
 }
 
 function turnoFailure(message: string): TurnoActionState {
@@ -64,6 +81,17 @@ async function createTurnoInternal(
     return { ok: false, errors: fieldErrors(parsed.error) };
   }
 
+  let telefonoE164: string;
+  try {
+    telefonoE164 = normalizarTelefonoAR(parsed.data.cliente_telefono);
+  } catch (err) {
+    const message =
+      err instanceof PhoneNormalizationError
+        ? err.message
+        : "Teléfono inválido";
+    return { ok: false, errors: { cliente_telefono: [message] } };
+  }
+
   const actor = access === "interno" ? await requireRole(["admin", "encargada"]) : null;
   const actorScope = actor ? buildAccessScope(actor) : null;
 
@@ -86,6 +114,11 @@ async function createTurnoInternal(
 
   const db = getDb();
   const turnoId = createId();
+  const tokenAcceso = createToken();
+  const tokenExpiraEn = tokenExpiraEnDate(
+    parsed.data.fecha_turno,
+    parsed.data.hora,
+  );
   const now = new Date();
 
   try {
@@ -122,8 +155,12 @@ async function createTurnoInternal(
           ),
         tx.select().from(serviciosTable).where(eq(serviciosTable.activo, true)),
         tx
-          .select()
+          .select({ turno: turnosTable, cliente: clientesTable })
           .from(turnosTable)
+          .innerJoin(
+            clientesTable,
+            eq(turnosTable.clienteId, clientesTable.id),
+          )
           .where(
             and(
               eq(turnosTable.sucursalId, parsed.data.sucursal_id),
@@ -153,7 +190,7 @@ async function createTurnoInternal(
           }),
         ),
         servicios: servRows.map(mapServicio),
-        turnos: blockedRows.map(mapTurno),
+        turnos: blockedRows.map((row) => mapTurno(row.turno, row.cliente)),
       });
 
       const exists = slots.some((slot) => slot.hora === parsed.data.hora);
@@ -161,14 +198,41 @@ async function createTurnoInternal(
         throw new Error("Ese horario ya no esta disponible");
       }
 
+      const [clienteExistente] = await tx
+        .select()
+        .from(clientesTable)
+        .where(eq(clientesTable.telefonoE164, telefonoE164))
+        .limit(1);
+
+      let clienteId: string;
+      if (clienteExistente) {
+        clienteId = clienteExistente.id;
+        await tx
+          .update(clientesTable)
+          .set({
+            nombre: parsed.data.cliente_nombre,
+            telefono: parsed.data.cliente_telefono,
+            email: parsed.data.cliente_email ?? clienteExistente.email,
+          })
+          .where(eq(clientesTable.id, clienteId));
+      } else {
+        clienteId = createId();
+        await tx.insert(clientesTable).values({
+          id: clienteId,
+          nombre: parsed.data.cliente_nombre,
+          telefono: parsed.data.cliente_telefono,
+          telefonoE164,
+          email: parsed.data.cliente_email ?? null,
+          activo: true,
+        });
+      }
+
       await tx.insert(turnosTable).values({
         id: turnoId,
         sucursalId: parsed.data.sucursal_id,
         servicioId: parsed.data.servicio_id,
         profesionalId: parsed.data.profesional_id,
-        clienteNombre: parsed.data.cliente_nombre,
-        clienteTelefono: parsed.data.cliente_telefono,
-        clienteEmail: parsed.data.cliente_email ?? null,
+        clienteId,
         fechaTurno: parsed.data.fecha_turno,
         hora: parsed.data.hora,
         duracionMin: servicio.duracion_min ?? 60,
@@ -179,6 +243,8 @@ async function createTurnoInternal(
         creadoPorUsuarioId: actor?.id ?? null,
         origen: parsed.data.origen,
         sinPreferencia: parsed.data.sin_preferencia,
+        tokenAcceso,
+        tokenExpiraEn,
       });
 
       await tx.insert(turnoEventosTable).values({
@@ -199,6 +265,8 @@ async function createTurnoInternal(
     }
     return turnoFailure("No se pudo crear el turno");
   }
+
+  await notificarTurno({ turnoId, tipo: "confirmacion" });
 
   revalidatePath("/");
   revalidatePath("/turnos");
@@ -274,6 +342,10 @@ export async function updateTurnoEstadoAction(
       detalle: `Estado cambiado a ${parsed.data.estado}`,
     });
   });
+
+  if (parsed.data.estado === "cancelado") {
+    await notificarTurno({ turnoId: parsed.data.turno_id, tipo: "cancelacion" });
+  }
 
   revalidatePath("/turnos");
   revalidatePath("/");
@@ -354,8 +426,12 @@ export async function reprogramTurnoAction(
           ),
         tx.select().from(serviciosTable).where(eq(serviciosTable.activo, true)),
         tx
-          .select()
+          .select({ turno: turnosTable, cliente: clientesTable })
           .from(turnosTable)
+          .innerJoin(
+            clientesTable,
+            eq(turnosTable.clienteId, clientesTable.id),
+          )
           .where(
             and(
               eq(turnosTable.sucursalId, current.sucursalId),
@@ -386,8 +462,8 @@ export async function reprogramTurnoAction(
         ),
         servicios: servRows.map(mapServicio),
         turnos: blockedRows
-          .filter((row) => row.id !== parsed.data.turno_id)
-          .map(mapTurno),
+          .filter((row) => row.turno.id !== parsed.data.turno_id)
+          .map((row) => mapTurno(row.turno, row.cliente)),
       });
 
       const available = slots.some((slot) => slot.hora === parsed.data.hora);
@@ -405,6 +481,11 @@ export async function reprogramTurnoAction(
           estado: "confirmado",
           actualizadoEn: now,
           actualizadoPorUsuarioId: user.id,
+          tokenExpiraEn: tokenExpiraEnDate(
+            parsed.data.fecha_turno,
+            parsed.data.hora,
+          ),
+          recordatorio2hEnviadoEn: null,
         })
         .where(eq(turnosTable.id, parsed.data.turno_id));
 
@@ -423,6 +504,8 @@ export async function reprogramTurnoAction(
     }
     return turnoFailure("No se pudo reprogramar el turno");
   }
+
+  await notificarTurno({ turnoId: parsed.data.turno_id, tipo: "reprogramacion" });
 
   revalidatePath("/turnos");
   revalidatePath("/");

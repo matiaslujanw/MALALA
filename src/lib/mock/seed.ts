@@ -1,6 +1,7 @@
 /**
  * Datos seed para desarrollo. Cantidades chicas pero realistas.
  */
+import type { Cliente } from "../types";
 import type { Store } from "./store";
 
 // IDs deterministas: en serverless, cada instancia corre seed() de forma
@@ -606,7 +607,11 @@ export function seed(): Store {
     observacion: "Cliente frecuente",
   });
 
-  const turnos: Store["turnos"] = [
+  type TurnoBase = Omit<
+    Store["turnos"][number],
+    "cliente_id" | "cliente_telefono_e164" | "token_acceso" | "token_expira_en"
+  >;
+  const turnosBase: TurnoBase[] = [
     {
       id: uid(),
       sucursal_id: sucCentro.id,
@@ -735,6 +740,42 @@ export function seed(): Store {
     },
   ];
 
+  function mockToken(turnoId: string) {
+    return `mock-token-${turnoId}`;
+  }
+
+  const clientesCatalogo: Cliente[] = [
+    cliMaria,
+    cliLucia,
+    cliSofia,
+    cliConsumidor,
+  ];
+
+  const turnos: Store["turnos"] = turnosBase.map((base) => {
+    const clienteMatch = clientesCatalogo.find(
+      (c) => c.telefono === base.cliente_telefono,
+    );
+    const clienteId = clienteMatch?.id ?? `mock-cli-${base.id}`;
+    if (!clienteMatch) {
+      clientesCatalogo.push({
+        id: clienteId,
+        nombre: base.cliente_nombre,
+        telefono: base.cliente_telefono,
+        telefono_e164: base.cliente_telefono,
+        email: base.cliente_email,
+        activo: true,
+        saldo_cc: 0,
+      });
+    }
+    return {
+      ...base,
+      cliente_id: clienteId,
+      cliente_telefono_e164: base.cliente_telefono,
+      token_acceso: mockToken(base.id),
+      token_expira_en: `${base.fecha_turno}T${base.hora}:00-03:00`,
+    };
+  });
+
   const turnoEventos: Store["turnoEventos"] = turnos.flatMap((turno) => {
     const eventos: Store["turnoEventos"] = [
       {
@@ -830,7 +871,7 @@ export function seed(): Store {
     ],
     empleados: [empAnita, empCamila, empEliana, empCarolina],
     profesionalesAgenda,
-    clientes: [cliMaria, cliLucia, cliSofia, cliConsumidor],
+    clientes: clientesCatalogo,
     proveedores: [provVlinda, provKeraplus, provDistrilook],
     servicios: [
       servCorteMujer,

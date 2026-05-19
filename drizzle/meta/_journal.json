@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779195252822,
+      "tag": "0000_turnos_whatsapp",
+      "breakpoints": true
+    }
+  ]
+}

@@ -25,6 +25,7 @@ const NAV: NavDef[] = [
   { href: "/egresos", label: "Egresos", iconKey: "Receipt", visible: (s) => s.rol !== "empleado" },
   { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", visible: (s) => s.puedeVerCatalogos },
   { href: "/reportes", label: "Reportes", iconKey: "BarChart3", visible: (s) => s.puedeVerReportes },
+  { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", visible: (s) => s.rol !== "empleado" },
 ];
 
 export default async function AppLayout({

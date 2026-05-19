@@ -1,5 +1,6 @@
 import "../../../envConfig";
 import { seed as buildMockSeed } from "../mock/seed";
+import { tryNormalizarTelefonoAR } from "../phone";
 import { getSqlClient, getDb } from "./client/postgres";
 import { createSupabaseAdminClient } from "./client/supabase-admin";
 import {
@@ -173,16 +174,22 @@ async function main() {
     })),
   );
 
-  await db.insert(clientes).values(
-    snapshot.clientes.map((item) => ({
+  const clientesPorE164 = new Map<string, string>();
+  const clientesRows = snapshot.clientes.map((item) => {
+    const e164 = item.telefono ? tryNormalizarTelefonoAR(item.telefono) : null;
+    if (e164) clientesPorE164.set(e164, item.id);
+    return {
       id: item.id,
       nombre: item.nombre,
       telefono: item.telefono ?? null,
+      telefonoE164: e164,
+      email: null as string | null,
       observacion: item.observacion ?? null,
       activo: item.activo,
       saldoCc: item.saldo_cc,
-    })),
-  );
+    };
+  });
+  await db.insert(clientes).values(clientesRows);
 
   await db.insert(proveedores).values(
     snapshot.proveedores.map((item) => ({
@@ -382,15 +389,34 @@ async function main() {
     );
   }
 
-  await db.insert(turnos).values(
-    snapshot.turnos.map((item) => ({
+  const clientesAdHoc: Array<typeof clientesRows[number]> = [];
+  const turnosRows = snapshot.turnos.map((item) => {
+    const e164 = tryNormalizarTelefonoAR(item.cliente_telefono);
+    let clienteId = e164 ? clientesPorE164.get(e164) : undefined;
+    if (!clienteId) {
+      clienteId = `turno-cliente-${item.id}`;
+      clientesAdHoc.push({
+        id: clienteId,
+        nombre: item.cliente_nombre,
+        telefono: item.cliente_telefono ?? null,
+        telefonoE164: e164,
+        email: item.cliente_email ?? null,
+        observacion: null,
+        activo: true,
+        saldoCc: 0,
+      });
+      if (e164) clientesPorE164.set(e164, clienteId);
+    }
+
+    const tokenAcceso = `seed-token-${item.id}`;
+    const tokenExpiraEn = new Date(`${item.fecha_turno}T${item.hora}:00-03:00`);
+
+    return {
       id: item.id,
       sucursalId: item.sucursal_id,
       servicioId: item.servicio_id,
       profesionalId: item.profesional_id,
-      clienteNombre: item.cliente_nombre,
-      clienteTelefono: item.cliente_telefono,
-      clienteEmail: item.cliente_email ?? null,
+      clienteId,
       fechaTurno: item.fecha_turno,
       hora: item.hora,
       duracionMin: item.duracion_min,
@@ -407,8 +433,15 @@ async function main() {
         : null,
       origen: item.origen,
       sinPreferencia: item.sin_preferencia,
-    })),
-  );
+      tokenAcceso,
+      tokenExpiraEn,
+    };
+  });
+
+  if (clientesAdHoc.length > 0) {
+    await db.insert(clientes).values(clientesAdHoc);
+  }
+  await db.insert(turnos).values(turnosRows);
 
   await db.insert(turnoEventos).values(
     snapshot.turnoEventos.map((item) => ({
