@@ -7,6 +7,7 @@ import { requireSupabaseRuntime } from "@/lib/db/env";
 import { clientes as clientesTable } from "@/lib/db/schema";
 import type { Cliente } from "@/lib/types";
 import { clienteSchema } from "@/lib/validations/cliente";
+import { tryNormalizarTelefonoAR } from "@/lib/phone";
 import {
   fieldErrors,
   normPhone,
@@ -19,6 +20,8 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
     id: row.id,
     nombre: row.nombre,
     telefono: row.telefono ?? undefined,
+    telefono_e164: row.telefonoE164 ?? undefined,
+    email: row.email ?? undefined,
     observacion: row.observacion ?? undefined,
     activo: row.activo,
     saldo_cc: row.saldoCc,
@@ -80,6 +83,7 @@ function parse(formData: FormData) {
   return clienteSchema.safeParse({
     nombre: formData.get("nombre"),
     telefono: formData.get("telefono"),
+    email: formData.get("email"),
     observacion: formData.get("observacion"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
   });
@@ -94,10 +98,13 @@ export async function createCliente(formData: FormData): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
   const db = getDb();
+  const telefono = normPhone(parsed.data.telefono) ?? null;
   await db.insert(clientesTable).values({
     id: crypto.randomUUID(),
     nombre: parsed.data.nombre,
-    telefono: normPhone(parsed.data.telefono) ?? null,
+    telefono,
+    telefonoE164: telefono ? tryNormalizarTelefonoAR(telefono) : null,
+    email: parsed.data.email ?? null,
     observacion: parsed.data.observacion ?? null,
     activo: parsed.data.activo,
     saldoCc: 0,
@@ -132,11 +139,14 @@ export async function createClienteQuick(input: {
 
   const id = crypto.randomUUID();
   const telefono = normPhone(parsed.data.telefono) ?? null;
+  const telefonoE164 = telefono ? tryNormalizarTelefonoAR(telefono) : null;
   const db = getDb();
   await db.insert(clientesTable).values({
     id,
     nombre: parsed.data.nombre,
     telefono,
+    telefonoE164,
+    email: null,
     observacion: parsed.data.observacion ?? null,
     activo: parsed.data.activo,
     saldoCc: 0,
@@ -152,6 +162,8 @@ export async function createClienteQuick(input: {
       id,
       nombre: parsed.data.nombre,
       telefono: telefono ?? undefined,
+      telefono_e164: telefonoE164 ?? undefined,
+      email: undefined,
       observacion: parsed.data.observacion ?? undefined,
       activo: true,
       saldo_cc: 0,
@@ -174,11 +186,14 @@ export async function updateCliente(
   const existing = await getCliente(clienteId);
   if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
 
+  const telefono = normPhone(parsed.data.telefono) ?? null;
   await db
     .update(clientesTable)
     .set({
       nombre: parsed.data.nombre,
-      telefono: normPhone(parsed.data.telefono) ?? null,
+      telefono,
+      telefonoE164: telefono ? tryNormalizarTelefonoAR(telefono) : null,
+      email: parsed.data.email ?? null,
       observacion: parsed.data.observacion ?? null,
       activo: parsed.data.activo,
     })

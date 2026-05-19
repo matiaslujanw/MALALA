@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tryNormalizarTelefonoAR } from "@/lib/phone";
 
 export const turnoCreateSchema = z.object({
   sucursal_id: z.string().min(1, "Sucursal requerida"),
@@ -7,7 +8,12 @@ export const turnoCreateSchema = z.object({
   fecha_turno: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha invalida"),
   hora: z.string().regex(/^\d{2}:\d{2}$/, "Hora invalida"),
   cliente_nombre: z.string().min(3, "Nombre requerido"),
-  cliente_telefono: z.string().min(8, "Telefono requerido"),
+  cliente_telefono: z
+    .string()
+    .min(8, "Teléfono requerido")
+    .refine((value) => tryNormalizarTelefonoAR(value) !== null, {
+      message: "Teléfono argentino inválido",
+    }),
   cliente_email: z
     .string()
     .trim()
