@@ -16,7 +16,7 @@ Cada vez que cerramos un punto, lo movemos a "Implementado" y dejamos las notas 
 | 1 | Caja y movimientos financieros | Parcial (caja diaria ✓, **bancos ✓**, conciliación ✗) |
 | 2 | Facturación AFIP/ARCA | ✗ Pendiente |
 | 3 | Stock e insumos | ✓ Base (capacidad operativa según stock ✗) |
-| 4 | Servicios de peluquería y estética | ✓ Base (rentabilidad por servicio ✗) |
+| 4 | Servicios de peluquería y estética | ✓ Base + rentabilidad por servicio |
 | 5 | Sistema de turnos | ✓ Base (inteligencia de disponibilidad ✗) |
 | 6 | Base de clientes y CRM | ~ Base (CRM comercial ✗) |
 | 7 | Cuentas corrientes | ~ Parcial (saldo, falta cuotas/vencimientos) |
@@ -156,7 +156,8 @@ Lista íntegra del wishlist. Lo que ya está cubierto está marcado al lado.
 
 ### 4. Servicios de peluquería y estética
 - Base completa de servicios con categorías, duración, precio, comisión — ✓.
-- Receta técnica + costos asociados + rentabilidad por servicio — ✗ pendiente (rentabilidad).
+- Receta técnica + costos asociados — ✓.
+- **Rentabilidad por servicio** — ✓ (en `/reportes/servicios`).
 - Rubros: peluquería, manos y pies, cejas y pestañas, faciales, masajes, productos, joyas, extras.
 
 ### 5. Sistema de turnos (estilo Calendico)
@@ -195,10 +196,14 @@ Lista íntegra del wishlist. Lo que ya está cubierto está marcado al lado.
 ### 11. Tareas internas (tipo Trello) — ✗ pendiente
 - Asignación, prioridades, fechas límite, estados (pendiente / en proceso / terminado).
 
-### 12. Informes y control financiero
-- Reportes diarios/semanales/mensuales/anuales en tiempo real.
-- Operativos: ventas, ingresos, egresos, rentabilidad, top servicios, rendimiento por empleada, stock valorizado, CC, flujo de caja.
-- Hoy hay auditoría en `/reportes`. Faltan los reportes financieros propiamente dichos.
+### 12. Informes y control financiero — ✓ implementado
+- **Reportes operativos** — ✓
+  - `/reportes` con KPIs, `/reportes/ventas`, `/reportes/servicios`, `/reportes/empleadas`, `/reportes/flujo-caja`, `/reportes/auditoria`.
+- Filtros por período (default últimos 30 días) + sucursal + empleada.
+- **Falta**:
+  - Stock valorizado (suma del stock por costo unitario).
+  - Cuentas corrientes detalladas (ver punto 7).
+  - Reportes diarios/semanales/mensuales/anuales con presets de rango (hoy son rangos custom).
 
 ### 13. Estado de situación patrimonial — ✗ pendiente
 - Activos (caja, bancos, CC, stock, bienes de uso), pasivos (deudas, préstamos), patrimonio neto.
@@ -232,10 +237,10 @@ Lista íntegra del wishlist. Lo que ya está cubierto está marcado al lado.
 ## Orden de ataque sugerido (queda como referencia)
 
 1. ~~Bancos + métodos de pago enriquecidos~~ ✓
-2. Reportes operativos + rentabilidad por servicio (**próximo**).
-3. CRM + inteligencia de turnos.
-4. Facturación AFIP/ARCA (cuando confirmen el sistema de origen).
-5. Cuentas corrientes completas (cuotas/vencimientos/mora).
+2. ~~Reportes operativos + rentabilidad por servicio~~ ✓
+3. CRM + inteligencia de turnos (**próximo sugerido**).
+4. Cuentas corrientes completas (cuotas/vencimientos/mora).
+5. Facturación AFIP/ARCA (cuando confirmen el sistema de origen).
 6. Estados contables + impuestos + bienes de uso.
 7. Conciliación bancaria + Payway + acreditaciones pendientes.
 8. Autoconsumos.
