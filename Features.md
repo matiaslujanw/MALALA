@@ -24,7 +24,7 @@ Cada vez que cerramos un punto, lo movemos a "Implementado" y dejamos las notas 
 | 9 | Autoconsumos | ✗ Pendiente |
 | 10 | Influencers y Meta Ads | ✗ Pendiente |
 | 11 | Tareas internas (tipo Trello) | ✗ Pendiente |
-| 12 | Informes y control financiero | ~ Parcial (auditoría sí, reportes financieros ✗) |
+| 12 | Informes y control financiero | ✓ Reportes operativos + auditoría |
 | 13 | Estado de situación patrimonial | ✗ Pendiente |
 | 14 | Estado de resultados | ✗ Pendiente |
 | 15 | Estado de flujo de efectivo | ✗ Pendiente |
@@ -38,6 +38,30 @@ Leyenda: ✓ hecho · ~ parcial · ✗ falta
 ---
 
 ## Implementado
+
+### Punto 12 — Reportes operativos + rentabilidad por servicio
+
+**Qué se hizo**
+- `/reportes` rediseñado como hub con KPIs principales (tickets, facturado, ticket promedio, comisiones, costo insumos, neto operativo, egresos del período, neto del período) y cards a cada sub-reporte.
+- `/reportes/ventas`: listado detallado del período con filtros (desde, hasta, sucursal, empleada). Por venta muestra cliente, servicios prestados, empleadas que las hicieron, total, comisión, costo de insumos y neto. Totales al pie de tabla.
+- `/reportes/servicios`: rentabilidad por servicio. Para cada uno calcula cantidad vendida, facturado, precio promedio, comisiones generadas, costo de insumos consumidos, neto y margen %. Marca explícitamente los servicios con margen negativo (alerta arriba).
+- `/reportes/empleadas`: rendimiento por empleada con servicios hechos, facturación generada, comisiones, sueldo asegurado, "a pagar" (máx entre comisión y asegurado) con etiqueta "se autofinancia" o "empresa cubre diferencia", y neto que le queda al negocio.
+- `/reportes/flujo-caja`: ingresos por método de pago + egresos por rubro + neto del período + egresos pendientes. Con porcentajes sobre el total para ver composición.
+- `/reportes/auditoria`: línea de tiempo de eventos (la que estaba en `/reportes`, movida acá sin cambios).
+- Helper compartido `_filters.ts` parsea desde/hasta/sucursal/empleada limitando al scope. Formulario reutilizable `_filter-form.tsx`.
+- Todo respeta el aislamiento por sucursal: cada admin ve solo lo suyo. Filtro de sucursal aparece solo si el usuario tiene acceso a más de una.
+
+**Cómo funciona**
+- Default: últimos 30 días.
+- Period filters se preservan al navegar entre sub-reportes mediante querystring.
+- Los KPIs y los cuadros se calculan en el server con las helpers ya existentes (`aggregate`, `IngresoBreakdown` de `ingresos-helpers.ts`).
+
+**Notas técnicas**
+- Cada sub-página es una ruta dedicada con `force-dynamic`.
+- Reutiliza `listIngresos`, `listEgresos`, `listSucursales`, `listEmpleados`, `listMediosPago` (ya scope-aware).
+- Para servicios sin receta cargada el costo de insumos figura 0 (con disclaimer al pie de la tabla).
+
+---
 
 ### Punto 19 (refuerzo) — Aislamiento por sucursal en bancos y medios de pago
 
