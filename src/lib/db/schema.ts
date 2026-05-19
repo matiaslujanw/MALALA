@@ -21,7 +21,7 @@ export const authUsers = auth.table("users", {
   id: uuid("id").primaryKey(),
 });
 
-export const rolEnum = pgEnum("rol", ["admin", "encargada", "empleado"]);
+export const rolEnum = pgEnum("rol", ["superadmin", "admin", "encargada", "empleado"]);
 export const tipoComisionEnum = pgEnum("tipo_comision", [
   "porcentaje",
   "mixto",
@@ -59,6 +59,14 @@ export const liquidacionEstadoEnum = pgEnum("liquidacion_estado", [
   "pendiente",
   "pagada",
   "anulada",
+]);
+export const tipoCuentaEnum = pgEnum("tipo_cuenta", ["banco", "efectivo"]);
+export const tipoMovBancarioEnum = pgEnum("tipo_mov_bancario", [
+  "ingreso",
+  "egreso",
+  "transferencia_entrada",
+  "transferencia_salida",
+  "ajuste",
 ]);
 
 export const sucursales = pgTable("sucursales", {
@@ -188,12 +196,54 @@ export const recetas = pgTable("recetas", {
   cantidad: doublePrecision("cantidad").notNull(),
 });
 
+export const cuentasBancarias = pgTable("cuentas_bancarias", {
+  id: text("id").primaryKey(),
+  sucursalId: text("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id),
+  nombre: text("nombre").notNull(),
+  tipo: tipoCuentaEnum("tipo").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  observacion: text("observacion"),
+});
+
 export const mediosPago = pgTable("medios_pago", {
   id: text("id").primaryKey(),
+  sucursalId: text("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id),
   codigo: text("codigo").notNull(),
   nombre: text("nombre").notNull(),
   activo: boolean("activo").notNull().default(true),
+  cuentaId: text("cuenta_id").references(() => cuentasBancarias.id),
 });
+
+export const movimientosBancarios = pgTable(
+  "movimientos_bancarios",
+  {
+    id: text("id").primaryKey(),
+    cuentaId: text("cuenta_id")
+      .notNull()
+      .references(() => cuentasBancarias.id),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull(),
+    tipo: tipoMovBancarioEnum("tipo").notNull(),
+    monto: doublePrecision("monto").notNull(),
+    sucursalId: text("sucursal_id").references(() => sucursales.id),
+    refTipo: text("ref_tipo"),
+    refId: text("ref_id"),
+    descripcion: text("descripcion"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+  },
+  (table) => ({
+    cuentaFechaIdx: index("mov_bancarios_cuenta_fecha_idx").on(
+      table.cuentaId,
+      table.fecha,
+    ),
+    refIdx: index("mov_bancarios_ref_idx").on(table.refTipo, table.refId),
+  }),
+);
 
 export const rubrosGasto = pgTable("rubros_gasto", {
   id: text("id").primaryKey(),
@@ -445,6 +495,8 @@ export const schema = {
   insumos,
   recetas,
   mediosPago,
+  cuentasBancarias,
+  movimientosBancarios,
   rubrosGasto,
   stockSucursal,
   movimientosStock,

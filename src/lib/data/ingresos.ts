@@ -25,6 +25,10 @@ import {
 import { ingresoSchema } from "@/lib/validations/ingreso";
 import { fieldErrors, requireRole } from "./_helpers";
 import { applyMovementTx } from "./stock";
+import {
+  emitMovimientoBancarioTx,
+  getCuentaIdForMpTx,
+} from "./movimientos-bancarios-helpers";
 import type {
   Cliente,
   Empleado,
@@ -97,9 +101,11 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
 function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     codigo: row.codigo,
     nombre: row.nombre,
     activo: row.activo,
+    cuenta_id: row.cuentaId ?? undefined,
   };
 }
 
@@ -574,6 +580,34 @@ export async function createIngreso(
           );
         }
       }
+
+      // Movimientos bancarios: una entrada por cada medio de pago usado
+      const cobros: Array<{ mpId: string; monto: number }> = [
+        { mpId: data.mp1_id, monto: data.valor1 },
+      ];
+      if (data.mp2_id && data.valor2) {
+        cobros.push({ mpId: data.mp2_id, monto: data.valor2 });
+      }
+      for (const cobro of cobros) {
+        const cuentaId = await getCuentaIdForMpTx(tx, cobro.mpId);
+        if (!cuentaId) {
+          warnings.push(
+            "Medio de pago sin cuenta asignada: el cobro no impacta en bancos hasta asignarla.",
+          );
+          continue;
+        }
+        await emitMovimientoBancarioTx(tx, {
+          cuentaId,
+          fecha,
+          monto: cobro.monto,
+          tipo: "ingreso",
+          sucursalId: data.sucursal_id,
+          refTipo: "ingreso",
+          refId: ingresoId,
+          descripcion: "Cobro de venta",
+          usuarioId: user.id,
+        });
+      }
     });
   } catch (error) {
     return {
@@ -588,5 +622,6 @@ export async function createIngreso(
   revalidatePath("/stock");
   revalidatePath("/dashboard");
   revalidatePath("/caja");
+  revalidatePath("/bancos");
   return { ok: true, ingresoId, warnings: warnings.length ? warnings : undefined };
 }

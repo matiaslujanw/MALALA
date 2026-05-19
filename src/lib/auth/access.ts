@@ -1,5 +1,9 @@
 import { getCurrentUser } from "./session";
-import type { AccessScope, Usuario } from "@/lib/types";
+import type { AccessScope, Rol, Usuario } from "@/lib/types";
+
+export function esAdmin(rol: Rol): boolean {
+  return rol === "admin" || rol === "superadmin";
+}
 
 export function buildAccessScope(user: Usuario): AccessScope {
   const sucursalIdsPermitidas =
@@ -7,17 +11,21 @@ export function buildAccessScope(user: Usuario): AccessScope {
       ? user.sucursal_ids_permitidas
       : [user.sucursal_default_id];
 
+  const admin = esAdmin(user.rol);
+  const adminOEncargada = admin || user.rol === "encargada";
+
   return {
     rol: user.rol,
     sucursalIdsPermitidas,
     empleadoId: user.empleado_id,
-    puedeVerGlobal: user.rol === "admin",
-    puedeAdministrarTurnos: user.rol === "admin" || user.rol === "encargada",
-    puedeVerStock: user.rol === "admin" || user.rol === "encargada",
-    puedeGestionarStock: user.rol === "admin" || user.rol === "encargada",
-    puedeVerReportes: user.rol === "admin" || user.rol === "encargada",
-    puedeVerCaja: user.rol === "admin" || user.rol === "encargada",
-    puedeVerCatalogos: user.rol === "admin" || user.rol === "encargada",
+    esAdmin: admin,
+    puedeVerGlobal: user.rol === "superadmin",
+    puedeAdministrarTurnos: adminOEncargada,
+    puedeVerStock: adminOEncargada,
+    puedeGestionarStock: adminOEncargada,
+    puedeVerReportes: adminOEncargada,
+    puedeVerCaja: adminOEncargada,
+    puedeVerCatalogos: adminOEncargada,
   };
 }
 

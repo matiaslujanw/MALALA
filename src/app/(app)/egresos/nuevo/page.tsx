@@ -30,9 +30,9 @@ export default async function NuevoEgresoPage() {
     listRubrosGasto(),
     listInsumos(),
     listProveedores(),
-    listMediosPago(),
+    listMediosPago({ soloActivos: true }),
   ]);
-  const mediosActivos = mediosPago.filter((m) => m.activo);
+  const mediosActivos = mediosPago;
 
   return (
     <div className="space-y-8 max-w-3xl">

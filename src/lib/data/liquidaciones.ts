@@ -385,9 +385,11 @@ function mapSucursalRow(row: typeof sucursalesTable.$inferSelect): Sucursal {
 function mapMpRow(row: typeof mediosPagoTable.$inferSelect): MedioPago {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     codigo: row.codigo,
     nombre: row.nombre,
     activo: row.activo,
+    cuenta_id: row.cuentaId ?? undefined,
   };
 }
 

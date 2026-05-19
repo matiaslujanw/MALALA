@@ -5,7 +5,7 @@
 
 export type ID = string;
 
-export type Rol = "admin" | "encargada" | "empleado";
+export type Rol = "superadmin" | "admin" | "encargada" | "empleado";
 export type TipoComision = "porcentaje" | "mixto" | "sueldo_fijo";
 export type UnidadMedida = "ud" | "ml" | "g" | "aplicacion";
 export type TurnoEstado =
@@ -171,9 +171,41 @@ export interface Receta {
 
 export interface MedioPago {
   id: ID;
+  sucursal_id: ID;
   codigo: string;
   nombre: string;
   activo: boolean;
+  cuenta_id?: ID;
+}
+
+export type TipoCuenta = "banco" | "efectivo";
+export type TipoMovBancario =
+  | "ingreso"
+  | "egreso"
+  | "transferencia_entrada"
+  | "transferencia_salida"
+  | "ajuste";
+
+export interface CuentaBancaria {
+  id: ID;
+  sucursal_id: ID;
+  nombre: string;
+  tipo: TipoCuenta;
+  activo: boolean;
+  observacion?: string;
+}
+
+export interface MovimientoBancario {
+  id: ID;
+  cuenta_id: ID;
+  fecha: string; // ISO
+  tipo: TipoMovBancario;
+  monto: number;
+  sucursal_id?: ID;
+  ref_tipo?: string;
+  ref_id?: ID;
+  descripcion?: string;
+  usuario_id: ID;
 }
 
 export interface RubroGasto {
@@ -309,6 +341,7 @@ export interface AccessScope {
   rol: Rol;
   sucursalIdsPermitidas: ID[];
   empleadoId?: ID;
+  esAdmin: boolean;
   puedeVerGlobal: boolean;
   puedeAdministrarTurnos: boolean;
   puedeVerStock: boolean;

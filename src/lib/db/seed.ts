@@ -260,6 +260,7 @@ async function main() {
   await db.insert(mediosPago).values(
     snapshot.mediosPago.map((item) => ({
       id: item.id,
+      sucursalId: item.sucursal_id,
       codigo: item.codigo,
       nombre: item.nombre,
       activo: item.activo,

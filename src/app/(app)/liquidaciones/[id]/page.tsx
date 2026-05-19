@@ -38,7 +38,10 @@ export default async function LiquidacionDetallePage({
     desde: liquidacion.periodo_desde,
     hasta: liquidacion.periodo_hasta,
   });
-  const mediosPagoActivos = (await listMediosPago()).filter((m) => m.activo);
+  const mediosPagoActivos = await listMediosPago({
+    sucursalId: liquidacion.sucursal_id,
+    soloActivos: true,
+  });
 
   const diferencia = efectivo.neto_ef - liquidacion.total_comision;
 

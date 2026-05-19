@@ -115,7 +115,7 @@ export async function getResumenDelDia(
   const desde = isoStartOfDay(fecha);
   const hasta = isoEndOfDay(fecha);
 
-  const mediosPago = await listMediosPago();
+  const mediosPago = await listMediosPago({ sucursalId });
   const ingresosDelDia = await listIngresos({
     sucursalId,
     desde,

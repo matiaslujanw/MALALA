@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { CalendarClock, TrendingUp } from "lucide-react";
+import { CalendarClock, Landmark, TrendingUp } from "lucide-react";
 import { DashboardVisuals } from "@/components/dashboard/dashboard-visuals";
 import { getAnalyticsSnapshot } from "@/lib/data/analytics";
 import { listEmpleados } from "@/lib/data/empleados";
 import { listSucursales } from "@/lib/data/sucursales";
+import { listSaldos } from "@/lib/data/cuentas-bancarias";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS, formatLongDate } from "@/lib/utils";
 
 interface SearchParams {
@@ -21,7 +23,8 @@ export default async function DashboardPage({
   searchParams: Promise<SearchParams>;
 }) {
   const [user, sp] = await Promise.all([requireUser(), searchParams]);
-  const [analytics, sucursales, empleados] = await Promise.all([
+  const scope = buildAccessScope(user);
+  const [analytics, sucursales, empleados, saldos] = await Promise.all([
     getAnalyticsSnapshot({
       desde: sp.desde,
       hasta: sp.hasta,
@@ -30,9 +33,11 @@ export default async function DashboardPage({
     }),
     listSucursales({ soloActivas: true }),
     listEmpleados(),
+    scope.puedeVerCaja ? listSaldos() : Promise.resolve([]),
   ]);
 
   const isEmployee = analytics.scope.rol === "empleado";
+  const totalSaldos = saldos.reduce((acc, s) => acc + s.saldo, 0);
 
   return (
     <div className="space-y-8">
@@ -169,6 +174,14 @@ export default async function DashboardPage({
         />
       </section>
 
+      {scope.puedeVerCaja && saldos.length > 0 && (
+        <SaldosCard
+          saldos={saldos}
+          sucursales={sucursales}
+          total={totalSaldos}
+        />
+      )}
+
       <DashboardVisuals analytics={analytics} isEmployee={isEmployee} />
 
       <div className="rounded-[1.75rem] border border-border bg-card p-5 shadow-[0_14px_40px_rgba(44,53,37,0.04)]">
@@ -214,6 +227,81 @@ function MetricCard({
         {Icon ? <Icon className="h-5 w-5 text-sage-700" /> : null}
       </div>
     </div>
+  );
+}
+
+function SaldosCard({
+  saldos,
+  sucursales,
+  total,
+}: {
+  saldos: Array<{ cuenta: { id: string; sucursal_id: string; nombre: string; tipo: string }; saldo: number }>;
+  sucursales: Array<{ id: string; nombre: string }>;
+  total: number;
+}) {
+  const sucursalNombreById = new Map(sucursales.map((s) => [s.id, s.nombre]));
+  const grupos = new Map<string, { total: number; items: typeof saldos }>();
+  for (const s of saldos) {
+    const entry = grupos.get(s.cuenta.sucursal_id) ?? { total: 0, items: [] };
+    entry.total += s.saldo;
+    entry.items.push(s);
+    grupos.set(s.cuenta.sucursal_id, entry);
+  }
+  const multipleSucursales = grupos.size > 1;
+  return (
+    <section className="rounded-[1.75rem] border border-border bg-card p-5 shadow-[0_14px_40px_rgba(44,53,37,0.04)]">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Landmark className="h-4 w-4 text-sage-700" />
+          <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+            Saldos en cuentas
+          </p>
+        </div>
+        <Link
+          href="/bancos"
+          className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+        >
+          Ver detalle →
+        </Link>
+      </div>
+      <p className="mt-2 font-display text-3xl tabular-nums">
+        {formatARS(total)}
+      </p>
+      <div className="mt-5 space-y-4">
+        {Array.from(grupos.entries()).map(([sucId, entry]) => (
+          <div key={sucId}>
+            {multipleSucursales && (
+              <div className="flex items-baseline justify-between mb-1.5">
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {sucursalNombreById.get(sucId) ?? sucId}
+                </p>
+                <p className="text-xs tabular-nums font-medium">
+                  {formatARS(entry.total)}
+                </p>
+              </div>
+            )}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {entry.items.map((s) => (
+                <div
+                  key={s.cuenta.id}
+                  className="flex items-baseline justify-between rounded-xl border border-border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{s.cuenta.nombre}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {s.cuenta.tipo}
+                    </p>
+                  </div>
+                  <p className="text-sm tabular-nums font-medium">
+                    {formatARS(s.saldo)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

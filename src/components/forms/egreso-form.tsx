@@ -41,6 +41,14 @@ export function EgresoForm({
   const [rubroId, setRubroId] = useState("");
   const [insumoId, setInsumoId] = useState("");
   const [pagado, setPagado] = useState(true);
+  const [sucursalId, setSucursalId] = useState(defaultSucursalId);
+  const mediosVisibles = useMemo(
+    () =>
+      mediosPago.filter(
+        (m) => m.sucursal_id === sucursalId && m.activo,
+      ),
+    [mediosPago, sucursalId],
+  );
 
   const rubroSel = useMemo(
     () => rubros.find((r) => r.id === rubroId) ?? null,
@@ -78,7 +86,8 @@ export function EgresoForm({
         <SelectField
           label="Sucursal"
           name="sucursal_id"
-          defaultValue={defaultSucursalId}
+          value={sucursalId}
+          onChange={(e) => setSucursalId(e.currentTarget.value)}
           error={errors.sucursal_id}
           options={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
           required
@@ -160,11 +169,15 @@ export function EgresoForm({
           label="Medio de pago"
           name="mp_id"
           error={errors.mp_id}
-          options={mediosPago.map((m) => ({
+          options={mediosVisibles.map((m) => ({
             value: m.id,
             label: m.nombre,
           }))}
-          placeholder="Seleccioná medio"
+          placeholder={
+            mediosVisibles.length === 0
+              ? "Cargá un medio en esta sucursal"
+              : "Seleccioná medio"
+          }
           required
         />
       </div>
