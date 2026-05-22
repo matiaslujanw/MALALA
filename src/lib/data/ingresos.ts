@@ -77,7 +77,8 @@ function mapIngresoLinea(row: typeof ingresoLineasTable.$inferSelect): IngresoLi
   return {
     id: row.id,
     ingreso_id: row.ingresoId,
-    servicio_id: row.servicioId,
+    servicio_id: row.servicioId ?? undefined,
+    insumo_id: row.insumoId ?? undefined,
     empleado_id: row.empleadoId ?? undefined,
     precio_efectivo: row.precioEfectivo,
     cantidad: row.cantidad,
@@ -149,6 +150,8 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     rinde: row.rinde ?? undefined,
     umbral_stock_bajo: row.umbralStockBajo,
     activo: row.activo,
+    vendible: row.vendible,
+    precio_venta: row.precioVenta ?? undefined,
   };
 }
 
@@ -177,8 +180,11 @@ async function loadIngresoCatalogs(args: {
     ),
   ) as string[];
   const servicioIds = Array.from(
-    new Set(args.lineas.map((item) => item.servicio_id)),
-  );
+    new Set(args.lineas.map((item) => item.servicio_id).filter(Boolean)),
+  ) as string[];
+  const insumoIdsDirectos = Array.from(
+    new Set(args.lineas.map((item) => item.insumo_id).filter(Boolean)),
+  ) as string[];
   const empleadoIds = Array.from(
     new Set(args.lineas.map((item) => item.empleado_id).filter(Boolean)),
   ) as string[];
@@ -219,7 +225,10 @@ async function loadIngresoCatalogs(args: {
 
   const recetaRowsMapped = recetasRows.map(mapReceta);
   const insumoIds = Array.from(
-    new Set(recetaRowsMapped.map((item) => item.insumo_id)),
+    new Set([
+      ...recetaRowsMapped.map((item) => item.insumo_id),
+      ...insumoIdsDirectos,
+    ]),
   );
   const insumosRows =
     insumoIds.length > 0
@@ -231,9 +240,10 @@ async function loadIngresoCatalogs(args: {
 
   const servicios = serviciosRows.map(mapServicio);
   const empleados = empleadosRows.map(mapEmpleado);
+  const insumos = insumosRows.map(mapInsumo);
   const costoInsumosByServicio = buildCostoInsumosByServicio(
     recetaRowsMapped,
-    insumosRows.map(mapInsumo),
+    insumos,
   );
 
   return {
@@ -242,6 +252,7 @@ async function loadIngresoCatalogs(args: {
       mediosPagoRows.map((item) => [item.id, mapMedioPago(item)]),
     ),
     serviciosById: new Map(servicios.map((item) => [item.id, item])),
+    insumosById: new Map(insumos.map((item) => [item.id, item])),
     empleadosById: new Map(empleados.map((item) => [item.id, item])),
     costoInsumosByServicio,
   };
@@ -253,6 +264,7 @@ function buildIngresosConDetalle(args: {
   clientesById: Map<string, Cliente>;
   mediosPagoById: Map<string, MedioPago>;
   serviciosById: Map<string, Servicio>;
+  insumosById: Map<string, Insumo>;
   empleadosById: Map<string, Empleado>;
   costoInsumosByServicio: Map<string, number>;
 }) {
@@ -266,6 +278,7 @@ function buildIngresosConDetalle(args: {
   return args.ingresos.map((ingreso): IngresoConDetalle => {
     const lineas = detallarLineas(lineasByIngreso.get(ingreso.id) ?? [], {
       serviciosById: args.serviciosById,
+      insumosById: args.insumosById,
       empleadosById: args.empleadosById,
       costoInsumosByServicio: args.costoInsumosByServicio,
     });
@@ -452,7 +465,11 @@ export async function createIngreso(
   }
 
   const data = parsed.data;
-  const subtotal = data.lineas.reduce((acc, linea) => acc + linea.precio_efectivo, 0);
+  const subtotalLinea = (linea: (typeof data.lineas)[number]) =>
+    linea.tipo === "producto"
+      ? linea.precio_efectivo * linea.cantidad
+      : linea.precio_efectivo;
+  const subtotal = data.lineas.reduce((acc, linea) => acc + subtotalLinea(linea), 0);
   const descuentoMonto =
     data.descuento_tipo === "pct"
       ? subtotal * (data.descuento_valor / 100)
@@ -507,22 +524,70 @@ export async function createIngreso(
         anulado: false,
       });
 
+      const lineasServicio = data.lineas.filter(
+        (l): l is Extract<typeof l, { tipo: "servicio" }> => l.tipo === "servicio",
+      );
+      const lineasProducto = data.lineas.filter(
+        (l): l is Extract<typeof l, { tipo: "producto" }> => l.tipo === "producto",
+      );
+
+      // Validar que los insumos vendidos sigan siendo vendibles y activos
+      const insumoIdsVendidos = Array.from(
+        new Set(lineasProducto.map((l) => l.insumo_id)),
+      );
+      const insumosVendidosRows =
+        insumoIdsVendidos.length > 0
+          ? await tx
+              .select()
+              .from(insumosTable)
+              .where(inArray(insumosTable.id, insumoIdsVendidos))
+          : [];
+      const insumosVendiblesById = new Map(
+        insumosVendidosRows.map((row) => [row.id, row]),
+      );
+      for (const linea of lineasProducto) {
+        const insumo = insumosVendiblesById.get(linea.insumo_id);
+        if (!insumo || !insumo.activo || !insumo.vendible) {
+          throw new Error(
+            `El producto seleccionado no está disponible para la venta`,
+          );
+        }
+      }
+
       await tx.insert(ingresoLineasTable).values(
-        data.lineas.map((linea) => ({
-          id: createId(),
-          ingresoId,
-          servicioId: linea.servicio_id,
-          empleadoId: linea.empleado_id,
-          precioEfectivo: linea.precio_efectivo,
-          cantidad: 1,
-          subtotal: linea.precio_efectivo,
-          comisionPct: linea.comision_pct,
-          comisionMonto: linea.precio_efectivo * (linea.comision_pct / 100),
-        })),
+        data.lineas.map((linea) => {
+          if (linea.tipo === "producto") {
+            const subtotalProd = linea.precio_efectivo * linea.cantidad;
+            return {
+              id: createId(),
+              ingresoId,
+              servicioId: null,
+              insumoId: linea.insumo_id,
+              empleadoId: null,
+              precioEfectivo: linea.precio_efectivo,
+              cantidad: linea.cantidad,
+              subtotal: subtotalProd,
+              comisionPct: 0,
+              comisionMonto: 0,
+            };
+          }
+          return {
+            id: createId(),
+            ingresoId,
+            servicioId: linea.servicio_id,
+            insumoId: null,
+            empleadoId: linea.empleado_id,
+            precioEfectivo: linea.precio_efectivo,
+            cantidad: 1,
+            subtotal: linea.precio_efectivo,
+            comisionPct: linea.comision_pct,
+            comisionMonto: linea.precio_efectivo * (linea.comision_pct / 100),
+          };
+        }),
       );
 
       const servicioIds = Array.from(
-        new Set(data.lineas.map((linea) => linea.servicio_id)),
+        new Set(lineasServicio.map((linea) => linea.servicio_id)),
       );
       const recetasRows =
         servicioIds.length > 0
@@ -541,7 +606,7 @@ export async function createIngreso(
       }
 
       const deltasPorInsumo = new Map<string, number>();
-      for (const linea of data.lineas) {
+      for (const linea of lineasServicio) {
         const recetasDeServicio = recetaMap.get(linea.servicio_id) ?? [];
         for (const receta of recetasDeServicio) {
           deltasPorInsumo.set(
@@ -549,6 +614,12 @@ export async function createIngreso(
             (deltasPorInsumo.get(receta.insumoId) ?? 0) - receta.cantidad,
           );
         }
+      }
+      for (const linea of lineasProducto) {
+        deltasPorInsumo.set(
+          linea.insumo_id,
+          (deltasPorInsumo.get(linea.insumo_id) ?? 0) - linea.cantidad,
+        );
       }
 
       const insumoIds = Array.from(deltasPorInsumo.keys());

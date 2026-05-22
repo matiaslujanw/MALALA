@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { NuevaVentaForm } from "@/components/forms/nueva-venta-form";
 import { listClientes } from "@/lib/data/clientes";
 import { listEmpleados } from "@/lib/data/empleados";
+import { listInsumosVendibles } from "@/lib/data/insumos";
 import { listMediosPago } from "@/lib/data/medios-pago";
 import { listServicios } from "@/lib/data/servicios";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
@@ -13,12 +14,14 @@ export default async function NuevaVentaPage() {
   const sucursal = await getActiveSucursal();
   if (!sucursal) redirect("/dev/login");
 
-  const [clientes, servicios, empleados, mediosPago] = await Promise.all([
-    listClientes(),
-    listServicios(),
-    listEmpleados(),
-    listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
-  ]);
+  const [clientes, servicios, empleados, mediosPago, productos] =
+    await Promise.all([
+      listClientes(),
+      listServicios(),
+      listEmpleados(),
+      listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+      listInsumosVendibles(),
+    ]);
 
   const mediosActivos = mediosPago;
 
@@ -47,6 +50,7 @@ export default async function NuevaVentaPage() {
         servicios={servicios}
         empleados={empleados}
         mediosPago={mediosActivos}
+        productos={productos}
       />
     </div>
   );

@@ -380,6 +380,7 @@ export function seed(): Store {
     precio_unitario: 8,
     umbral_stock_bajo: 500,
     activo: true,
+    vendible: false,
   };
   const insTinturaCastano = {
     id: uid(),
@@ -391,6 +392,7 @@ export function seed(): Store {
     precio_unitario: 75,
     umbral_stock_bajo: 240,
     activo: true,
+    vendible: false,
   };
   const insOxidante20 = {
     id: uid(),
@@ -402,6 +404,7 @@ export function seed(): Store {
     precio_unitario: 6,
     umbral_stock_bajo: 1000,
     activo: true,
+    vendible: false,
   };
   const insEsmalteSemi = {
     id: uid(),
@@ -413,6 +416,7 @@ export function seed(): Store {
     precio_unitario: 233.33,
     umbral_stock_bajo: 60,
     activo: true,
+    vendible: false,
   };
   const insAlgodonDisco = {
     id: uid(),
@@ -424,6 +428,7 @@ export function seed(): Store {
     precio_unitario: 15,
     umbral_stock_bajo: 200,
     activo: true,
+    vendible: false,
   };
   const insAcetona = {
     id: uid(),
@@ -435,6 +440,7 @@ export function seed(): Store {
     precio_unitario: 5,
     umbral_stock_bajo: 500,
     activo: true,
+    vendible: false,
   };
   const insMascarillaFacial = {
     id: uid(),
@@ -446,6 +452,7 @@ export function seed(): Store {
     precio_unitario: 1200,
     umbral_stock_bajo: 10,
     activo: true,
+    vendible: false,
   };
 
   // Recetas

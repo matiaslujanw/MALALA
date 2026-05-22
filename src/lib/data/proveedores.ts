@@ -4,7 +4,10 @@ import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
-import { proveedores as proveedoresTable } from "@/lib/db/schema";
+import {
+  egresos as egresosTable,
+  proveedores as proveedoresTable,
+} from "@/lib/db/schema";
 import type { Proveedor } from "@/lib/types";
 import { proveedorSchema } from "@/lib/validations/proveedor";
 import {
@@ -35,6 +38,46 @@ export async function listProveedores(): Promise<Proveedor[]> {
     .from(proveedoresTable)
     .orderBy(asc(proveedoresTable.nombre));
   return rows.map(mapProveedor);
+}
+
+export interface ProveedorConTotal extends Proveedor {
+  total_comprado: number;
+  cantidad_compras: number;
+}
+
+export async function listProveedoresConTotal(): Promise<ProveedorConTotal[]> {
+  requireSupabaseRuntime(
+    "Los proveedores del sistema solo se cargan desde Supabase.",
+  );
+
+  const db = getDb();
+  const [proveedoresRows, egresosRows] = await Promise.all([
+    db.select().from(proveedoresTable).orderBy(asc(proveedoresTable.nombre)),
+    db
+      .select({
+        proveedorId: egresosTable.proveedorId,
+        valor: egresosTable.valor,
+      })
+      .from(egresosTable),
+  ]);
+
+  const totalesById = new Map<string, { total: number; cantidad: number }>();
+  for (const row of egresosRows) {
+    if (!row.proveedorId) continue;
+    const cur = totalesById.get(row.proveedorId) ?? { total: 0, cantidad: 0 };
+    cur.total += row.valor;
+    cur.cantidad += 1;
+    totalesById.set(row.proveedorId, cur);
+  }
+
+  return proveedoresRows.map((row) => {
+    const totales = totalesById.get(row.id) ?? { total: 0, cantidad: 0 };
+    return {
+      ...mapProveedor(row),
+      total_comprado: totales.total,
+      cantidad_compras: totales.cantidad,
+    };
+  });
 }
 
 export async function getProveedor(

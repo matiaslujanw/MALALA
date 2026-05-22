@@ -4,7 +4,6 @@ import { useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Field, FormButtons, GlobalError, SelectField } from "./field";
 import type {
-  Insumo,
   MedioPago,
   Proveedor,
   RubroGasto,
@@ -16,7 +15,6 @@ interface Props {
   sucursales: Sucursal[];
   defaultSucursalId: string;
   rubros: RubroGasto[];
-  insumos: Insumo[];
   proveedores: Proveedor[];
   mediosPago: MedioPago[];
   defaultFecha: string; // YYYY-MM-DD
@@ -30,7 +28,6 @@ export function EgresoForm({
   sucursales,
   defaultSucursalId,
   rubros,
-  insumos,
   proveedores,
   mediosPago,
   defaultFecha,
@@ -38,8 +35,6 @@ export function EgresoForm({
 }: Props) {
   const router = useRouter();
 
-  const [rubroId, setRubroId] = useState("");
-  const [insumoId, setInsumoId] = useState("");
   const [pagado, setPagado] = useState(true);
   const [sucursalId, setSucursalId] = useState(defaultSucursalId);
   const mediosVisibles = useMemo(
@@ -49,14 +44,6 @@ export function EgresoForm({
       ),
     [mediosPago, sucursalId],
   );
-
-  const rubroSel = useMemo(
-    () => rubros.find((r) => r.id === rubroId) ?? null,
-    [rubros, rubroId],
-  );
-  const esInsumo =
-    rubroSel?.rubro?.toLowerCase() === "insumos" ||
-    rubroSel?.rubro?.toLowerCase().includes("insumo");
 
   const [state, formAction, pending] = useActionState<
     CreateEgresoResult | null,
@@ -97,11 +84,6 @@ export function EgresoForm({
       <SelectField
         label="Rubro"
         name="rubro_id"
-        value={rubroId}
-        onChange={(e) => {
-          setRubroId(e.target.value);
-          setInsumoId("");
-        }}
         error={errors.rubro_id}
         options={rubros
           .filter((r) => r.activo)
@@ -113,39 +95,7 @@ export function EgresoForm({
         required
       />
 
-      {/* Bloque condicional: si rubro es Insumos, mostrar selector + cantidad */}
-      {esInsumo && (
-        <div className="bg-cream/40 border border-border rounded-md p-4 space-y-4">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Compra de insumo (suma stock)
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SelectField
-              label="Insumo"
-              name="insumo_id"
-              value={insumoId}
-              onChange={(e) => setInsumoId(e.target.value)}
-              error={errors.insumo_id}
-              options={insumos.map((i) => ({
-                value: i.id,
-                label: i.nombre,
-              }))}
-              placeholder="Sin vincular"
-            />
-            <Field
-              label="Cantidad recibida"
-              name="cantidad"
-              type="number"
-              step="0.01"
-              min={0}
-              error={errors.cantidad}
-              hint="Se sumará al stock de la sucursal"
-            />
-          </div>
-        </div>
-      )}
-      {/* Si no es insumo, mandar input vacío de cantidad para que no se cuele */}
-      {!esInsumo && <input type="hidden" name="insumo_id" value="" />}
+      <input type="hidden" name="insumo_id" value="" />
 
       <SelectField
         label="Proveedor (opcional)"
@@ -220,7 +170,7 @@ export function EgresoForm({
 
       <FormButtons
         cancelHref="/egresos"
-        submitLabel="Registrar egreso"
+        submitLabel="Registrar gasto"
         pending={pending}
       />
     </form>

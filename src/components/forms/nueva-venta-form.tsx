@@ -3,25 +3,37 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, X, AlertTriangle } from "lucide-react";
+import { X, AlertTriangle, Scissors, Package } from "lucide-react";
 import { createIngreso } from "@/lib/data/ingresos-actions";
 import { createClienteQuick } from "@/lib/data/clientes";
 import type {
   Cliente,
   Empleado,
+  Insumo,
   MedioPago,
   Servicio,
 } from "@/lib/types";
 import { formatARS } from "@/lib/utils";
 import { CurrencyInput } from "@/components/forms/currency-input";
 
-interface LineaForm {
+type LineaServicioForm = {
   tempId: string;
+  tipo: "servicio";
   servicio_id: string;
   empleado_id: string;
   precio: number;
   comision_pct: number;
-}
+};
+
+type LineaProductoForm = {
+  tempId: string;
+  tipo: "producto";
+  insumo_id: string;
+  cantidad: number;
+  precio: number;
+};
+
+type LineaForm = LineaServicioForm | LineaProductoForm;
 
 interface Props {
   sucursalId: string;
@@ -30,15 +42,36 @@ interface Props {
   servicios: Servicio[];
   empleados: Empleado[];
   mediosPago: MedioPago[];
+  productos: Insumo[];
 }
 
-const newLinea = (): LineaForm => ({
+const newLineaServicio = (): LineaServicioForm => ({
   tempId: crypto.randomUUID(),
+  tipo: "servicio",
   servicio_id: "",
   empleado_id: "",
   precio: 0,
   comision_pct: 30,
 });
+
+const newLineaProducto = (): LineaProductoForm => ({
+  tempId: crypto.randomUUID(),
+  tipo: "producto",
+  insumo_id: "",
+  cantidad: 1,
+  precio: 0,
+});
+
+function subtotalLinea(l: LineaForm): number {
+  const precio = Number(l.precio) || 0;
+  if (l.tipo === "producto") return precio * (Number(l.cantidad) || 0);
+  return precio;
+}
+
+function comisionLinea(l: LineaForm): number {
+  if (l.tipo === "producto") return 0;
+  return (Number(l.precio) || 0) * (Number(l.comision_pct) || 0) / 100;
+}
 
 export function NuevaVentaForm({
   sucursalId,
@@ -47,6 +80,7 @@ export function NuevaVentaForm({
   servicios,
   empleados,
   mediosPago,
+  productos,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -104,7 +138,7 @@ export function NuevaVentaForm({
   }
 
   // Líneas
-  const [lineas, setLineas] = useState<LineaForm[]>([newLinea()]);
+  const [lineas, setLineas] = useState<LineaForm[]>([newLineaServicio()]);
 
   // Descuento
   const [descTipo, setDescTipo] = useState<"pct" | "monto">("pct");
@@ -122,16 +156,13 @@ export function NuevaVentaForm({
   const [warnings, setWarnings] = useState<string[]>([]);
 
   // ----- Cálculos derivados -----
-  const subtotal = lineas.reduce((acc, l) => acc + (Number(l.precio) || 0), 0);
+  const subtotal = lineas.reduce((acc, l) => acc + subtotalLinea(l), 0);
   const descMonto =
     descTipo === "pct"
       ? subtotal * (Number(descValor) / 100)
       : Number(descValor) || 0;
   const total = Math.max(0, subtotal - descMonto);
-  const totalComisiones = lineas.reduce(
-    (acc, l) => acc + (Number(l.precio) || 0) * (Number(l.comision_pct) || 0) / 100,
-    0,
-  );
+  const totalComisiones = lineas.reduce((acc, l) => acc + comisionLinea(l), 0);
   const paraElLocal = total - totalComisiones;
   const pagado = (Number(valor1) || 0) + (Number(valor2) || 0);
   const diff = total - pagado;
@@ -141,10 +172,10 @@ export function NuevaVentaForm({
   const comisionPorEmpleado = lineas.reduce<
     Map<string, { nombre: string; total: number; lineas: number }>
   >((acc, l) => {
-    if (!l.empleado_id) return acc;
+    if (l.tipo !== "servicio" || !l.empleado_id) return acc;
     const emp = empleados.find((e) => e.id === l.empleado_id);
     if (!emp) return acc;
-    const com = (Number(l.precio) || 0) * (Number(l.comision_pct) || 0) / 100;
+    const com = comisionLinea(l);
     const cur = acc.get(emp.id) ?? { nombre: emp.nombre, total: 0, lineas: 0 };
     cur.total += com;
     cur.lineas += 1;
@@ -161,7 +192,6 @@ export function NuevaVentaForm({
       setValor1(total);
       setValor2(0);
     } else {
-      // Mantener valor2 = total - valor1 si valor1 cambió
       setValor2(Math.max(0, total - (Number(valor1) || 0)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,16 +199,20 @@ export function NuevaVentaForm({
 
   // ----- Helpers de líneas -----
   function updateLinea(idx: number, patch: Partial<LineaForm>) {
-    setLineas((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    setLineas((prev) =>
+      prev.map((l, i) => (i === idx ? ({ ...l, ...patch } as LineaForm) : l)),
+    );
   }
 
   function handleServicioChange(idx: number, servicioId: string) {
+    const l = lineas[idx];
+    if (l.tipo !== "servicio") return;
     const s = servicios.find((x) => x.id === servicioId);
     if (!s) {
       updateLinea(idx, { servicio_id: "" });
       return;
     }
-    const empleado = empleados.find((e) => e.id === lineas[idx].empleado_id);
+    const empleado = empleados.find((e) => e.id === l.empleado_id);
     updateLinea(idx, {
       servicio_id: servicioId,
       precio: s.precio_efectivo,
@@ -187,15 +221,35 @@ export function NuevaVentaForm({
   }
 
   function handleEmpleadoChange(idx: number, empleadoId: string) {
+    const l = lineas[idx];
+    if (l.tipo !== "servicio") return;
     const e = empleados.find((x) => x.id === empleadoId);
     updateLinea(idx, {
       empleado_id: empleadoId,
-      comision_pct: e?.porcentaje_default ?? lineas[idx].comision_pct,
+      comision_pct: e?.porcentaje_default ?? l.comision_pct,
     });
   }
 
-  function addLinea() {
-    setLineas((prev) => [...prev, newLinea()]);
+  function handleProductoChange(idx: number, insumoId: string) {
+    const l = lineas[idx];
+    if (l.tipo !== "producto") return;
+    const p = productos.find((x) => x.id === insumoId);
+    if (!p) {
+      updateLinea(idx, { insumo_id: "" });
+      return;
+    }
+    updateLinea(idx, {
+      insumo_id: insumoId,
+      precio: p.precio_venta ?? 0,
+    });
+  }
+
+  function addLineaServicio() {
+    setLineas((prev) => [...prev, newLineaServicio()]);
+  }
+
+  function addLineaProducto() {
+    setLineas((prev) => [...prev, newLineaProducto()]);
   }
 
   function removeLinea(idx: number) {
@@ -208,9 +262,15 @@ export function NuevaVentaForm({
     setWarnings([]);
 
     // Validación cliente-side mínima
-    if (lineas.some((l) => !l.servicio_id || !l.empleado_id)) {
+    const lineaInvalida = lineas.some((l) => {
+      if (l.tipo === "servicio") return !l.servicio_id || !l.empleado_id;
+      return !l.insumo_id || !(Number(l.cantidad) > 0);
+    });
+    if (lineaInvalida) {
       setErrors({
-        lineas: ["Todas las líneas deben tener servicio y empleado"],
+        lineas: [
+          "Revisá las líneas: los servicios necesitan servicio + empleado y los productos necesitan producto + cantidad > 0",
+        ],
       });
       return;
     }
@@ -220,12 +280,23 @@ export function NuevaVentaForm({
     formData.set(
       "lineas",
       JSON.stringify(
-        lineas.map((l) => ({
-          servicio_id: l.servicio_id,
-          empleado_id: l.empleado_id,
-          precio_efectivo: Number(l.precio) || 0,
-          comision_pct: Number(l.comision_pct) || 0,
-        })),
+        lineas.map((l) => {
+          if (l.tipo === "producto") {
+            return {
+              tipo: "producto" as const,
+              insumo_id: l.insumo_id,
+              cantidad: Number(l.cantidad) || 0,
+              precio_efectivo: Number(l.precio) || 0,
+            };
+          }
+          return {
+            tipo: "servicio" as const,
+            servicio_id: l.servicio_id,
+            empleado_id: l.empleado_id,
+            precio_efectivo: Number(l.precio) || 0,
+            comision_pct: Number(l.comision_pct) || 0,
+          };
+        }),
       ),
     );
     formData.set("descuento_tipo", descTipo);
@@ -246,7 +317,6 @@ export function NuevaVentaForm({
       }
       if (result.warnings) {
         setWarnings(result.warnings);
-        // Esperar un momento y redirigir
         setTimeout(() => {
           if (result.ingresoId) router.push(`/ventas/${result.ingresoId}`);
         }, 1500);
@@ -310,111 +380,66 @@ export function NuevaVentaForm({
 
       {/* Líneas */}
       <section className="space-y-3">
-        <div className="flex items-end justify-between">
+        <div className="flex items-end justify-between flex-wrap gap-2">
           <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
             Líneas del ticket
           </h2>
-          <button
-            type="button"
-            onClick={addLinea}
-            className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 flex items-center gap-1"
-          >
-            <Plus className="h-3 w-3 stroke-[1.5]" />
-            Agregar línea
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={addLineaServicio}
+              className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 flex items-center gap-1"
+            >
+              <Scissors className="h-3 w-3 stroke-[1.5]" />
+              Agregar servicio
+            </button>
+            <button
+              type="button"
+              onClick={addLineaProducto}
+              disabled={productos.length === 0}
+              title={
+                productos.length === 0
+                  ? "No hay productos cargados como vendibles en stock"
+                  : undefined
+              }
+              className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Package className="h-3 w-3 stroke-[1.5]" />
+              Agregar producto
+            </button>
+          </div>
         </div>
 
-        <div className="bg-card border border-border rounded-md overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left font-medium px-3 py-2">Servicio</th>
-                <th className="text-left font-medium px-3 py-2">Empleado</th>
-                <th className="text-right font-medium px-3 py-2 w-32">Precio</th>
-                <th className="text-right font-medium px-3 py-2 w-24">Com.%</th>
-                <th className="text-right font-medium px-3 py-2 w-32">Comisión</th>
-                <th className="px-3 py-2 w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {lineas.map((l, idx) => {
-                const comision = (Number(l.precio) || 0) * (Number(l.comision_pct) || 0) / 100;
-                return (
-                  <tr key={l.tempId}>
-                    <td className="px-3 py-2">
-                      <select
-                        value={l.servicio_id}
-                        onChange={(e) =>
-                          handleServicioChange(idx, e.target.value)
-                        }
-                        className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">— Servicio —</option>
-                        {serviciosActivos.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <select
-                        value={l.empleado_id}
-                        onChange={(e) =>
-                          handleEmpleadoChange(idx, e.target.value)
-                        }
-                        className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      >
-                        <option value="">— Empleado —</option>
-                        {empleadosActivos.map((e) => (
-                          <option key={e.id} value={e.id}>
-                            {e.nombre}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-3 py-2">
-                      <CurrencyInput
-                        value={l.precio}
-                        onChange={(v) => updateLinea(idx, { precio: v })}
-                        min={0}
-                        className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <div
-                        className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-cream/40 text-sm text-muted-foreground"
-                        title="La comisión está fijada por empleado"
-                      >
-                        {l.comision_pct || 0}%
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      <span
-                        style={{
-                          color: comision > 0 ? "var(--sage-700)" : "var(--muted-foreground)",
-                          fontWeight: comision > 0 ? 500 : 400,
-                        }}
-                      >
-                        {formatARS(comision)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeLinea(idx)}
-                        disabled={lineas.length === 1}
-                        className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
-                        title="Quitar línea"
-                      >
-                        <X className="h-4 w-4 stroke-[1.5]" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {lineas.map((l, idx) => (
+            <div
+              key={l.tempId}
+              className="bg-card border border-border rounded-md p-3"
+            >
+              {l.tipo === "servicio" ? (
+                <LineaServicioRow
+                  linea={l}
+                  servicios={serviciosActivos}
+                  empleados={empleadosActivos}
+                  onServicio={(id) => handleServicioChange(idx, id)}
+                  onEmpleado={(id) => handleEmpleadoChange(idx, id)}
+                  onPrecio={(v) => updateLinea(idx, { precio: v })}
+                  onRemove={() => removeLinea(idx)}
+                  removable={lineas.length > 1}
+                />
+              ) : (
+                <LineaProductoRow
+                  linea={l}
+                  productos={productos}
+                  onProducto={(id) => handleProductoChange(idx, id)}
+                  onCantidad={(v) => updateLinea(idx, { cantidad: v })}
+                  onPrecio={(v) => updateLinea(idx, { precio: v })}
+                  onRemove={() => removeLinea(idx)}
+                  removable={lineas.length > 1}
+                />
+              )}
+            </div>
+          ))}
         </div>
 
         {errors.lineas && (
@@ -512,7 +537,7 @@ export function NuevaVentaForm({
 
             {repartoEmpleados.length === 0 ? (
               <p className="text-xs text-muted-foreground italic">
-                Asigná empleados a las líneas para ver el reparto.
+                Asigná empleados a las líneas de servicio para ver el reparto.
               </p>
             ) : (
               repartoEmpleados.map((r) => (
@@ -823,5 +848,181 @@ export function NuevaVentaForm({
       </div>
     )}
     </>
+  );
+}
+
+function LineaServicioRow({
+  linea,
+  servicios,
+  empleados,
+  onServicio,
+  onEmpleado,
+  onPrecio,
+  onRemove,
+  removable,
+}: {
+  linea: LineaServicioForm;
+  servicios: Servicio[];
+  empleados: Empleado[];
+  onServicio: (id: string) => void;
+  onEmpleado: (id: string) => void;
+  onPrecio: (v: number) => void;
+  onRemove: () => void;
+  removable: boolean;
+}) {
+  const comision = comisionLinea(linea);
+  return (
+    <div className="grid grid-cols-12 gap-2 items-start">
+      <div className="col-span-12 sm:col-span-1 flex items-center">
+        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-700">
+          <Scissors className="h-3 w-3 stroke-[1.5]" />
+          Servicio
+        </span>
+      </div>
+      <div className="col-span-12 sm:col-span-4">
+        <select
+          value={linea.servicio_id}
+          onChange={(e) => onServicio(e.target.value)}
+          className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">— Servicio —</option>
+          {servicios.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="col-span-12 sm:col-span-3">
+        <select
+          value={linea.empleado_id}
+          onChange={(e) => onEmpleado(e.target.value)}
+          className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">— Empleado —</option>
+          {empleados.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="col-span-6 sm:col-span-2">
+        <CurrencyInput
+          value={linea.precio}
+          onChange={onPrecio}
+          min={0}
+          className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      <div className="col-span-5 sm:col-span-1 text-right tabular-nums text-sm self-center">
+        <span
+          style={{
+            color: comision > 0 ? "var(--sage-700)" : "var(--muted-foreground)",
+            fontWeight: comision > 0 ? 500 : 400,
+          }}
+        >
+          {formatARS(comision)}
+        </span>
+        <p className="text-[10px] text-muted-foreground">
+          {linea.comision_pct || 0}%
+        </p>
+      </div>
+      <div className="col-span-1 self-center text-center">
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={!removable}
+          className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
+          title="Quitar línea"
+        >
+          <X className="h-4 w-4 stroke-[1.5]" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LineaProductoRow({
+  linea,
+  productos,
+  onProducto,
+  onCantidad,
+  onPrecio,
+  onRemove,
+  removable,
+}: {
+  linea: LineaProductoForm;
+  productos: Insumo[];
+  onProducto: (id: string) => void;
+  onCantidad: (v: number) => void;
+  onPrecio: (v: number) => void;
+  onRemove: () => void;
+  removable: boolean;
+}) {
+  const subtotal = subtotalLinea(linea);
+  return (
+    <div className="grid grid-cols-12 gap-2 items-start">
+      <div className="col-span-12 sm:col-span-1 flex items-center">
+        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-cream text-foreground border border-border">
+          <Package className="h-3 w-3 stroke-[1.5]" />
+          Producto
+        </span>
+      </div>
+      <div className="col-span-12 sm:col-span-5">
+        <select
+          value={linea.insumo_id}
+          onChange={(e) => onProducto(e.target.value)}
+          className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">— Producto —</option>
+          {productos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+              {p.precio_venta != null ? ` · ${formatARS(p.precio_venta)}` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="col-span-4 sm:col-span-2">
+        <input
+          type="number"
+          step="1"
+          min="1"
+          value={linea.cantidad}
+          onChange={(e) => onCantidad(Number(e.target.value))}
+          className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="text-[10px] text-muted-foreground text-right mt-0.5">
+          Cantidad
+        </p>
+      </div>
+      <div className="col-span-7 sm:col-span-2">
+        <CurrencyInput
+          value={linea.precio}
+          onChange={onPrecio}
+          min={0}
+          className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <p className="text-[10px] text-muted-foreground text-right mt-0.5">
+          Precio unitario
+        </p>
+      </div>
+      <div className="col-span-12 sm:col-span-1 text-right tabular-nums text-sm self-center">
+        <span className="font-medium">{formatARS(subtotal)}</span>
+        <p className="text-[10px] text-muted-foreground">Subtotal</p>
+      </div>
+      <div className="col-span-12 sm:col-span-1 self-center text-center">
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={!removable}
+          className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
+          title="Quitar línea"
+        >
+          <X className="h-4 w-4 stroke-[1.5]" />
+        </button>
+      </div>
+    </div>
   );
 }

@@ -168,6 +168,8 @@ export interface Insumo {
   rinde?: number;
   umbral_stock_bajo: number;
   activo: boolean;
+  vendible: boolean;
+  precio_venta?: number;
 }
 
 export interface Receta {
@@ -264,7 +266,8 @@ export interface Ingreso {
 export interface IngresoLinea {
   id: ID;
   ingreso_id: ID;
-  servicio_id: ID;
+  servicio_id?: ID;
+  insumo_id?: ID;
   empleado_id?: ID;
   precio_efectivo: number;
   cantidad: number;
