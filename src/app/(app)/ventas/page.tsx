@@ -192,7 +192,9 @@ export default async function VentasPage({
                         })}
                       </td>
                       <td className="px-4 py-3 font-medium">
-                        {row.linea.servicio?.nombre ?? "—"}
+                        {row.linea.servicio?.nombre ??
+                          row.linea.insumo?.nombre ??
+                          "—"}
                       </td>
                       <td className="px-4 py-3">
                         {row.cliente?.nombre ?? "Consumidor Final"}

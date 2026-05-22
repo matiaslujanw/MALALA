@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { listProveedores } from "@/lib/data/proveedores";
+import { listProveedoresConTotal } from "@/lib/data/proveedores";
 import { requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function ProveedoresPage() {
   await requireUser();
-  const proveedores = await listProveedores();
+  const proveedores = await listProveedoresConTotal();
 
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-8 max-w-4xl">
       <header className="flex items-end justify-between">
         <div className="space-y-1">
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
@@ -32,34 +32,49 @@ export default async function ProveedoresPage() {
         <table className="w-full text-sm">
           <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
-              <th className="text-left font-medium px-4 py-3">Nombre</th>
+              <th className="text-left font-medium px-4 py-3">Proveedor</th>
               <th className="text-left font-medium px-4 py-3">Teléfono</th>
-              <th className="text-left font-medium px-4 py-3">CUIT</th>
               <th className="text-right font-medium px-4 py-3">
-                Deuda pendiente
+                Total comprado
               </th>
-              <th className="px-4 py-3 w-20"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {proveedores.map((p) => (
-              <tr key={p.id} className="hover:bg-cream/30">
-                <td className="px-4 py-3 font-medium">{p.nombre}</td>
-                <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                  {p.telefono ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                  {p.cuit ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(p.deuda_pendiente)}
-                </td>
-                <td className="px-4 py-3 text-right">
+              <tr
+                key={p.id}
+                className="hover:bg-cream/30 cursor-pointer"
+              >
+                <td className="px-4 py-3 font-medium">
                   <Link
                     href={`/catalogos/proveedores/${p.id}`}
-                    className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
+                    className="block hover:text-sage-700"
                   >
-                    Editar
+                    {p.nombre}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground tabular-nums">
+                  <Link
+                    href={`/catalogos/proveedores/${p.id}`}
+                    className="block"
+                  >
+                    {p.telefono ?? "—"}
+                  </Link>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  <Link
+                    href={`/catalogos/proveedores/${p.id}`}
+                    className="block"
+                  >
+                    <span className="font-medium">
+                      {formatARS(p.total_comprado)}
+                    </span>
+                    {p.cantidad_compras > 0 && (
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                        {p.cantidad_compras} compra
+                        {p.cantidad_compras !== 1 ? "s" : ""}
+                      </p>
+                    )}
                   </Link>
                 </td>
               </tr>

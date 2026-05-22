@@ -1,13 +1,21 @@
 import { redirect } from "next/navigation";
 import { InsumoForm } from "@/components/forms/insumo-form";
 import { createInsumo } from "@/lib/data/insumos";
+import { listMediosPago } from "@/lib/data/medios-pago";
 import { listProveedores } from "@/lib/data/proveedores";
-import { requireUser } from "@/lib/auth/session";
+import { listSucursales } from "@/lib/data/sucursales";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function NuevoInsumoPage() {
   const user = await requireUser();
   if (user.rol !== "admin") redirect("/catalogos/insumos");
-  const proveedores = await listProveedores();
+  const [proveedores, sucursales, mediosPago, sucursalActiva] =
+    await Promise.all([
+      listProveedores(),
+      listSucursales({ soloActivas: true }),
+      listMediosPago({ soloActivos: true }),
+      getActiveSucursal(),
+    ]);
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";
@@ -23,6 +31,9 @@ export default async function NuevoInsumoPage() {
       </header>
       <InsumoForm
         proveedores={proveedores}
+        sucursales={sucursales}
+        mediosPago={mediosPago}
+        defaultSucursalId={sucursalActiva?.id}
         action={action}
         submitLabel="Crear"
       />

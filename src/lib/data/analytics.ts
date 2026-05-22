@@ -260,10 +260,10 @@ export async function getAnalyticsSnapshot(
 
   const comisionesTotal = sum(ingresoLineasRows.map((item) => item.comisionMonto));
   const costoInsumosTotal = sum(
-    ingresoLineasRows.map(
-      (item) =>
-        (costoInsumosByServicio.get(item.servicioId) ?? 0) * item.cantidad,
-    ),
+    ingresoLineasRows.map((item) => {
+      if (!item.servicioId) return 0;
+      return (costoInsumosByServicio.get(item.servicioId) ?? 0) * item.cantidad;
+    }),
   );
   const netoTotal = ingresosTotal - comisionesTotal - costoInsumosTotal;
 
@@ -309,6 +309,7 @@ export async function getAnalyticsSnapshot(
 
   const byServicio = new Map<string, number>();
   for (const linea of ingresoLineasRows) {
+    if (!linea.servicioId) continue;
     const servicio = serviceMap.get(linea.servicioId);
     if (!servicio) continue;
     if (filters.rubro && servicio.rubro !== filters.rubro) continue;

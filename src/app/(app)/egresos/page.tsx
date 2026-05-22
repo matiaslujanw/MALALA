@@ -82,7 +82,7 @@ export default async function EgresosPage({
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-            Egresos
+            Gastos
           </h1>
           <p className="text-sm text-muted-foreground">
             {sucursal.nombre} ·{" "}
@@ -97,13 +97,13 @@ export default async function EgresosPage({
             className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
           >
             <Plus className="h-4 w-4 stroke-[1.5]" />
-            Nuevo egreso
+            Nuevo gasto
           </Link>
         )}
       </header>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <Kpi label="Total egresos" value={formatARS(totales.total)} />
+        <Kpi label="Total gastos" value={formatARS(totales.total)} />
         <Kpi label="Pagado" value={formatARS(totales.pagado)} color="sage-700" />
         <Kpi
           label="Pendiente"
@@ -212,7 +212,7 @@ export default async function EgresosPage({
 
       {egresos.length === 0 ? (
         <div className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          No hay egresos en el rango seleccionado.
+          No hay gastos en el rango seleccionado.
         </div>
       ) : (
         <div className="overflow-hidden rounded-md border border-border bg-card">

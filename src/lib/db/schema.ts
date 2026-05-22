@@ -202,6 +202,8 @@ export const insumos = pgTable("insumos", {
   rinde: doublePrecision("rinde"),
   umbralStockBajo: doublePrecision("umbral_stock_bajo").notNull(),
   activo: boolean("activo").notNull().default(true),
+  vendible: boolean("vendible").notNull().default(false),
+  precioVenta: doublePrecision("precio_venta"),
 });
 
 export const recetas = pgTable("recetas", {
@@ -336,9 +338,8 @@ export const ingresoLineas = pgTable("ingreso_lineas", {
   ingresoId: text("ingreso_id")
     .notNull()
     .references(() => ingresos.id, { onDelete: "cascade" }),
-  servicioId: text("servicio_id")
-    .notNull()
-    .references(() => servicios.id),
+  servicioId: text("servicio_id").references(() => servicios.id),
+  insumoId: text("insumo_id").references(() => insumos.id),
   empleadoId: text("empleado_id").references(() => empleados.id),
   precioEfectivo: doublePrecision("precio_efectivo").notNull(),
   cantidad: doublePrecision("cantidad").notNull(),

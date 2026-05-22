@@ -103,43 +103,65 @@ export default async function VentaDetallePage({
           <table className="w-full text-sm">
             <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="text-left font-medium px-4 py-3">Servicio</th>
+                <th className="text-left font-medium px-4 py-3">Ítem</th>
                 <th className="text-left font-medium px-4 py-3">Empleado</th>
+                <th className="text-right font-medium px-4 py-3">Cant.</th>
                 <th className="text-right font-medium px-4 py-3">Precio</th>
                 <th className="text-right font-medium px-4 py-3">Comisión</th>
                 <th className="text-right font-medium px-4 py-3">Insumos</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {lineas.map((l) => (
-                <tr key={l.id}>
-                  <td className="px-4 py-3 font-medium">
-                    {l.servicio?.nombre ?? "—"}
-                    {l.servicio && (
-                      <p className="text-xs text-muted-foreground">
-                        {l.servicio.rubro}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {l.empleado?.nombre ?? (
-                      <span className="text-muted-foreground italic">
-                        sin asignar
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatARS(l.subtotal)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {formatARS(l.comision_monto)}
-                    <span className="text-xs"> ({l.comision_pct}%)</span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {formatARS(l.costoInsumos)}
-                  </td>
-                </tr>
-              ))}
+              {lineas.map((l) => {
+                const esProducto = !!l.insumo;
+                return (
+                  <tr key={l.id}>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {l.servicio?.nombre ?? l.insumo?.nombre ?? "—"}
+                        </span>
+                        {esProducto && (
+                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-sage-100 text-sage-700">
+                            Producto
+                          </span>
+                        )}
+                      </div>
+                      {l.servicio && (
+                        <p className="text-xs text-muted-foreground">
+                          {l.servicio.rubro}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {l.empleado?.nombre ?? (
+                        <span className="text-muted-foreground italic">
+                          {esProducto ? "—" : "sin asignar"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {l.cantidad}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatARS(l.subtotal)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {esProducto ? (
+                        <span className="text-xs">—</span>
+                      ) : (
+                        <>
+                          {formatARS(l.comision_monto)}
+                          <span className="text-xs"> ({l.comision_pct}%)</span>
+                        </>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {formatARS(l.costoInsumos)}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

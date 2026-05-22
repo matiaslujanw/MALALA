@@ -86,12 +86,14 @@ interface CheckboxFieldProps {
   label: string;
   name: string;
   defaultChecked?: boolean;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
 }
 
 export function CheckboxField({
   label,
   name,
   defaultChecked,
+  onChange,
 }: CheckboxFieldProps) {
   return (
     <label className="flex items-center gap-2 text-sm">
@@ -99,6 +101,7 @@ export function CheckboxField({
         type="checkbox"
         name={name}
         defaultChecked={defaultChecked}
+        onChange={onChange}
         className="h-4 w-4 rounded border-border accent-sage-500"
       />
       <span>{label}</span>

@@ -1,13 +1,33 @@
 import { z } from "zod";
 
-export const lineaSchema = z.object({
+export const lineaServicioSchema = z.object({
+  tipo: z.literal("servicio"),
   servicio_id: z.string().min(1, "Servicio requerido"),
   empleado_id: z.string().min(1, "Empleado requerido"),
   precio_efectivo: z.coerce.number().nonnegative(),
   comision_pct: z.coerce.number().min(0).max(100),
 });
 
+export const lineaProductoSchema = z.object({
+  tipo: z.literal("producto"),
+  insumo_id: z.string().min(1, "Producto requerido"),
+  cantidad: z.coerce.number().positive("Cantidad debe ser mayor a 0"),
+  precio_efectivo: z.coerce.number().nonnegative(),
+});
+
+export const lineaSchema = z.discriminatedUnion("tipo", [
+  lineaServicioSchema,
+  lineaProductoSchema,
+]);
+
+export type LineaServicioInput = z.infer<typeof lineaServicioSchema>;
+export type LineaProductoInput = z.infer<typeof lineaProductoSchema>;
 export type LineaInput = z.infer<typeof lineaSchema>;
+
+function lineaSubtotal(linea: LineaInput): number {
+  if (linea.tipo === "producto") return linea.precio_efectivo * linea.cantidad;
+  return linea.precio_efectivo;
+}
 
 export const ingresoSchema = z
   .object({
@@ -32,10 +52,7 @@ export const ingresoSchema = z
       .transform((s) => (s ?? "").trim() || undefined),
   })
   .superRefine((data, ctx) => {
-    const subtotal = data.lineas.reduce(
-      (acc, l) => acc + l.precio_efectivo,
-      0,
-    );
+    const subtotal = data.lineas.reduce((acc, l) => acc + lineaSubtotal(l), 0);
     const descMonto =
       data.descuento_tipo === "pct"
         ? subtotal * (data.descuento_valor / 100)

@@ -22,7 +22,7 @@ const NAV: NavDef[] = [
   { href: "/bancos", label: "Bancos", iconKey: "Landmark", visible: (s) => s.puedeVerCaja },
   { href: "/liquidaciones", label: "Liquidaciones", iconKey: "HandCoins", visible: (s) => s.puedeVerCaja },
   { href: "/stock", label: "Stock", iconKey: "Package", visible: (s) => s.puedeVerStock },
-  { href: "/egresos", label: "Egresos", iconKey: "Receipt", visible: (s) => s.rol !== "empleado" },
+  { href: "/egresos", label: "Gastos", iconKey: "Receipt", visible: (s) => s.rol !== "empleado" },
   { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", visible: (s) => s.puedeVerCatalogos },
   { href: "/reportes", label: "Reportes", iconKey: "BarChart3", visible: (s) => s.puedeVerReportes },
   { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", visible: (s) => s.rol !== "empleado" },

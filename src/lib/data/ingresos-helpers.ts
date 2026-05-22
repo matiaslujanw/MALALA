@@ -30,6 +30,7 @@ export interface IngresoBreakdown {
 
 export interface IngresoLineaConDetalle extends IngresoLinea {
   servicio: Servicio | null;
+  insumo: Insumo | null;
   empleado: Empleado | null;
   costoInsumos: number;
 }
@@ -45,6 +46,7 @@ export interface IngresoConDetalle {
 
 interface IngresoLookups {
   serviciosById: Map<string, Servicio>;
+  insumosById: Map<string, Insumo>;
   empleadosById: Map<string, Empleado>;
   costoInsumosByServicio: Map<string, number>;
 }
@@ -78,17 +80,10 @@ export function costoInsumosDeServicio(
 
 export function computeBreakdown(
   ingreso: Ingreso,
-  lineas: Array<IngresoLinea | IngresoLineaConDetalle>,
-  costoInsumosByServicio?: Map<string, number>,
+  lineas: Array<IngresoLineaConDetalle>,
 ): IngresoBreakdown {
   const comisiones = lineas.reduce((acc, linea) => acc + linea.comision_monto, 0);
-  const costoInsumos = lineas.reduce((acc, linea) => {
-    if ("costoInsumos" in linea) {
-      return acc + linea.costoInsumos;
-    }
-    const costoServicio = costoInsumosByServicio?.get(linea.servicio_id) ?? 0;
-    return acc + costoServicio * linea.cantidad;
-  }, 0);
+  const costoInsumos = lineas.reduce((acc, linea) => acc + linea.costoInsumos, 0);
 
   return {
     total: ingreso.total,
@@ -102,16 +97,35 @@ export function detallarLineas(
   lineas: IngresoLinea[],
   lookups: IngresoLookups,
 ): IngresoLineaConDetalle[] {
-  return lineas.map((linea) => ({
-    ...linea,
-    servicio: lookups.serviciosById.get(linea.servicio_id) ?? null,
-    empleado: linea.empleado_id
+  return lineas.map((linea) => {
+    const servicio = linea.servicio_id
+      ? (lookups.serviciosById.get(linea.servicio_id) ?? null)
+      : null;
+    const insumo = linea.insumo_id
+      ? (lookups.insumosById.get(linea.insumo_id) ?? null)
+      : null;
+    const empleado = linea.empleado_id
       ? (lookups.empleadosById.get(linea.empleado_id) ?? null)
-      : null,
-    costoInsumos:
-      (lookups.costoInsumosByServicio.get(linea.servicio_id) ?? 0) *
-      linea.cantidad,
-  }));
+      : null;
+
+    let costoInsumos = 0;
+    if (linea.servicio_id) {
+      costoInsumos =
+        (lookups.costoInsumosByServicio.get(linea.servicio_id) ?? 0) *
+        linea.cantidad;
+    } else if (insumo && insumo.precio_unitario != null) {
+      // Para productos vendidos, el "costo" del local es el precio unitario × cantidad
+      costoInsumos = insumo.precio_unitario * linea.cantidad;
+    }
+
+    return {
+      ...linea,
+      servicio,
+      insumo,
+      empleado,
+      costoInsumos,
+    };
+  });
 }
 
 export interface AggregatedTotals {

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listInsumos } from "@/lib/data/insumos";
+import { listMediosPago } from "@/lib/data/medios-pago";
 import { listProveedores } from "@/lib/data/proveedores";
-import { requireUser } from "@/lib/auth/session";
+import { listSucursales } from "@/lib/data/sucursales";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
+import { RegistrarCompraInsumoModal } from "@/components/forms/registrar-compra-insumo-modal";
 
 const UNIDAD_LABEL: Record<string, string> = {
   ud: "ud",
@@ -14,9 +17,16 @@ const UNIDAD_LABEL: Record<string, string> = {
 
 export default async function InsumosPage() {
   const user = await requireUser();
-  const insumos = await listInsumos({ incluirInactivos: true });
-  const proveedores = await listProveedores();
-  const provMap = new Map(proveedores.map((p) => [p.id, p.nombre]));
+  const [insumos, proveedores, sucursales, mediosPago, sucursalActiva] =
+    await Promise.all([
+      listInsumos({ incluirInactivos: true }),
+      listProveedores(),
+      listSucursales({ soloActivas: true }),
+      listMediosPago({ soloActivos: true }),
+      getActiveSucursal(),
+    ]);
+  const provMap = new Map(proveedores.map((p) => [p.id, p]));
+  const puedeCargarCompra = user.rol === "admin" || user.rol === "encargada";
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -48,56 +58,69 @@ export default async function InsumosPage() {
               <th className="text-left font-medium px-4 py-3">Proveedor</th>
               <th className="text-right font-medium px-4 py-3">Envase</th>
               <th className="text-right font-medium px-4 py-3">$ envase</th>
-              <th className="text-right font-medium px-4 py-3">$ unitario</th>
               <th className="text-right font-medium px-4 py-3">Umbral</th>
               <th className="text-center font-medium px-4 py-3">Estado</th>
-              {user.rol === "admin" && <th className="px-4 py-3 w-20"></th>}
+              <th className="px-4 py-3 w-48 text-right"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {insumos.map((i) => (
-              <tr key={i.id} className="hover:bg-cream/30">
-                <td className="px-4 py-3 font-medium">{i.nombre}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {i.proveedor_id ? provMap.get(i.proveedor_id) ?? "—" : "—"}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {i.tamano_envase} {UNIDAD_LABEL[i.unidad_medida]}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(i.precio_envase)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {i.precio_unitario != null
-                    ? formatARS(i.precio_unitario)
-                    : "—"}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                  {i.umbral_stock_bajo}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {i.activo ? (
-                    <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
-                      Activo
-                    </span>
-                  ) : (
-                    <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
-                      Inactivo
-                    </span>
-                  )}
-                </td>
-                {user.rol === "admin" && (
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/catalogos/insumos/${i.id}`}
-                      className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                    >
-                      Editar
-                    </Link>
+            {insumos.map((i) => {
+              const proveedor = i.proveedor_id
+                ? (provMap.get(i.proveedor_id) ?? null)
+                : null;
+              return (
+                <tr key={i.id} className="hover:bg-cream/30">
+                  <td className="px-4 py-3 font-medium">{i.nombre}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {proveedor?.nombre ?? "—"}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {i.tamano_envase} {UNIDAD_LABEL[i.unidad_medida]}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {formatARS(i.precio_envase)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {i.umbral_stock_bajo}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {i.activo ? (
+                      <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
+                        Activo
+                      </span>
+                    ) : (
+                      <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
+                        Inactivo
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      {puedeCargarCompra &&
+                        i.activo &&
+                        sucursalActiva &&
+                        sucursales.length > 0 && (
+                          <RegistrarCompraInsumoModal
+                            insumo={i}
+                            proveedor={proveedor}
+                            sucursales={sucursales}
+                            mediosPago={mediosPago}
+                            defaultSucursalId={sucursalActiva.id}
+                          />
+                        )}
+                      {user.rol === "admin" && (
+                        <Link
+                          href={`/catalogos/insumos/${i.id}`}
+                          className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                        >
+                          Editar
+                        </Link>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
