@@ -9,6 +9,7 @@ import {
   Receipt,
   NotebookText,
   Landmark,
+  TicketPercent,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -18,6 +19,7 @@ import {
   listMediosPago,
   listProveedores,
   listRubrosGasto,
+  listMotivosDescuento,
   listServicios,
   listCuentas,
 } from "./_counts";
@@ -78,6 +80,12 @@ const items = [
     Icon: Receipt,
     desc: "Categorías para egresos",
   },
+  {
+    href: "/catalogos/motivos-descuento",
+    label: "Motivos de descuento",
+    Icon: TicketPercent,
+    desc: "Publicidad, autoconsumo socios…",
+  },
 ];
 
 export default async function CatalogosPage() {
@@ -91,6 +99,7 @@ export default async function CatalogosPage() {
   const proveedores = await listProveedores();
   const mediosPago = await listMediosPago();
   const rubrosGasto = await listRubrosGasto();
+  const motivosDescuento = await listMotivosDescuento();
   const cuentas = await listCuentas();
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
@@ -105,6 +114,7 @@ export default async function CatalogosPage() {
     "/catalogos/medios-pago": mediosPago.length,
     "/catalogos/cuentas-bancarias": cuentas.length,
     "/catalogos/rubros-gasto": rubrosGasto.length,
+    "/catalogos/motivos-descuento": motivosDescuento.length,
   };
 
   return (

@@ -77,6 +77,14 @@ alter table public.egresos enable row level security;
 alter table public.cierres_caja enable row level security;
 alter table public.turnos enable row level security;
 alter table public.turno_eventos enable row level security;
+-- Tablas agregadas en fases posteriores (bancos, liquidaciones, integraciones, descuentos)
+alter table public.motivos_descuento enable row level security;
+alter table public.cuentas_bancarias enable row level security;
+alter table public.movimientos_bancarios enable row level security;
+alter table public.liquidaciones enable row level security;
+alter table public.liquidacion_lineas enable row level security;
+alter table public.integraciones_manychat enable row level security;
+alter table public.whatsapp_envios enable row level security;
 
 create policy "profiles self or admin"
 on public.profiles
@@ -207,6 +215,68 @@ using (
         or public.app_empleado_id() = turnos.profesional_id
       )
   )
+);
+
+-- Motivos de descuento: catalogo compartido, leido tambien desde el form de venta.
+create policy "motivos descuento internal roles"
+on public.motivos_descuento
+for select
+using (public.app_role() in ('admin', 'encargada', 'empleado'));
+
+-- Cuentas bancarias: por sucursal (financiero, mismo criterio que ingresos/egresos).
+create policy "cuentas bancarias by scope"
+on public.cuentas_bancarias
+for select
+using (public.app_can_access_sucursal(sucursal_id));
+
+-- Movimientos bancarios: por sucursal del movimiento (admin ve los sin sucursal).
+create policy "movimientos bancarios by scope"
+on public.movimientos_bancarios
+for select
+using (public.app_can_access_sucursal(sucursal_id));
+
+-- Liquidaciones: por sucursal; la empleada solo ve las propias.
+create policy "liquidaciones by scope"
+on public.liquidaciones
+for select
+using (
+  public.app_can_access_sucursal(sucursal_id)
+  and (
+    public.app_role() in ('admin', 'encargada')
+    or public.app_empleado_id() = empleado_id
+  )
+);
+
+-- Lineas de liquidacion: heredan el scope de la liquidacion padre.
+create policy "liquidacion lineas by liquidacion scope"
+on public.liquidacion_lineas
+for select
+using (
+  exists (
+    select 1
+    from public.liquidaciones
+    where liquidaciones.id = liquidacion_lineas.liquidacion_id
+      and public.app_can_access_sucursal(liquidaciones.sucursal_id)
+      and (
+        public.app_role() in ('admin', 'encargada')
+        or public.app_empleado_id() = liquidaciones.empleado_id
+      )
+  )
+);
+
+-- Integraciones ManyChat: contienen api_key, solo admin.
+create policy "integraciones manychat admin only"
+on public.integraciones_manychat
+for select
+using (public.app_is_admin());
+
+-- Envios de WhatsApp: log por sucursal, roles de gestion.
+create policy "whatsapp envios by scope"
+on public.whatsapp_envios
+for select
+using (
+  public.app_can_access_sucursal(sucursal_id)
+  and public.app_role() in ('admin', 'encargada')
 );
 
 -- Las escrituras publicas de reservas deben pasar por server actions con service role.

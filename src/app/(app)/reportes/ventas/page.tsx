@@ -6,7 +6,8 @@ import { buildAccessScope } from "@/lib/auth/access";
 import { listIngresos } from "@/lib/data/ingresos";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listEmpleados } from "@/lib/data/empleados";
-import { aggregate } from "@/lib/data/ingresos-helpers";
+import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
+import { aggregate, descuentosPorMotivo } from "@/lib/data/ingresos-helpers";
 import { formatARS } from "@/lib/utils";
 import {
   parseReporteFiltros,
@@ -28,10 +29,12 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const filtros = parseReporteFiltros(sp, scope);
 
-  const [sucursalesAll, empleadosAll] = await Promise.all([
+  const [sucursalesAll, empleadosAll, motivosAll] = await Promise.all([
     listSucursales({ soloActivas: true }),
     listEmpleados(),
+    listMotivosDescuento(),
   ]);
+  const motivosById = new Map(motivosAll.map((m) => [m.id, m]));
   const sucursales = sucursalesAll.filter((s) =>
     scope.sucursalIdsPermitidas.includes(s.id),
   );
@@ -47,6 +50,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
   });
 
   const totals = aggregate(ingresos);
+  const descuentosMotivos = descuentosPorMotivo(ingresos, motivosById);
   const sucursalNombreById = new Map(sucursales.map((s) => [s.id, s.nombre]));
   const multiSucursal = sucursales.length > 1;
 
@@ -81,6 +85,20 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
         mostrarEmpleado
       />
 
+      <section className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <Stat label="Venta teórica" value={formatARS(totals.ventaTeorica)} />
+        <Stat
+          label="Descuentos"
+          value={formatARS(totals.descuentos)}
+          accent={totals.descuentos > 0 ? "danger" : undefined}
+        />
+        <Stat
+          label="Venta real"
+          value={formatARS(totals.total)}
+          accent="sage"
+        />
+      </section>
+
       <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Stat label="Tickets" value={String(totals.cantidad)} />
         <Stat label="Facturado" value={formatARS(totals.total)} accent="sage" />
@@ -93,6 +111,37 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {descuentosMotivos.length > 0 && (
+        <section className="bg-card border border-border rounded-md p-5 space-y-3 max-w-md">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Descuentos por motivo
+          </h2>
+          <div className="space-y-1.5 text-sm">
+            {descuentosMotivos.map((d) => (
+              <div
+                key={d.motivo}
+                className="flex justify-between items-center tabular-nums"
+              >
+                <span>
+                  {d.motivo}
+                  <span className="text-xs text-muted-foreground">
+                    {" "}
+                    · {d.cantidad} venta{d.cantidad !== 1 ? "s" : ""}
+                  </span>
+                </span>
+                <span className="text-rose-600">− {formatARS(d.total)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center pt-2 mt-1 border-t border-border tabular-nums font-medium">
+              <span className="text-xs uppercase tracking-wider">Total</span>
+              <span className="text-rose-600">
+                − {formatARS(totals.descuentos)}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
@@ -103,6 +152,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
               )}
               <th className="text-left font-medium px-3 py-3">Cliente</th>
               <th className="text-left font-medium px-3 py-3">Servicios</th>
+              <th className="text-right font-medium px-3 py-3 w-32">Descuento</th>
               <th className="text-right font-medium px-3 py-3 w-24">Total</th>
               <th className="text-right font-medium px-3 py-3 w-28">Comisión</th>
               <th className="text-right font-medium px-3 py-3 w-28">Insumos</th>
@@ -113,7 +163,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
             {ingresos.length === 0 ? (
               <tr>
                 <td
-                  colSpan={multiSucursal ? 8 : 7}
+                  colSpan={multiSucursal ? 9 : 8}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                   No hay ventas para los filtros aplicados.
@@ -165,6 +215,23 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                         </div>
                       )}
                     </td>
+                    <td className="px-3 py-3 text-right tabular-nums">
+                      {row.ingreso.descuento_monto > 0 ? (
+                        <>
+                          <span className="text-rose-600">
+                            − {formatARS(row.ingreso.descuento_monto)}
+                          </span>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">
+                            {row.ingreso.descuento_motivo_id
+                              ? (motivosById.get(row.ingreso.descuento_motivo_id)
+                                  ?.nombre ?? "Motivo eliminado")
+                              : "Sin motivo"}
+                          </p>
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3 text-right tabular-nums font-medium">
                       {formatARS(row.breakdown.total)}
                     </td>
@@ -196,6 +263,9 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                   colSpan={multiSucursal ? 4 : 3}
                 >
                   Totales
+                </td>
+                <td className="px-3 py-3 text-right tabular-nums font-semibold text-rose-600">
+                  − {formatARS(totals.descuentos)}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums font-semibold">
                   {formatARS(totals.total)}

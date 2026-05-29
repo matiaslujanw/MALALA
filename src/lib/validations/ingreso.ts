@@ -34,21 +34,25 @@ export const ingresoSchema = z
     sucursal_id: z.string().min(1),
     cliente_id: z
       .string()
-      .optional()
+      .nullish()
       .transform((s) => (s ? s : undefined)),
     lineas: z.array(lineaSchema).min(1, "Agregá al menos una línea"),
     descuento_tipo: z.enum(["pct", "monto"]),
     descuento_valor: z.coerce.number().nonnegative().default(0),
+    descuento_motivo_id: z
+      .string()
+      .nullish()
+      .transform((s) => (s ? s : undefined)),
     mp1_id: z.string().min(1, "Medio de pago requerido"),
     valor1: z.coerce.number().nonnegative(),
     mp2_id: z
       .string()
-      .optional()
+      .nullish()
       .transform((s) => (s ? s : undefined)),
     valor2: z.coerce.number().optional(),
     observacion: z
       .string()
-      .optional()
+      .nullish()
       .transform((s) => (s ?? "").trim() || undefined),
   })
   .superRefine((data, ctx) => {
@@ -79,6 +83,13 @@ export const ingresoSchema = z
         code: "custom",
         path: ["descuento_valor"],
         message: "El porcentaje no puede ser mayor a 100",
+      });
+    }
+    if (descMonto > 0 && !data.descuento_motivo_id) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["descuento_motivo_id"],
+        message: "Elegí un motivo para el descuento",
       });
     }
   });
