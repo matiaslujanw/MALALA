@@ -9,6 +9,7 @@ import type {
   IngresoLinea,
   Insumo,
   MedioPago,
+  MotivoDescuento,
   Receta,
   Servicio,
 } from "@/lib/types";
@@ -130,6 +131,8 @@ export function detallarLineas(
 
 export interface AggregatedTotals {
   cantidad: number;
+  ventaTeorica: number;
+  descuentos: number;
   total: number;
   comisiones: number;
   costoInsumos: number;
@@ -137,6 +140,14 @@ export interface AggregatedTotals {
 }
 
 export function aggregate(rows: IngresoConDetalle[]): AggregatedTotals {
+  const ventaTeorica = rows.reduce(
+    (acc, row) => acc + row.ingreso.subtotal,
+    0,
+  );
+  const descuentos = rows.reduce(
+    (acc, row) => acc + row.ingreso.descuento_monto,
+    0,
+  );
   const total = rows.reduce((acc, row) => acc + row.breakdown.total, 0);
   const comisiones = rows.reduce(
     (acc, row) => acc + row.breakdown.comisiones,
@@ -147,7 +158,41 @@ export function aggregate(rows: IngresoConDetalle[]): AggregatedTotals {
     0,
   );
   const neto = total - comisiones - costoInsumos;
-  return { cantidad: rows.length, total, comisiones, costoInsumos, neto };
+  return {
+    cantidad: rows.length,
+    ventaTeorica,
+    descuentos,
+    total,
+    comisiones,
+    costoInsumos,
+    neto,
+  };
+}
+
+/**
+ * Descuentos acumulados por motivo para una lista de ingresos.
+ * Los descuentos sin motivo asignado (datos viejos) caen en "Sin motivo".
+ */
+export function descuentosPorMotivo(
+  rows: IngresoConDetalle[],
+  motivosById: Map<string, MotivoDescuento>,
+): Array<{ motivo: string; total: number; cantidad: number }> {
+  const acc = new Map<string, { motivo: string; total: number; cantidad: number }>();
+
+  for (const row of rows) {
+    if (row.ingreso.descuento_monto <= 0) continue;
+    const motivoId = row.ingreso.descuento_motivo_id;
+    const key = motivoId ?? "__sin__";
+    const nombre = motivoId
+      ? (motivosById.get(motivoId)?.nombre ?? "Motivo eliminado")
+      : "Sin motivo";
+    const cur = acc.get(key) ?? { motivo: nombre, total: 0, cantidad: 0 };
+    cur.total += row.ingreso.descuento_monto;
+    cur.cantidad += 1;
+    acc.set(key, cur);
+  }
+
+  return Array.from(acc.values()).sort((a, b) => b.total - a.total);
 }
 
 /**

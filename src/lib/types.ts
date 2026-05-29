@@ -225,6 +225,12 @@ export interface RubroGasto {
   activo: boolean;
 }
 
+export interface MotivoDescuento {
+  id: ID;
+  nombre: string;
+  activo: boolean;
+}
+
 export interface StockSucursal {
   id: ID;
   insumo_id: ID;
@@ -253,6 +259,7 @@ export interface Ingreso {
   subtotal: number;
   descuento_pct: number;
   descuento_monto: number;
+  descuento_motivo_id?: ID;
   total: number;
   mp1_id: ID;
   valor1: number;

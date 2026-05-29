@@ -7,4 +7,5 @@ export { listEmpleados } from "@/lib/data/empleados";
 export { listProveedores } from "@/lib/data/proveedores";
 export { listMediosPago } from "@/lib/data/medios-pago";
 export { listRubrosGasto } from "@/lib/data/rubros-gasto";
+export { listMotivosDescuento } from "@/lib/data/motivos-descuento";
 export { listCuentas } from "@/lib/data/cuentas-bancarias";

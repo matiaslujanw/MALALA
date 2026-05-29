@@ -7,6 +7,7 @@ import { listEmpleados } from "@/lib/data/empleados";
 import { listInsumosVendibles } from "@/lib/data/insumos";
 import { listMediosPago } from "@/lib/data/medios-pago";
 import { listServicios } from "@/lib/data/servicios";
+import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function NuevaVentaPage() {
@@ -14,13 +15,14 @@ export default async function NuevaVentaPage() {
   const sucursal = await getActiveSucursal();
   if (!sucursal) redirect("/dev/login");
 
-  const [clientes, servicios, empleados, mediosPago, productos] =
+  const [clientes, servicios, empleados, mediosPago, productos, motivosDescuento] =
     await Promise.all([
       listClientes(),
       listServicios(),
       listEmpleados(),
       listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
       listInsumosVendibles(),
+      listMotivosDescuento(),
     ]);
 
   const mediosActivos = mediosPago;
@@ -51,6 +53,7 @@ export default async function NuevaVentaPage() {
         empleados={empleados}
         mediosPago={mediosActivos}
         productos={productos}
+        motivosDescuento={motivosDescuento.filter((m) => m.activo)}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getIngreso } from "@/lib/data/ingresos";
 import { requireUser } from "@/lib/auth/session";
 import { listSucursales } from "@/lib/data/sucursales";
+import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
 import { formatARS } from "@/lib/utils";
 
 export default async function VentaDetallePage({
@@ -13,14 +14,18 @@ export default async function VentaDetallePage({
 }) {
   await requireUser();
   const { id } = await params;
-  const [row, sucursales] = await Promise.all([
+  const [row, sucursales, motivos] = await Promise.all([
     getIngreso(id),
     listSucursales(),
+    listMotivosDescuento(),
   ]);
   if (!row) notFound();
 
   const { ingreso, cliente, mp1, mp2, lineas, breakdown } = row;
   const sucursal = sucursales.find((item) => item.id === ingreso.sucursal_id);
+  const motivoDescuento = ingreso.descuento_motivo_id
+    ? motivos.find((m) => m.id === ingreso.descuento_motivo_id)
+    : null;
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -88,6 +93,11 @@ export default async function VentaDetallePage({
               </span>
             )}
           </p>
+          {ingreso.descuento_monto > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Motivo: {motivoDescuento?.nombre ?? "—"}
+            </p>
+          )}
           <p className="font-display text-xl mt-1 tabular-nums">
             {formatARS(ingreso.total)}
           </p>

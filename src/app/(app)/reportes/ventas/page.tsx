@@ -6,7 +6,8 @@ import { buildAccessScope } from "@/lib/auth/access";
 import { listIngresos } from "@/lib/data/ingresos";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listEmpleados } from "@/lib/data/empleados";
-import { aggregate } from "@/lib/data/ingresos-helpers";
+import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
+import { aggregate, descuentosPorMotivo } from "@/lib/data/ingresos-helpers";
 import { formatARS } from "@/lib/utils";
 import {
   parseReporteFiltros,
@@ -28,10 +29,12 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const filtros = parseReporteFiltros(sp, scope);
 
-  const [sucursalesAll, empleadosAll] = await Promise.all([
+  const [sucursalesAll, empleadosAll, motivosAll] = await Promise.all([
     listSucursales({ soloActivas: true }),
     listEmpleados(),
+    listMotivosDescuento(),
   ]);
+  const motivosById = new Map(motivosAll.map((m) => [m.id, m]));
   const sucursales = sucursalesAll.filter((s) =>
     scope.sucursalIdsPermitidas.includes(s.id),
   );
@@ -47,6 +50,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
   });
 
   const totals = aggregate(ingresos);
+  const descuentosMotivos = descuentosPorMotivo(ingresos, motivosById);
   const sucursalNombreById = new Map(sucursales.map((s) => [s.id, s.nombre]));
   const multiSucursal = sucursales.length > 1;
 
@@ -81,6 +85,20 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
         mostrarEmpleado
       />
 
+      <section className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <Stat label="Venta teórica" value={formatARS(totals.ventaTeorica)} />
+        <Stat
+          label="Descuentos"
+          value={formatARS(totals.descuentos)}
+          accent={totals.descuentos > 0 ? "danger" : undefined}
+        />
+        <Stat
+          label="Venta real"
+          value={formatARS(totals.total)}
+          accent="sage"
+        />
+      </section>
+
       <section className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Stat label="Tickets" value={String(totals.cantidad)} />
         <Stat label="Facturado" value={formatARS(totals.total)} accent="sage" />
@@ -92,6 +110,37 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
           accent={totals.neto >= 0 ? "sage" : "danger"}
         />
       </section>
+
+      {descuentosMotivos.length > 0 && (
+        <section className="bg-card border border-border rounded-md p-5 space-y-3 max-w-md">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Descuentos por motivo
+          </h2>
+          <div className="space-y-1.5 text-sm">
+            {descuentosMotivos.map((d) => (
+              <div
+                key={d.motivo}
+                className="flex justify-between items-center tabular-nums"
+              >
+                <span>
+                  {d.motivo}
+                  <span className="text-xs text-muted-foreground">
+                    {" "}
+                    · {d.cantidad} venta{d.cantidad !== 1 ? "s" : ""}
+                  </span>
+                </span>
+                <span className="text-rose-600">− {formatARS(d.total)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center pt-2 mt-1 border-t border-border tabular-nums font-medium">
+              <span className="text-xs uppercase tracking-wider">Total</span>
+              <span className="text-rose-600">
+                − {formatARS(totals.descuentos)}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">

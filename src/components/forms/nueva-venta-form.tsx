@@ -11,6 +11,7 @@ import type {
   Empleado,
   Insumo,
   MedioPago,
+  MotivoDescuento,
   Servicio,
 } from "@/lib/types";
 import { formatARS } from "@/lib/utils";
@@ -43,6 +44,7 @@ interface Props {
   empleados: Empleado[];
   mediosPago: MedioPago[];
   productos: Insumo[];
+  motivosDescuento: MotivoDescuento[];
 }
 
 const newLineaServicio = (): LineaServicioForm => ({
@@ -81,6 +83,7 @@ export function NuevaVentaForm({
   empleados,
   mediosPago,
   productos,
+  motivosDescuento,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -143,6 +146,7 @@ export function NuevaVentaForm({
   // Descuento
   const [descTipo, setDescTipo] = useState<"pct" | "monto">("pct");
   const [descValor, setDescValor] = useState(0);
+  const [descMotivoId, setDescMotivoId] = useState("");
 
   // Pagos
   const efectivo = mediosPago.find((m) => m.codigo === "EF");
@@ -301,6 +305,7 @@ export function NuevaVentaForm({
     );
     formData.set("descuento_tipo", descTipo);
     formData.set("descuento_valor", String(Number(descValor) || 0));
+    formData.set("descuento_motivo_id", descMonto > 0 ? descMotivoId : "");
     formData.set("mp1_id", mp1Id);
     formData.set("valor1", String(Number(valor1) || 0));
     if (mp2Id) {
@@ -500,9 +505,38 @@ export function NuevaVentaForm({
             </p>
           )}
           {descMonto > 0 && (
-            <p className="text-xs text-muted-foreground tabular-nums">
-              Descuento aplicado: {formatARS(descMonto)}
-            </p>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Motivo del descuento *
+              </label>
+              {motivosDescuento.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No hay motivos cargados. Pedí a un administrador que los cree en
+                  Catálogos → Motivos de descuento.
+                </p>
+              ) : (
+                <select
+                  value={descMotivoId}
+                  onChange={(e) => setDescMotivoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— Elegí un motivo —</option>
+                  {motivosDescuento.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nombre}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errors.descuento_motivo_id && (
+                <p className="text-xs text-destructive">
+                  {errors.descuento_motivo_id.join(", ")}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground tabular-nums">
+                Descuento aplicado: {formatARS(descMonto)}
+              </p>
+            </div>
           )}
         </section>
 
@@ -736,10 +770,17 @@ export function NuevaVentaForm({
         </div>
       )}
 
-      {/* Errores globales */}
-      {errors._ && (
-        <div className="bg-destructive/10 border border-destructive rounded-md p-4 text-sm text-destructive">
-          {errors._.join(", ")}
+      {/* Errores globales / cualquier error no mostrado inline */}
+      {Object.keys(errors).length > 0 && (
+        <div className="bg-destructive/10 border border-destructive rounded-md p-4 text-sm text-destructive space-y-1">
+          <p className="font-medium">No se pudo guardar la venta:</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {Object.entries(errors).flatMap(([campo, msgs]) =>
+              (msgs ?? []).map((m, i) => (
+                <li key={`${campo}-${i}`}>{m}</li>
+              )),
+            )}
+          </ul>
         </div>
       )}
 
@@ -752,6 +793,12 @@ export function NuevaVentaForm({
         >
           {pending ? "Guardando…" : "Guardar venta"}
         </button>
+        {!pending && !pagosOk && (
+          <span className="text-xs text-destructive">
+            La suma de pagos no coincide con el total ({formatARS(diff)} de
+            diferencia).
+          </span>
+        )}
         <Link
           href="/ventas"
           className="px-4 py-2.5 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"

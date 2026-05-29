@@ -273,6 +273,12 @@ export const rubrosGasto = pgTable("rubros_gasto", {
   activo: boolean("activo").notNull().default(true),
 });
 
+export const motivosDescuento = pgTable("motivos_descuento", {
+  id: text("id").primaryKey(),
+  nombre: text("nombre").notNull(),
+  activo: boolean("activo").notNull().default(true),
+});
+
 export const stockSucursal = pgTable(
   "stock_sucursal",
   {
@@ -319,6 +325,9 @@ export const ingresos = pgTable("ingresos", {
   subtotal: doublePrecision("subtotal").notNull(),
   descuentoPct: doublePrecision("descuento_pct").notNull().default(0),
   descuentoMonto: doublePrecision("descuento_monto").notNull().default(0),
+  descuentoMotivoId: text("descuento_motivo_id").references(
+    () => motivosDescuento.id,
+  ),
   total: doublePrecision("total").notNull(),
   mp1Id: text("mp1_id")
     .notNull()
@@ -568,6 +577,7 @@ export const schema = {
   cuentasBancarias,
   movimientosBancarios,
   rubrosGasto,
+  motivosDescuento,
   stockSucursal,
   movimientosStock,
   ingresos,
