@@ -336,6 +336,9 @@ export function NuevaVentaForm({
   const empleadosActivos = empleados.filter((e) => e.activo);
   const serviciosActivos = servicios.filter((s) => s.activo);
 
+  const nServicios = lineas.filter((l) => l.tipo === "servicio").length;
+  const nProductos = lineas.filter((l) => l.tipo === "producto").length;
+
   return (
     <>
     <form action={handleSubmit} className="space-y-8">
@@ -386,16 +389,30 @@ export function NuevaVentaForm({
       {/* Líneas */}
       <section className="space-y-3">
         <div className="flex items-end justify-between flex-wrap gap-2">
-          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-            Líneas del ticket
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+              Líneas del ticket
+            </h2>
+            {nServicios > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sage-100 text-sage-800">
+                <Scissors className="h-3 w-3 stroke-[1.5]" />
+                {nServicios} servicio{nServicios !== 1 ? "s" : ""}
+              </span>
+            )}
+            {nProductos > 0 && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800">
+                <Package className="h-3 w-3 stroke-[1.5]" />
+                {nProductos} producto{nProductos !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={addLineaServicio}
-              className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 flex items-center gap-1"
+              className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white hover:bg-sage-900 transition-colors"
             >
-              <Scissors className="h-3 w-3 stroke-[1.5]" />
+              <Scissors className="h-3.5 w-3.5 stroke-[1.5]" />
               Agregar servicio
             </button>
             <button
@@ -407,9 +424,9 @@ export function NuevaVentaForm({
                   ? "No hay productos cargados como vendibles en stock"
                   : undefined
               }
-              className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded-md border border-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-sage-700 hover:bg-sage-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Package className="h-3 w-3 stroke-[1.5]" />
+              <Package className="h-3.5 w-3.5 stroke-[1.5]" />
               Agregar producto
             </button>
           </div>
@@ -419,7 +436,11 @@ export function NuevaVentaForm({
           {lineas.map((l, idx) => (
             <div
               key={l.tempId}
-              className="bg-card border border-border rounded-md p-3"
+              className={`bg-card border border-border rounded-md p-3 border-l-4 ${
+                l.tipo === "servicio"
+                  ? "border-l-sage-700"
+                  : "border-l-amber-500"
+              }`}
             >
               {l.tipo === "servicio" ? (
                 <LineaServicioRow
@@ -920,13 +941,13 @@ function LineaServicioRow({
   const comision = comisionLinea(linea);
   return (
     <div className="grid grid-cols-12 gap-2 items-start">
-      <div className="col-span-12 sm:col-span-1 flex items-center">
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-700">
-          <Scissors className="h-3 w-3 stroke-[1.5]" />
+      <div className="col-span-12 sm:col-span-2 flex items-center">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-800 ring-1 ring-inset ring-sage-700/30">
+          <Scissors className="h-3.5 w-3.5 stroke-[1.5]" />
           Servicio
         </span>
       </div>
-      <div className="col-span-12 sm:col-span-4">
+      <div className="col-span-12 sm:col-span-3">
         <select
           value={linea.servicio_id}
           onChange={(e) => onServicio(e.target.value)}
@@ -971,9 +992,11 @@ function LineaServicioRow({
         >
           {formatARS(comision)}
         </span>
-        <p className="text-[10px] text-muted-foreground">
-          {linea.comision_pct || 0}%
-        </p>
+        {linea.servicio_id && (
+          <p className="text-[10px] text-muted-foreground">
+            {linea.comision_pct || 0}%
+          </p>
+        )}
       </div>
       <div className="col-span-1 self-center text-center">
         <button
@@ -1010,13 +1033,13 @@ function LineaProductoRow({
   const subtotal = subtotalLinea(linea);
   return (
     <div className="grid grid-cols-12 gap-2 items-start">
-      <div className="col-span-12 sm:col-span-1 flex items-center">
-        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-cream text-foreground border border-border">
-          <Package className="h-3 w-3 stroke-[1.5]" />
+      <div className="col-span-12 sm:col-span-2 flex items-center">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-500/40">
+          <Package className="h-3.5 w-3.5 stroke-[1.5]" />
           Producto
         </span>
       </div>
-      <div className="col-span-12 sm:col-span-5">
+      <div className="col-span-12 sm:col-span-4">
         <select
           value={linea.insumo_id}
           onChange={(e) => onProducto(e.target.value)}
