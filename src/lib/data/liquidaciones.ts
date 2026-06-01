@@ -33,6 +33,11 @@ import {
   liquidacionPagoSchema,
 } from "@/lib/validations/liquidacion";
 import { fieldErrors, requireRole } from "./_helpers";
+import {
+  deleteMovimientosByRefTx,
+  emitMovimientoBancarioTx,
+  getCuentaIdForMpTx,
+} from "./movimientos-bancarios-helpers";
 
 function createId() {
   return crypto.randomUUID();
@@ -542,6 +547,21 @@ export async function marcarLiquidacionPagada(
         usuarioId: user.id,
       });
 
+      const cuentaId = await getCuentaIdForMpTx(tx, parsed.data.mp_id);
+      if (cuentaId) {
+        await emitMovimientoBancarioTx(tx, {
+          cuentaId,
+          fecha: ahora,
+          monto: -Math.abs(existing.totalComision),
+          tipo: "egreso",
+          sucursalId: existing.sucursalId,
+          refTipo: "egreso",
+          refId: egresoId,
+          descripcion: observacionEgreso,
+          usuarioId: user.id,
+        });
+      }
+
       await tx
         .update(liquidacionesTable)
         .set({
@@ -571,6 +591,7 @@ export async function marcarLiquidacionPagada(
   revalidatePath("/egresos");
   revalidatePath("/caja");
   revalidatePath("/dashboard");
+  revalidatePath("/bancos");
   return { ok: true };
 }
 
@@ -617,6 +638,7 @@ export async function anularLiquidacion(
               `El pago se registró el ${ymdEgreso} y la caja de ese día ya está cerrada. Reabrí el cierre antes de anular.`,
             );
           }
+          await deleteMovimientosByRefTx(tx, "egreso", existing.egresoId);
           await tx.delete(egresosTable).where(eq(egresosTable.id, existing.egresoId));
         }
       }
@@ -639,6 +661,7 @@ export async function anularLiquidacion(
   revalidatePath("/egresos");
   revalidatePath("/caja");
   revalidatePath("/dashboard");
+  revalidatePath("/bancos");
   return { ok: true };
 }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import {
   getEfectivoEsperadoPeriodo,
   getLiquidacion,
@@ -9,6 +10,7 @@ import {
 import { listMediosPago } from "@/lib/data/medios-pago";
 import { formatARS } from "@/lib/utils";
 import { MarcarPagadaForm } from "@/components/forms/marcar-pagada-form";
+import { AnularLiquidacionForm } from "@/components/forms/anular-liquidacion-form";
 
 function formatYMD(ymd: string): string {
   const [y, m, d] = ymd.split("-");
@@ -27,7 +29,8 @@ export default async function LiquidacionDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const { id } = await params;
   const data = await getLiquidacion(id);
   if (!data) notFound();
@@ -213,6 +216,10 @@ export default async function LiquidacionDetallePage({
                 </p>
               )}
             </section>
+          )}
+
+          {scope.esAdmin && (
+            <AnularLiquidacionForm liquidacionId={liquidacion.id} />
           )}
         </aside>
       </div>
