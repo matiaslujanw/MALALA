@@ -111,7 +111,7 @@ export default async function DashboardPage() {
           Icon={Plus}
           highlight
         />
-        <QuickAction href="/turnos" label="Agenda" Icon={CalendarClock} />
+        <QuickAction href="/turnos" label="Turnos" Icon={CalendarClock} />
         {scope.puedeVerCaja && (
           <QuickAction href="/caja" label="Caja" Icon={Wallet} />
         )}
@@ -207,7 +207,7 @@ export default async function DashboardPage() {
             href="/turnos"
             className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
           >
-            Ver agenda completa →
+            Ver todos los turnos →
           </Link>
         </div>
         {proximos.length === 0 ? (
