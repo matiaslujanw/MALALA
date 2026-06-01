@@ -1,30 +1,39 @@
 import { redirect } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
 import { AdminChat } from "@/components/admin-chat/admin-chat";
 import { getActiveSucursalForUser, getCurrentUser } from "@/lib/auth/session";
+import { logout } from "@/lib/auth/actions";
 import { listSucursales } from "@/lib/data/sucursales";
 import { buildAccessScope } from "@/lib/auth/access";
 import type { AccessScope } from "@/lib/types";
+
+const ROL_LABEL: Record<string, string> = {
+  admin: "Admin",
+  encargada: "Encargada",
+  empleado: "Empleado",
+};
 
 interface NavDef {
   href: string;
   label: string;
   iconKey: string;
+  group?: string;
   visible: (scope: AccessScope) => boolean;
 }
 
 const NAV: NavDef[] = [
-  { href: "/dashboard", label: "Dashboard", iconKey: "LayoutDashboard", visible: () => true },
-  { href: "/ventas", label: "Ventas", iconKey: "ShoppingBag", visible: () => true },
-  { href: "/turnos", label: "Turnos", iconKey: "CalendarDays", visible: () => true },
-  { href: "/caja", label: "Caja", iconKey: "Wallet", visible: (s) => s.puedeVerCaja },
-  { href: "/bancos", label: "Bancos", iconKey: "Landmark", visible: (s) => s.puedeVerCaja },
-  { href: "/liquidaciones", label: "Liquidaciones", iconKey: "HandCoins", visible: (s) => s.puedeVerCaja },
-  { href: "/stock", label: "Stock", iconKey: "Package", visible: (s) => s.puedeVerStock },
-  { href: "/egresos", label: "Gastos", iconKey: "Receipt", visible: (s) => s.rol !== "empleado" },
-  { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", visible: (s) => s.puedeVerCatalogos },
-  { href: "/reportes", label: "Reportes", iconKey: "BarChart3", visible: (s) => s.puedeVerReportes },
+  { href: "/dashboard", label: "Dashboard", iconKey: "LayoutDashboard", group: "Operación", visible: () => true },
+  { href: "/ventas", label: "Ventas", iconKey: "ShoppingBag", group: "Operación", visible: () => true },
+  { href: "/turnos", label: "Turnos", iconKey: "CalendarDays", group: "Operación", visible: () => true },
+  { href: "/caja", label: "Caja", iconKey: "Wallet", group: "Operación", visible: (s) => s.puedeVerCaja },
+  { href: "/bancos", label: "Bancos", iconKey: "Landmark", group: "Finanzas", visible: (s) => s.puedeVerCaja },
+  { href: "/liquidaciones", label: "Liquidaciones", iconKey: "HandCoins", group: "Finanzas", visible: (s) => s.puedeVerCaja },
+  { href: "/stock", label: "Stock", iconKey: "Package", group: "Gestión", visible: (s) => s.puedeVerStock },
+  { href: "/egresos", label: "Gastos", iconKey: "Receipt", group: "Gestión", visible: (s) => s.rol !== "empleado" },
+  { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", group: "Gestión", visible: (s) => s.puedeVerCatalogos },
+  { href: "/reportes", label: "Reportes", iconKey: "BarChart3", group: "Gestión", visible: (s) => s.puedeVerReportes },
   { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", visible: (s) => s.rol !== "empleado" },
 ];
 
@@ -42,11 +51,11 @@ export default async function AppLayout({
   const scope = buildAccessScope(user);
   const navItems = NAV
     .filter((n) => n.visible(scope))
-    .map(({ href, label, iconKey }) => ({ href, label, iconKey }));
+    .map(({ href, label, iconKey, group }) => ({ href, label, iconKey, group }));
 
   return (
     <div className="flex flex-1 min-h-screen">
-      <AppSidebar userName={user.nombre} userRol={user.rol} navItems={navItems} />
+      <AppSidebar navItems={navItems} />
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-border bg-card px-4 md:px-6 flex items-center justify-between gap-2">
           {/* Spacer for hamburger button on mobile */}
@@ -54,11 +63,32 @@ export default async function AppLayout({
           <div className="text-xs uppercase tracking-widest text-muted-foreground hidden sm:block">
             Sistema MALALA
           </div>
-          <SucursalSwitcher
-            user={user}
-            active={sucursal}
-            sucursales={sucursales}
-          />
+          <div className="flex items-center gap-3 ml-auto">
+            <SucursalSwitcher
+              user={user}
+              active={sucursal}
+              sucursales={sucursales}
+            />
+            <div className="hidden sm:block h-6 w-px bg-border" />
+            <div className="hidden sm:flex flex-col items-end leading-tight">
+              <span className="text-sm font-medium truncate max-w-[12rem]">
+                {user.nombre}
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {ROL_LABEL[user.rol] ?? user.rol}
+              </span>
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                title="Salir"
+                aria-label="Salir"
+                className="flex items-center justify-center rounded-xl p-2 text-muted-foreground hover:bg-cream hover:text-foreground transition-colors"
+              >
+                <LogOut className="h-4 w-4 stroke-[1.5]" />
+              </button>
+            </form>
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
       </div>

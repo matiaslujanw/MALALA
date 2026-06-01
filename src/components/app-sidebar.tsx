@@ -10,7 +10,6 @@ import {
   HandCoins,
   Landmark,
   LayoutDashboard,
-  LogOut,
   Menu,
   MessageCircle,
   Package,
@@ -19,19 +18,9 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { logout } from "@/lib/auth/actions";
-import type { Rol } from "@/lib/types";
-
-const ROL_LABEL: Record<string, string> = {
-  admin: "Admin",
-  encargada: "Encargada",
-  empleado: "Empleado",
-};
 
 interface SidebarProps {
-  userName: string;
-  userRol: Rol;
-  navItems: { href: string; label: string; iconKey: string }[];
+  navItems: { href: string; label: string; iconKey: string; group?: string }[];
 }
 
 const ICONS: Record<string, ComponentType<{ className?: string }>> = {
@@ -48,7 +37,7 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   MessageCircle,
 };
 
-export function AppSidebar({ userName, userRol, navItems }: SidebarProps) {
+export function AppSidebar({ navItems }: SidebarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -93,7 +82,7 @@ export function AppSidebar({ userName, userRol, navItems }: SidebarProps) {
         <Link
           href="/dashboard"
           onClick={() => setOpen(false)}
-          className="block p-6 border-b border-border hover:bg-cream/40 transition-colors"
+          className="block px-6 py-4 border-b border-border hover:bg-cream/40 transition-colors"
         >
           <h1 className="font-display text-xl tracking-[0.3em] uppercase">
             MALALA
@@ -104,37 +93,33 @@ export function AppSidebar({ userName, userRol, navItems }: SidebarProps) {
         </Link>
 
         <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-0.5">
-          {navItems.map((item) => {
+          {navItems.map((item, i) => {
             const Icon = ICONS[item.iconKey] ?? LayoutDashboard;
+            const showHeader =
+              !!item.group && item.group !== navItems[i - 1]?.group;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-cream transition-colors"
-              >
-                <Icon className="h-4 w-4 stroke-[1.5]" />
-                <span>{item.label}</span>
-              </Link>
+              <div key={item.href}>
+                {showHeader && (
+                  <p
+                    className={`px-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground ${
+                      i === 0 ? "pb-1.5" : "pt-4 pb-1.5"
+                    }`}
+                  >
+                    {item.group}
+                  </p>
+                )}
+                <Link
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-cream transition-colors"
+                >
+                  <Icon className="h-4 w-4 stroke-[1.5]" />
+                  <span>{item.label}</span>
+                </Link>
+              </div>
             );
           })}
         </nav>
-
-        <div className="p-3 border-t border-border space-y-2">
-          <div className="px-3 py-2">
-            <p className="text-sm font-medium truncate">{userName}</p>
-            <p className="text-xs text-muted-foreground">{ROL_LABEL[userRol]}</p>
-          </div>
-          <form action={logout}>
-            <button
-              type="submit"
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-cream hover:text-foreground transition-colors"
-            >
-              <LogOut className="h-4 w-4 stroke-[1.5]" />
-              <span>Salir</span>
-            </button>
-          </form>
-        </div>
       </aside>
     </>
   );
