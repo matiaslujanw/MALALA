@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
@@ -242,12 +243,7 @@ export default async function CajaPage({
                       {formatARS(item.efectivoEsperado)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/caja/${item.cierre.id}`}
-                        className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                      >
-                        Ver
-                      </Link>
+                      <TableActionLink href={`/caja/${item.cierre.id}`} />
                     </td>
                   </tr>
                 ))}

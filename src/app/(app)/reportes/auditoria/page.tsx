@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -366,14 +366,7 @@ export default async function ReportesPage({
                       {e.monto != null ? formatARS(e.monto) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {e.href && (
-                        <Link
-                          href={e.href}
-                          className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                        >
-                          Ver
-                        </Link>
-                      )}
+                      {e.href && <TableActionLink href={e.href} />}
                     </td>
                   </tr>
                 ))}

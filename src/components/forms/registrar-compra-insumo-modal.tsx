@@ -188,12 +188,12 @@ export function RegistrarCompraInsumoModal({
                     Monto total pagado
                   </label>
                   <CurrencyInput
-                    name="valor"
                     value={valor}
                     onChange={setValor}
                     min={0}
                     className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
+                  <input type="hidden" name="valor" value={valor} />
                   {precioUnitarioCalc != null && (
                     <p className="text-[10px] text-muted-foreground tabular-nums">
                       Precio por envase: {formatARS(precioUnitarioCalc)}

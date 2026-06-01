@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CrudForm } from "./crud-form";
 import { CurrencyInput } from "./currency-input";
-import { CheckboxField, Field, SelectField } from "./field";
+import { CheckboxField, CurrencyField, Field, SelectField } from "./field";
 import type { Insumo, MedioPago, Proveedor, Sucursal } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/_helpers";
 
@@ -35,45 +35,6 @@ const UNIDADES = [
   { value: "g", label: "Gramos (g)" },
   { value: "aplicacion", label: "Aplicación" },
 ];
-
-function CurrencyField({
-  label,
-  name,
-  defaultValue,
-  error,
-  hint,
-  required,
-}: {
-  label: string;
-  name: string;
-  defaultValue?: number;
-  error?: string[];
-  hint?: string;
-  required?: boolean;
-}) {
-  const [value, setValue] = useState<number>(defaultValue ?? 0);
-  return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={name}
-        className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
-      >
-        {label}
-      </label>
-      <CurrencyInput
-        id={name}
-        value={value}
-        onChange={setValue}
-        min={0}
-        className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <input type="hidden" name={name} value={value} />
-      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
-      {required && <input type="hidden" data-required="true" />}
-    </div>
-  );
-}
 
 export function InsumoForm({
   insumo,
@@ -251,11 +212,15 @@ export function InsumoForm({
                         Monto total pagado
                       </label>
                       <CurrencyInput
-                        name="compra_valor"
                         value={compraValor}
                         onChange={setCompraValor}
                         min={0}
                         className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        type="hidden"
+                        name="compra_valor"
+                        value={compraValor}
                       />
                     </div>
                   </div>

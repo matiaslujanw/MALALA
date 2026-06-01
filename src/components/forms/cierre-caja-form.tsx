@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FormButtons, GlobalError } from "./field";
+import { CurrencyField, FormButtons, GlobalError } from "./field";
 import { DENOMINACIONES_ARS } from "@/lib/validations/caja";
 import { formatARS } from "@/lib/utils";
 import type { ResumenDelDia, SugerenciasArrastre } from "@/lib/data/caja";
@@ -327,7 +327,7 @@ export function CierreCajaForm({
 
         <div className="bg-card border border-border rounded-md p-5 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <NumField
+            <CurrencyField
               label="Saldo inicial efectivo"
               name="saldo_inicial_ef"
               value={saldoInicial}
@@ -426,7 +426,7 @@ export function CierreCajaForm({
           Otros valores
         </h2>
         <div className="bg-card border border-border rounded-md p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <NumField
+          <CurrencyField
             label="Saldo banco contado"
             name="saldo_banco"
             defaultValue={arrastre.saldoInicialBanco}
@@ -437,37 +437,37 @@ export function CierreCajaForm({
                 : "Lo que ves en cuentas al cierre"
             }
           />
-          <NumField
+          <CurrencyField
             label="Vouchers"
             name="vouchers"
             error={errors.vouchers}
           />
-          <NumField
+          <CurrencyField
             label="Giftcards"
             name="giftcards"
             error={errors.giftcards}
           />
-          <NumField
+          <CurrencyField
             label="Autoconsumos"
             name="autoconsumos"
             error={errors.autoconsumos}
           />
-          <NumField
+          <CurrencyField
             label="Cheques"
             name="cheques"
             error={errors.cheques}
           />
-          <NumField
+          <CurrencyField
             label="Aportes"
             name="aportes"
             error={errors.aportes}
           />
-          <NumField
+          <CurrencyField
             label="Ingresos en CC"
             name="ingresos_cc"
             error={errors.ingresos_cc}
           />
-          <NumField
+          <CurrencyField
             label="Anticipos"
             name="anticipos"
             error={errors.anticipos}
@@ -505,56 +505,6 @@ export function CierreCajaForm({
         pending={pending}
       />
     </form>
-  );
-}
-
-function NumField({
-  label,
-  name,
-  error,
-  hint,
-  value,
-  onChange,
-  defaultValue,
-}: {
-  label: string;
-  name: string;
-  error?: string[];
-  hint?: string;
-  value?: number;
-  onChange?: (n: number) => void;
-  defaultValue?: number;
-}) {
-  const controlled = onChange !== undefined;
-  return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={name}
-        className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
-      >
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type="number"
-        step="0.01"
-        min={0}
-        defaultValue={controlled ? undefined : (defaultValue ?? 0)}
-        value={controlled ? (value === 0 ? "" : value) : undefined}
-        onChange={
-          controlled
-            ? (e) => onChange!(e.target.value === "" ? 0 : Number(e.target.value))
-            : undefined
-        }
-        placeholder="0"
-        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      {hint && !error && (
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      )}
-      {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
-    </div>
   );
 }
 

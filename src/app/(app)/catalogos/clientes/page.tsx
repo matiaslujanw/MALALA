@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { listClientes } from "@/lib/data/clientes";
 import { requireUser } from "@/lib/auth/session";
@@ -65,12 +66,10 @@ export default async function ClientesPage() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link
+                  <TableActionLink
                     href={`/catalogos/clientes/${c.id}`}
-                    className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                  >
-                    Editar
-                  </Link>
+                    variant="edit"
+                  />
                 </td>
               </tr>
             ))}

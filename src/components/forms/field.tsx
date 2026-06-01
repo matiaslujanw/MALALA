@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { CurrencyInput } from "./currency-input";
 
 interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -30,6 +32,66 @@ export function Field({ label, error, hint, name, className, ...rest }: FieldPro
       {hint && !error && (
         <p className="text-xs text-muted-foreground">{hint}</p>
       )}
+      {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
+    </div>
+  );
+}
+
+interface CurrencyFieldProps {
+  label: string;
+  name: string;
+  /** Valor inicial (modo no controlado). */
+  defaultValue?: number;
+  /** Modo controlado: pasar value + onChange. */
+  value?: number;
+  onChange?: (n: number) => void;
+  error?: string[];
+  hint?: string;
+  required?: boolean;
+  min?: number;
+}
+
+/**
+ * Campo de moneda con formato de pesos automático (separador de miles).
+ * Muestra "$ 1.234" mientras no se edita y envía el número crudo vía un
+ * input oculto, para que el server action lo reciba como número.
+ */
+export function CurrencyField({
+  label,
+  name,
+  defaultValue,
+  value,
+  onChange,
+  error,
+  hint,
+  required,
+  min = 0,
+}: CurrencyFieldProps) {
+  const controlled = onChange !== undefined;
+  const [internal, setInternal] = useState<number>(defaultValue ?? 0);
+  const current = controlled ? (value ?? 0) : internal;
+  const set = (n: number) => {
+    if (controlled) onChange(n);
+    else setInternal(n);
+  };
+  return (
+    <div className="space-y-1.5">
+      <label
+        htmlFor={name}
+        className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+      >
+        {label}
+      </label>
+      <CurrencyInput
+        id={name}
+        value={current}
+        onChange={set}
+        min={min}
+        required={required}
+        className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+      />
+      <input type="hidden" name={name} value={current} />
+      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
     </div>
   );

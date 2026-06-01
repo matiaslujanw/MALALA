@@ -8,6 +8,7 @@ import {
 import { listSucursales } from "@/lib/data/sucursales";
 import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
+import { CurrencyField } from "@/components/forms/field";
 
 export const dynamic = "force-dynamic";
 
@@ -356,19 +357,7 @@ function TransferenciaForm({
                 ))}
               </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Monto
-              </label>
-              <input
-                type="number"
-                name="monto"
-                required
-                min="0.01"
-                step="0.01"
-                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+            <CurrencyField label="Monto" name="monto" required />
             <div className="space-y-1.5 sm:col-span-2">
               <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Detalle
