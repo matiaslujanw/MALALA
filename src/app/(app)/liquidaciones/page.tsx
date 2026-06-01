@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { TableActionLink } from "@/components/table-action-link";
 import { redirect } from "next/navigation";
 import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -125,7 +126,7 @@ export default async function LiquidacionesPage({
                 <th className="px-4 py-3 text-right font-medium">Días</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
                 <th className="px-4 py-3 text-left font-medium">Estado</th>
-                <th className="w-20 px-4 py-3"></th>
+                <th className="w-24 px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -169,12 +170,9 @@ export default async function LiquidacionesPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
+                      <TableActionLink
                         href={`/liquidaciones/${item.liquidacion.id}`}
-                        className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                      >
-                        Ver
-                      </Link>
+                      />
                     </td>
                   </tr>
                 );

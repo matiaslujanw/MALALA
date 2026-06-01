@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { listIngresos } from "@/lib/data/ingresos";
 import {
@@ -472,12 +473,7 @@ export default async function VentasPage({
                       {formatARS(row.breakdown.neto)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/ventas/${row.ingreso.id}`}
-                        className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                      >
-                        Ver
-                      </Link>
+                      <TableActionLink href={`/ventas/${row.ingreso.id}`} />
                     </td>
                   </tr>
                 ))}

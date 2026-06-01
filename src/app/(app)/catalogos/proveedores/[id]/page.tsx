@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { ProveedorForm } from "@/components/forms/proveedor-form";
 import {
   getProveedor,
@@ -209,12 +210,10 @@ export default async function EditarProveedorPage({
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
+                      <TableActionLink
                         href={`/catalogos/insumos/${insumo.id}`}
-                        className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                      >
-                        Editar
-                      </Link>
+                        variant="edit"
+                      />
                     </td>
                   </tr>
                 ))}

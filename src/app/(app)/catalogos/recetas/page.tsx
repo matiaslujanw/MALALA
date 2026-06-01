@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { listRecetasResumen } from "@/lib/data/recetas";
 import { requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
@@ -98,12 +98,11 @@ export default async function RecetasPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Link
+                          <TableActionLink
                             href={`/catalogos/recetas/${servicio.id}`}
-                            className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                          >
-                            {cantidadInsumos === 0 ? "Cargar" : "Editar"}
-                          </Link>
+                            variant="edit"
+                            label={cantidadInsumos === 0 ? "Cargar" : "Editar"}
+                          />
                         </td>
                       </tr>
                     );

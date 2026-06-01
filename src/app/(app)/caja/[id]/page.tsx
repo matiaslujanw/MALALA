@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TableActionLink } from "@/components/table-action-link";
 import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getCierre, getResumenDelDia } from "@/lib/data/caja";
@@ -113,12 +114,7 @@ export default async function CierreDetallePage({
                       {formatARS(t.comisiones)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/ventas/${t.id}`}
-                        className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900"
-                      >
-                        Ver
-                      </Link>
+                      <TableActionLink href={`/ventas/${t.id}`} />
                     </td>
                   </tr>
                 ))}
