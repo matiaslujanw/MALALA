@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { useRouter } from "next/navigation";
+import { CurrencyField } from "./field";
 import type { Servicio } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/servicios";
 
@@ -43,20 +44,16 @@ export function ServicioForm({ servicio, action, submitLabel }: Props) {
         required
       />
       <div className="grid grid-cols-2 gap-4">
-        <Field
+        <CurrencyField
           label="Precio lista"
           name="precio_lista"
-          type="number"
-          step="0.01"
           defaultValue={servicio?.precio_lista}
           error={errors.precio_lista}
           required
         />
-        <Field
+        <CurrencyField
           label="Precio efectivo"
           name="precio_efectivo"
-          type="number"
-          step="0.01"
           defaultValue={servicio?.precio_efectivo}
           error={errors.precio_efectivo}
           required

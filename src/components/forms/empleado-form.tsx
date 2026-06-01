@@ -1,7 +1,7 @@
 "use client";
 
 import { CrudForm } from "./crud-form";
-import { CheckboxField, Field, SelectField } from "./field";
+import { CheckboxField, CurrencyField, Field, SelectField } from "./field";
 import type { Empleado, Sucursal } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/_helpers";
 
@@ -68,11 +68,9 @@ export function EmpleadoForm({
               error={errors.porcentaje_default}
               required
             />
-            <Field
+            <CurrencyField
               label="Sueldo asegurado"
               name="sueldo_asegurado"
-              type="number"
-              step="1"
               defaultValue={empleado?.sueldo_asegurado ?? 0}
               error={errors.sueldo_asegurado}
               required

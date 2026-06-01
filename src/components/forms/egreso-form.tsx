@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Field, FormButtons, GlobalError, SelectField } from "./field";
+import { CurrencyField, Field, FormButtons, GlobalError, SelectField } from "./field";
 import type {
   MedioPago,
   Proveedor,
@@ -106,12 +106,9 @@ export function EgresoForm({
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
+        <CurrencyField
           label="Monto"
           name="valor"
-          type="number"
-          step="0.01"
-          min={0}
           error={errors.valor}
           required
         />
