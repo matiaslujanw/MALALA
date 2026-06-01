@@ -6,6 +6,7 @@ import {
   Coins,
   ListChecks,
   Sparkles,
+  TicketPercent,
   Users,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
@@ -81,6 +82,12 @@ export default async function ReportesHubPage({ searchParams }: PageProps) {
       label: "Flujo de caja",
       desc: "Ingresos por método de pago, egresos por rubro, neto del período",
       Icon: Coins,
+    },
+    {
+      href: "/reportes/descuentos",
+      label: "Descuentos",
+      desc: "Usos y montos por tipo de descuento, con el detalle de cada venta",
+      Icon: TicketPercent,
     },
     {
       href: "/reportes/auditoria",
