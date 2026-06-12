@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { formatARS } from "@/lib/utils";
 
 interface Props {
@@ -16,9 +16,12 @@ interface Props {
   max?: number;
 }
 
+// Toma cualquier texto y devuelve el entero en pesos que representa.
+// Solo dígitos: los montos en ARS se manejan sin centavos (formatARS usa 0 decimales).
 function parseInput(s: string): number {
-  const cleaned = s.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
-  const n = Number(cleaned);
+  const digits = s.replace(/[^\d]/g, "");
+  if (!digits) return 0;
+  const n = Number(digits);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -34,39 +37,36 @@ export function CurrencyInput({
   min,
   max,
 }: Props) {
-  const [text, setText] = useState<string>(value ? formatARS(value) : "");
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setText(value ? formatARS(value) : "");
-  }, [value, editing]);
+  const ref = useRef<HTMLInputElement>(null);
+  // El texto mostrado se deriva siempre del valor → "$ 150.000" en vivo, sin estado local.
+  const display = value ? formatARS(value) : "";
 
   return (
     <input
+      ref={ref}
       type="text"
-      inputMode="decimal"
-      value={text}
+      inputMode="numeric"
+      value={display}
       name={name}
       id={id}
       disabled={disabled}
       required={required}
       placeholder={placeholder ?? "$ 0"}
       onFocus={(e) => {
-        setEditing(true);
-        setText(value ? String(value) : "");
-        requestAnimationFrame(() => e.target.select());
+        const el = e.currentTarget;
+        requestAnimationFrame(() => el.select());
       }}
       onChange={(e) => {
-        const raw = e.target.value;
-        setText(raw);
-        let n = parseInput(raw);
+        const el = e.currentTarget;
+        let n = parseInput(e.target.value);
         if (typeof min === "number" && n < min) n = min;
         if (typeof max === "number" && n > max) n = max;
         onChange(n);
-      }}
-      onBlur={() => {
-        setEditing(false);
-        setText(value ? formatARS(value) : "");
+        // Mantener el cursor al final (campo alineado a la derecha).
+        requestAnimationFrame(() => {
+          const len = el.value.length;
+          el.setSelectionRange(len, len);
+        });
       }}
       className={className}
     />
