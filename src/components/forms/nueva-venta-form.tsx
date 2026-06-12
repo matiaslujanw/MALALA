@@ -8,6 +8,7 @@ import { createIngreso } from "@/lib/data/ingresos-actions";
 import { createClienteQuick } from "@/lib/data/clientes";
 import type {
   Cliente,
+  CuentaBancaria,
   Empleado,
   Insumo,
   MedioPago,
@@ -23,7 +24,9 @@ type LineaServicioForm = {
   servicio_id: string;
   empleado_id: string;
   precio: number;
+  precio_tipo: "lista" | "efectivo";
   comision_pct: number;
+  soporta_descuento: boolean;
 };
 
 type LineaProductoForm = {
@@ -45,6 +48,7 @@ interface Props {
   mediosPago: MedioPago[];
   productos: Insumo[];
   motivosDescuento: MotivoDescuento[];
+  cuentasBanco: CuentaBancaria[];
 }
 
 const newLineaServicio = (): LineaServicioForm => ({
@@ -53,8 +57,19 @@ const newLineaServicio = (): LineaServicioForm => ({
   servicio_id: "",
   empleado_id: "",
   precio: 0,
+  precio_tipo: "lista",
   comision_pct: 30,
+  soporta_descuento: true,
 });
+
+// ¿El medio de pago es una transferencia? (habilita elegir banco destino)
+function esTransferencia(mp: MedioPago | undefined): boolean {
+  if (!mp) return false;
+  return (
+    mp.codigo.toUpperCase().startsWith("TR") ||
+    mp.nombre.toLowerCase().includes("transfer")
+  );
+}
 
 const newLineaProducto = (): LineaProductoForm => ({
   tempId: crypto.randomUUID(),
@@ -70,9 +85,20 @@ function subtotalLinea(l: LineaForm): number {
   return precio;
 }
 
-function comisionLinea(l: LineaForm): number {
-  if (l.tipo === "producto") return 0;
-  return (Number(l.precio) || 0) * (Number(l.comision_pct) || 0) / 100;
+// Comisión de una línea de servicio, reflejando la regla del servidor:
+//   soporta_descuento = true  → comisión sobre el precio final pagado (desc. prorrateado)
+//   soporta_descuento = false → comisión sobre el precio de lista (regular)
+function comisionLineaServicio(
+  l: LineaServicioForm,
+  precioLista: number,
+  subtotalLineas: number,
+  descMonto: number,
+): number {
+  const sub = Number(l.precio) || 0;
+  const descProrrateado =
+    subtotalLineas > 0 ? descMonto * (sub / subtotalLineas) : 0;
+  const base = l.soporta_descuento ? sub - descProrrateado : precioLista;
+  return base * ((Number(l.comision_pct) || 0) / 100);
 }
 
 export function NuevaVentaForm({
@@ -84,6 +110,7 @@ export function NuevaVentaForm({
   mediosPago,
   productos,
   motivosDescuento,
+  cuentasBanco,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -152,8 +179,10 @@ export function NuevaVentaForm({
   const efectivo = mediosPago.find((m) => m.codigo === "EF");
   const [mp1Id, setMp1Id] = useState(efectivo?.id ?? mediosPago[0]?.id ?? "");
   const [valor1, setValor1] = useState<number>(0);
+  const [mp1CuentaId, setMp1CuentaId] = useState("");
   const [mp2Id, setMp2Id] = useState("");
   const [valor2, setValor2] = useState<number>(0);
+  const [mp2CuentaId, setMp2CuentaId] = useState("");
 
   // Resultado server
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -165,12 +194,40 @@ export function NuevaVentaForm({
     descTipo === "pct"
       ? subtotal * (Number(descValor) / 100)
       : Number(descValor) || 0;
-  const total = Math.max(0, subtotal - descMonto);
-  const totalComisiones = lineas.reduce((acc, l) => acc + comisionLinea(l), 0);
+  const total = Math.max(0, subtotal - descMonto); // neto de servicios/productos (antes de recargo)
+
+  const comisionDe = (l: LineaServicioForm) => {
+    const s = servicios.find((x) => x.id === l.servicio_id);
+    return comisionLineaServicio(
+      l,
+      s?.precio_lista ?? (Number(l.precio) || 0),
+      subtotal,
+      descMonto,
+    );
+  };
+  const totalComisiones = lineas.reduce(
+    (acc, l) => (l.tipo === "servicio" ? acc + comisionDe(l) : acc),
+    0,
+  );
   const paraElLocal = total - totalComisiones;
+
+  // Recargo automático por medio de pago (ej. tarjeta de crédito).
+  const mp1 = mediosPago.find((m) => m.id === mp1Id);
+  const mp2 = mp2Id ? mediosPago.find((m) => m.id === mp2Id) : undefined;
+  const recargo1 = (Number(valor1) || 0) * ((mp1?.recargo_pct ?? 0) / 100);
+  const recargo2 = mp2 ? (Number(valor2) || 0) * ((mp2.recargo_pct ?? 0) / 100) : 0;
+  const recargoTotal = recargo1 + recargo2;
+  const totalACobrar = total + recargoTotal;
+
   const pagado = (Number(valor1) || 0) + (Number(valor2) || 0);
   const diff = total - pagado;
   const pagosOk = Math.abs(diff) < 0.01;
+
+  // Aviso (no bloquea): descuento manual + línea a precio efectivo = 20% + otro descuento.
+  const hayLineaEfectivo = lineas.some(
+    (l) => l.tipo === "servicio" && l.precio_tipo === "efectivo",
+  );
+  const avisoDobleDescuento = descMonto > 0 && hayLineaEfectivo;
 
   // Comisiones por empleado en este ticket
   const comisionPorEmpleado = lineas.reduce<
@@ -179,7 +236,7 @@ export function NuevaVentaForm({
     if (l.tipo !== "servicio" || !l.empleado_id) return acc;
     const emp = empleados.find((e) => e.id === l.empleado_id);
     if (!emp) return acc;
-    const com = comisionLinea(l);
+    const com = comisionDe(l);
     const cur = acc.get(emp.id) ?? { nombre: emp.nombre, total: 0, lineas: 0 };
     cur.total += com;
     cur.lineas += 1;
@@ -219,8 +276,18 @@ export function NuevaVentaForm({
     const empleado = empleados.find((e) => e.id === l.empleado_id);
     updateLinea(idx, {
       servicio_id: servicioId,
-      precio: s.precio_efectivo,
+      precio: l.precio_tipo === "efectivo" ? s.precio_efectivo : s.precio_lista,
       comision_pct: empleado?.porcentaje_default ?? s.comision_default_pct,
+    });
+  }
+
+  function handlePrecioTipoChange(idx: number, tipo: "lista" | "efectivo") {
+    const l = lineas[idx];
+    if (l.tipo !== "servicio") return;
+    const s = servicios.find((x) => x.id === l.servicio_id);
+    updateLinea(idx, {
+      precio_tipo: tipo,
+      precio: s ? (tipo === "efectivo" ? s.precio_efectivo : s.precio_lista) : l.precio,
     });
   }
 
@@ -299,6 +366,7 @@ export function NuevaVentaForm({
             empleado_id: l.empleado_id,
             precio_efectivo: Number(l.precio) || 0,
             comision_pct: Number(l.comision_pct) || 0,
+            soporta_descuento: l.soporta_descuento,
           };
         }),
       ),
@@ -308,9 +376,17 @@ export function NuevaVentaForm({
     formData.set("descuento_motivo_id", descMonto > 0 ? descMotivoId : "");
     formData.set("mp1_id", mp1Id);
     formData.set("valor1", String(Number(valor1) || 0));
+    formData.set(
+      "mp1_cuenta_id",
+      esTransferencia(mp1) ? mp1CuentaId : "",
+    );
     if (mp2Id) {
       formData.set("mp2_id", mp2Id);
       formData.set("valor2", String(Number(valor2) || 0));
+      formData.set(
+        "mp2_cuenta_id",
+        esTransferencia(mp2) ? mp2CuentaId : "",
+      );
     }
     formData.set("observacion", observacion);
 
@@ -447,9 +523,12 @@ export function NuevaVentaForm({
                   linea={l}
                   servicios={serviciosActivos}
                   empleados={empleadosActivos}
+                  comision={comisionDe(l)}
                   onServicio={(id) => handleServicioChange(idx, id)}
                   onEmpleado={(id) => handleEmpleadoChange(idx, id)}
                   onPrecio={(v) => updateLinea(idx, { precio: v })}
+                  onPrecioTipo={(t) => handlePrecioTipoChange(idx, t)}
+                  onSoporta={(v) => updateLinea(idx, { soporta_descuento: v })}
                   onRemove={() => removeLinea(idx)}
                   removable={lineas.length > 1}
                 />
@@ -642,6 +721,34 @@ export function NuevaVentaForm({
         </section>
       </div>
 
+      {/* Aviso: doble descuento (no bloquea) */}
+      {avisoDobleDescuento && (
+        <div
+          className="border rounded-md p-4 flex items-start gap-3"
+          style={{
+            backgroundColor: "rgb(201 169 97 / 0.08)",
+            borderColor: "var(--warning)",
+          }}
+        >
+          <AlertTriangle
+            className="h-5 w-5 stroke-[1.5] shrink-0"
+            style={{ color: "var(--warning)" }}
+          />
+          <div className="space-y-0.5 text-sm">
+            <p className="font-medium" style={{ color: "var(--warning)" }}>
+              Cuidado: estás acumulando descuentos
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Hay líneas a precio <strong>Efectivo</strong> (que ya incluye el
+              descuento del 20%) y además aplicaste un descuento manual. Revisá
+              que no estés sumando los dos descuentos. Si el cliente tiene el
+              descuento manual, las líneas deberían ir a precio de{" "}
+              <strong>Lista</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Pagos */}
       <section className="bg-card border border-border rounded-md p-5 space-y-4">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -679,8 +786,22 @@ export function NuevaVentaForm({
               }}
               className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            {recargo1 > 0 && (
+              <p className="text-[10px] text-amber-700 tabular-nums">
+                + recargo {mp1?.recargo_pct}% = {formatARS(valor1 + recargo1)} a cobrar
+              </p>
+            )}
           </div>
         </div>
+
+        {esTransferencia(mp1) && (
+          <BancoSelector
+            cuentas={cuentasBanco}
+            value={mp1CuentaId}
+            onChange={setMp1CuentaId}
+            label="Banco de la transferencia (Medio 1)"
+          />
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -725,9 +846,23 @@ export function NuevaVentaForm({
                 }}
                 className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
+              {recargo2 > 0 && (
+                <p className="text-[10px] text-amber-700 tabular-nums">
+                  + recargo {mp2?.recargo_pct}% = {formatARS(valor2 + recargo2)} a cobrar
+                </p>
+              )}
             </div>
           )}
         </div>
+
+        {mp2Id && esTransferencia(mp2) && (
+          <BancoSelector
+            cuentas={cuentasBanco}
+            value={mp2CuentaId}
+            onChange={setMp2CuentaId}
+            label="Banco de la transferencia (Medio 2)"
+          />
+        )}
 
         <div className="flex items-center justify-between pt-3 border-t border-border text-sm tabular-nums">
           <span className="text-muted-foreground">Pagado · Total · Diferencia</span>
@@ -744,6 +879,19 @@ export function NuevaVentaForm({
             </span>
           </span>
         </div>
+        {recargoTotal > 0 && (
+          <div className="flex items-center justify-between text-sm tabular-nums">
+            <span className="text-amber-700 uppercase tracking-wider text-xs">
+              Recargo · Total a cobrar
+            </span>
+            <span className="text-amber-700">
+              + {formatARS(recargoTotal)} ·{" "}
+              <span className="font-display text-lg text-foreground">
+                {formatARS(totalACobrar)}
+              </span>
+            </span>
+          </div>
+        )}
         {errors.valor1 && (
           <p className="text-xs text-destructive">{errors.valor1.join(", ")}</p>
         )}
@@ -923,92 +1071,207 @@ function LineaServicioRow({
   linea,
   servicios,
   empleados,
+  comision,
   onServicio,
   onEmpleado,
   onPrecio,
+  onPrecioTipo,
+  onSoporta,
   onRemove,
   removable,
 }: {
   linea: LineaServicioForm;
   servicios: Servicio[];
   empleados: Empleado[];
+  comision: number;
   onServicio: (id: string) => void;
   onEmpleado: (id: string) => void;
   onPrecio: (v: number) => void;
+  onPrecioTipo: (t: "lista" | "efectivo") => void;
+  onSoporta: (v: boolean) => void;
   onRemove: () => void;
   removable: boolean;
 }) {
-  const comision = comisionLinea(linea);
+  const servicio = servicios.find((s) => s.id === linea.servicio_id);
   return (
-    <div className="grid grid-cols-12 gap-2 items-start">
-      <div className="col-span-12 sm:col-span-2 flex items-center">
-        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-800 ring-1 ring-inset ring-sage-700/30">
-          <Scissors className="h-3.5 w-3.5 stroke-[1.5]" />
-          Servicio
-        </span>
+    <div className="space-y-2">
+      <div className="grid grid-cols-12 gap-2 items-start">
+        <div className="col-span-12 sm:col-span-2 flex items-center">
+          <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-800 ring-1 ring-inset ring-sage-700/30">
+            <Scissors className="h-3.5 w-3.5 stroke-[1.5]" />
+            Servicio
+          </span>
+        </div>
+        <div className="col-span-12 sm:col-span-3">
+          <select
+            value={linea.servicio_id}
+            onChange={(e) => onServicio(e.target.value)}
+            className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">— Servicio —</option>
+            {servicios.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-span-12 sm:col-span-3">
+          <select
+            value={linea.empleado_id}
+            onChange={(e) => onEmpleado(e.target.value)}
+            className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">— Empleado —</option>
+            {empleados.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="col-span-6 sm:col-span-2">
+          <CurrencyInput
+            value={linea.precio}
+            onChange={onPrecio}
+            min={0}
+            className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="col-span-5 sm:col-span-1 text-right tabular-nums text-sm self-center">
+          <span
+            style={{
+              color: comision > 0 ? "var(--sage-700)" : "var(--muted-foreground)",
+              fontWeight: comision > 0 ? 500 : 400,
+            }}
+          >
+            {formatARS(comision)}
+          </span>
+          {linea.servicio_id && (
+            <p className="text-[10px] text-muted-foreground">
+              {linea.comision_pct || 0}%
+            </p>
+          )}
+        </div>
+        <div className="col-span-1 self-center text-center">
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={!removable}
+            className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
+            title="Quitar línea"
+          >
+            <X className="h-4 w-4 stroke-[1.5]" />
+          </button>
+        </div>
       </div>
-      <div className="col-span-12 sm:col-span-3">
+
+      {/* Controles de precio y comisión por descuento */}
+      {linea.servicio_id && (
+        <div className="grid grid-cols-12 gap-2">
+          <div className="col-span-12 sm:col-start-3 sm:col-span-4 flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              Precio
+            </span>
+            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => onPrecioTipo("lista")}
+                className={`px-2.5 py-1 transition-colors ${
+                  linea.precio_tipo === "lista"
+                    ? "bg-sage-700 text-white"
+                    : "bg-card hover:bg-cream"
+                }`}
+              >
+                Lista
+                {servicio ? ` · ${formatARS(servicio.precio_lista)}` : ""}
+              </button>
+              <button
+                type="button"
+                onClick={() => onPrecioTipo("efectivo")}
+                className={`px-2.5 py-1 border-l border-border transition-colors ${
+                  linea.precio_tipo === "efectivo"
+                    ? "bg-sage-700 text-white"
+                    : "bg-card hover:bg-cream"
+                }`}
+              >
+                Efectivo
+                {servicio ? ` · ${formatARS(servicio.precio_efectivo)}` : ""}
+              </button>
+            </div>
+          </div>
+          <div className="col-span-12 sm:col-span-5 flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              ¿Empleada absorbe el descuento?
+            </span>
+            <div className="inline-flex rounded-md border border-border overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => onSoporta(true)}
+                title="Comisión sobre el precio final pagado"
+                className={`px-2.5 py-1 transition-colors ${
+                  linea.soporta_descuento
+                    ? "bg-sage-700 text-white"
+                    : "bg-card hover:bg-cream"
+                }`}
+              >
+                Sí
+              </button>
+              <button
+                type="button"
+                onClick={() => onSoporta(false)}
+                title="Comisión sobre el precio de lista (regular)"
+                className={`px-2.5 py-1 border-l border-border transition-colors ${
+                  !linea.soporta_descuento
+                    ? "bg-sage-700 text-white"
+                    : "bg-card hover:bg-cream"
+                }`}
+              >
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BancoSelector({
+  cuentas,
+  value,
+  onChange,
+  label,
+}: {
+  cuentas: CuentaBancaria[];
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {cuentas.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No hay cuentas bancarias cargadas. Cargá Macro / Galicia en Catálogos →
+          Cuentas bancarias.
+        </p>
+      ) : (
         <select
-          value={linea.servicio_id}
-          onChange={(e) => onServicio(e.target.value)}
-          className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="">— Servicio —</option>
-          {servicios.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
+          <option value="">— Cuenta por defecto del medio —</option>
+          {cuentas.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
             </option>
           ))}
         </select>
-      </div>
-      <div className="col-span-12 sm:col-span-3">
-        <select
-          value={linea.empleado_id}
-          onChange={(e) => onEmpleado(e.target.value)}
-          className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">— Empleado —</option>
-          {empleados.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="col-span-6 sm:col-span-2">
-        <CurrencyInput
-          value={linea.precio}
-          onChange={onPrecio}
-          min={0}
-          className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-      </div>
-      <div className="col-span-5 sm:col-span-1 text-right tabular-nums text-sm self-center">
-        <span
-          style={{
-            color: comision > 0 ? "var(--sage-700)" : "var(--muted-foreground)",
-            fontWeight: comision > 0 ? 500 : 400,
-          }}
-        >
-          {formatARS(comision)}
-        </span>
-        {linea.servicio_id && (
-          <p className="text-[10px] text-muted-foreground">
-            {linea.comision_pct || 0}%
-          </p>
-        )}
-      </div>
-      <div className="col-span-1 self-center text-center">
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={!removable}
-          className="text-muted-foreground hover:text-destructive disabled:opacity-30 transition-colors"
-          title="Quitar línea"
-        >
-          <X className="h-4 w-4 stroke-[1.5]" />
-        </button>
-      </div>
+      )}
     </div>
   );
 }

@@ -247,6 +247,7 @@ export const mediosPago = pgTable("medios_pago", {
   nombre: text("nombre").notNull(),
   activo: boolean("activo").notNull().default(true),
   cuentaId: text("cuenta_id").references(() => cuentasBancarias.id),
+  recargoPct: doublePrecision("recargo_pct").notNull().default(0),
 });
 
 export const movimientosBancarios = pgTable(
@@ -343,8 +344,10 @@ export const ingresos = pgTable("ingresos", {
     .notNull()
     .references(() => mediosPago.id),
   valor1: doublePrecision("valor1").notNull(),
+  mp1CuentaId: text("mp1_cuenta_id").references(() => cuentasBancarias.id),
   mp2Id: text("mp2_id").references(() => mediosPago.id),
   valor2: doublePrecision("valor2"),
+  mp2CuentaId: text("mp2_cuenta_id").references(() => cuentasBancarias.id),
   observacion: text("observacion"),
   usuarioId: uuid("usuario_id")
     .notNull()
