@@ -80,8 +80,8 @@ export async function addServicioHorario(
 ): Promise<ActionResult> {
   "use server";
   const user = await requireUser();
-  if (user.rol !== "admin") {
-    return { ok: false, errors: { _: ["Solo admin"] } };
+  if (user.rol !== "admin" && user.rol !== "encargada") {
+    return { ok: false, errors: { _: ["No autorizado"] } };
   }
 
   const diaSemana = Number(formData.get("dia_semana"));
@@ -119,8 +119,8 @@ export async function deleteServicioHorario(
 ): Promise<ActionResult> {
   "use server";
   const user = await requireUser();
-  if (user.rol !== "admin") {
-    return { ok: false, errors: { _: ["Solo admin"] } };
+  if (user.rol !== "admin" && user.rol !== "encargada") {
+    return { ok: false, errors: { _: ["No autorizado"] } };
   }
 
   const db = getDb();

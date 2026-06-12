@@ -12,6 +12,7 @@ import {
   listServicioHorarios,
 } from "@/lib/data/servicios-horarios";
 import { requireUser } from "@/lib/auth/session";
+import { formatARS } from "@/lib/utils";
 
 const DIAS = [
   { value: 1, label: "Lunes" },
@@ -33,7 +34,10 @@ export default async function EditarServicioPage({
   params: Promise<{ id: string }>;
 }) {
   const user = await requireUser();
-  if (user.rol !== "admin") redirect("/catalogos/servicios");
+  if (user.rol !== "admin" && user.rol !== "encargada") {
+    redirect("/catalogos/servicios");
+  }
+  const puedeEditar = user.rol === "admin";
 
   const { id } = await params;
   const [servicio, horarios] = await Promise.all([
@@ -66,12 +70,26 @@ export default async function EditarServicioPage({
     <div className="space-y-8 max-w-3xl">
       <header className="space-y-1">
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          Editar servicio
+          {puedeEditar ? "Editar servicio" : "Servicio"}
         </h1>
         <p className="text-sm text-muted-foreground">{servicio.nombre}</p>
       </header>
 
-      <ServicioForm servicio={servicio} action={update} submitLabel="Guardar" />
+      {puedeEditar ? (
+        <ServicioForm servicio={servicio} action={update} submitLabel="Guardar" />
+      ) : (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border border-border bg-card p-5">
+          <Dato label="Rubro" value={servicio.rubro} />
+          <Dato label="Nombre" value={servicio.nombre} />
+          <Dato label="Precio lista" value={formatARS(servicio.precio_lista)} />
+          <Dato label="Precio efectivo" value={formatARS(servicio.precio_efectivo)} />
+          <Dato
+            label="Duración"
+            value={servicio.duracion_min ? `${servicio.duracion_min} min` : "—"}
+          />
+          <Dato label="Estado" value={servicio.activo ? "Activo" : "Inactivo"} />
+        </dl>
+      )}
 
       <section className="space-y-3 border-t border-border pt-6">
         <div className="space-y-1">
@@ -169,16 +187,29 @@ export default async function EditarServicioPage({
         </form>
       </section>
 
-      <div className="border-t border-border pt-6">
-        <form action={toggle}>
-          <button
-            type="submit"
-            className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            {servicio.activo ? "Marcar inactivo" : "Reactivar"}
-          </button>
-        </form>
-      </div>
+      {puedeEditar && (
+        <div className="border-t border-border pt-6">
+          <form action={toggle}>
+            <button
+              type="submit"
+              className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              {servicio.activo ? "Marcar inactivo" : "Reactivar"}
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Dato({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1">
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="text-sm">{value}</dd>
     </div>
   );
 }
