@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Check, Clock, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -276,17 +276,13 @@ export default async function EgresosPage({
                   </td>
                   <td className="px-4 py-3 text-center">
                     {row.egreso.pagado ? (
-                      <span
-                        className="text-xs uppercase tracking-wider"
-                        style={{ color: "var(--sage-700)" }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider bg-sage-100 text-sage-800 ring-1 ring-inset ring-sage-700/30">
+                        <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                         Pagado
                       </span>
                     ) : (
-                      <span
-                        className="text-xs uppercase tracking-wider"
-                        style={{ color: "var(--danger)" }}
-                      >
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-500/40">
+                        <Clock className="h-3.5 w-3.5 stroke-[2.5]" />
                         Pendiente
                       </span>
                     )}
