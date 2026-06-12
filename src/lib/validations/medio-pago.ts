@@ -13,6 +13,7 @@ export const medioPagoSchema = z.object({
     .string()
     .optional()
     .transform((s) => (s && s.trim() ? s.trim() : undefined)),
+  recargo_pct: z.coerce.number().min(0).max(100).default(0),
 });
 
 export type MedioPagoInput = z.infer<typeof medioPagoSchema>;

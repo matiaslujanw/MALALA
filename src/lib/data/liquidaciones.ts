@@ -395,6 +395,7 @@ function mapMpRow(row: typeof mediosPagoTable.$inferSelect): MedioPago {
     nombre: row.nombre,
     activo: row.activo,
     cuenta_id: row.cuentaId ?? undefined,
+    recargo_pct: row.recargoPct,
   };
 }
 

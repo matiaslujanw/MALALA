@@ -186,6 +186,7 @@ export interface MedioPago {
   nombre: string;
   activo: boolean;
   cuenta_id?: ID;
+  recargo_pct: number; // 0-100, recargo automático al cobrar con este medio
 }
 
 export type TipoCuenta = "banco" | "efectivo";
@@ -263,8 +264,10 @@ export interface Ingreso {
   total: number;
   mp1_id: ID;
   valor1: number;
+  mp1_cuenta_id?: ID;
   mp2_id?: ID;
   valor2?: number;
+  mp2_cuenta_id?: ID;
   observacion?: string;
   usuario_id: ID;
   anulado: boolean;

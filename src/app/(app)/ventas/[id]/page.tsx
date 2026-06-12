@@ -5,6 +5,7 @@ import { getIngreso } from "@/lib/data/ingresos";
 import { requireUser } from "@/lib/auth/session";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
+import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { formatARS } from "@/lib/utils";
 
 export default async function VentaDetallePage({
@@ -14,10 +15,11 @@ export default async function VentaDetallePage({
 }) {
   await requireUser();
   const { id } = await params;
-  const [row, sucursales, motivos] = await Promise.all([
+  const [row, sucursales, motivos, cuentas] = await Promise.all([
     getIngreso(id),
     listSucursales(),
     listMotivosDescuento(),
+    listCuentas(),
   ]);
   if (!row) notFound();
 
@@ -26,6 +28,15 @@ export default async function VentaDetallePage({
   const motivoDescuento = ingreso.descuento_motivo_id
     ? motivos.find((m) => m.id === ingreso.descuento_motivo_id)
     : null;
+  const cuentaById = new Map(cuentas.map((c) => [c.id, c]));
+  const banco1 = ingreso.mp1_cuenta_id
+    ? cuentaById.get(ingreso.mp1_cuenta_id)?.nombre
+    : null;
+  const banco2 = ingreso.mp2_cuenta_id
+    ? cuentaById.get(ingreso.mp2_cuenta_id)?.nombre
+    : null;
+  const recargoCobrado =
+    (ingreso.valor1 + (ingreso.valor2 ?? 0)) - ingreso.total;
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -72,11 +83,18 @@ export default async function VentaDetallePage({
             Pago
           </p>
           <p className="text-sm mt-1 tabular-nums">
-            {mp1?.nombre ?? "—"}: {formatARS(ingreso.valor1)}
+            {mp1?.nombre ?? "—"}
+            {banco1 ? ` · ${banco1}` : ""}: {formatARS(ingreso.valor1)}
           </p>
           {mp2 && ingreso.valor2 != null && (
             <p className="text-sm mt-0.5 tabular-nums">
-              {mp2.nombre}: {formatARS(ingreso.valor2)}
+              {mp2.nombre}
+              {banco2 ? ` · ${banco2}` : ""}: {formatARS(ingreso.valor2)}
+            </p>
+          )}
+          {recargoCobrado > 0.01 && (
+            <p className="text-xs text-amber-700 mt-0.5 tabular-nums">
+              Incluye recargo: {formatARS(recargoCobrado)}
             </p>
           )}
         </div>

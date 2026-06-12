@@ -4,6 +4,7 @@ import {
   listMediosPago,
   toggleMedioPagoActivo,
   updateMedioPagoCuenta,
+  updateMedioPagoRecargo,
 } from "@/lib/data/medios-pago";
 import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { listSucursales } from "@/lib/data/sucursales";
@@ -56,6 +57,13 @@ export default async function MediosPagoPage() {
       typeof cuenta === "string" && cuenta.length > 0 ? cuenta : null;
     await updateMedioPagoCuenta(id, cuentaId);
   }
+  async function setRecargo(formData: FormData) {
+    "use server";
+    const id = formData.get("id");
+    const recargo = formData.get("recargo_pct");
+    if (typeof id !== "string") return;
+    await updateMedioPagoRecargo(id, Number(recargo) || 0);
+  }
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -87,7 +95,7 @@ export default async function MediosPagoPage() {
         </p>
         <form
           action={create}
-          className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end"
+          className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end"
         >
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -146,6 +154,20 @@ export default async function MediosPagoPage() {
               ))}
             </select>
           </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Recargo %
+            </label>
+            <input
+              name="recargo_pct"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              defaultValue={0}
+              className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
           <button
             type="submit"
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
@@ -163,6 +185,7 @@ export default async function MediosPagoPage() {
               <th className="text-left font-medium px-4 py-3 w-24">Código</th>
               <th className="text-left font-medium px-4 py-3">Nombre</th>
               <th className="text-left font-medium px-4 py-3 w-64">Cuenta destino</th>
+              <th className="text-left font-medium px-4 py-3 w-40">Recargo %</th>
               <th className="text-center font-medium px-4 py-3 w-28">Estado</th>
               <th className="px-4 py-3 w-32"></th>
             </tr>
@@ -197,6 +220,26 @@ export default async function MediosPagoPage() {
                           </option>
                         ))}
                       </select>
+                      <button
+                        type="submit"
+                        className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                      >
+                        Guardar
+                      </button>
+                    </form>
+                  </td>
+                  <td className="px-4 py-3">
+                    <form action={setRecargo} className="flex items-center gap-2">
+                      <input type="hidden" name="id" value={m.id} />
+                      <input
+                        name="recargo_pct"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        defaultValue={m.recargo_pct}
+                        className="w-20 px-2 py-1.5 text-right tabular-nums border border-border rounded bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
                       <button
                         type="submit"
                         className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"

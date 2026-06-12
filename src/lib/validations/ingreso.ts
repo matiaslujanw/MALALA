@@ -6,6 +6,9 @@ export const lineaServicioSchema = z.object({
   empleado_id: z.string().min(1, "Empleado requerido"),
   precio_efectivo: z.coerce.number().nonnegative(),
   comision_pct: z.coerce.number().min(0).max(100),
+  // true  → la empleada absorbe el descuento: comisión sobre el precio final pagado.
+  // false → la empleada NO lo absorbe: comisión sobre el precio de lista (regular).
+  soporta_descuento: z.coerce.boolean().default(false),
 });
 
 export const lineaProductoSchema = z.object({
@@ -45,11 +48,19 @@ export const ingresoSchema = z
       .transform((s) => (s ? s : undefined)),
     mp1_id: z.string().min(1, "Medio de pago requerido"),
     valor1: z.coerce.number().nonnegative(),
+    mp1_cuenta_id: z
+      .string()
+      .nullish()
+      .transform((s) => (s ? s : undefined)),
     mp2_id: z
       .string()
       .nullish()
       .transform((s) => (s ? s : undefined)),
     valor2: z.coerce.number().optional(),
+    mp2_cuenta_id: z
+      .string()
+      .nullish()
+      .transform((s) => (s ? s : undefined)),
     observacion: z
       .string()
       .nullish()

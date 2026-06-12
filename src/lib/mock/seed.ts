@@ -124,11 +124,11 @@ export function seed(): Store {
   };
 
   // Medios de pago
-  const mpEF = { id: uid(), sucursal_id: sucCentro.id, codigo: "EF", nombre: "Efectivo", activo: true };
-  const mpTR = { id: uid(), sucursal_id: sucCentro.id, codigo: "TR", nombre: "Transferencia", activo: true };
-  const mpTC = { id: uid(), sucursal_id: sucCentro.id, codigo: "TC", nombre: "Tarjeta credito", activo: true };
-  const mpTD = { id: uid(), sucursal_id: sucCentro.id, codigo: "TD", nombre: "Tarjeta debito", activo: true };
-  const mpMP = { id: uid(), sucursal_id: sucCentro.id, codigo: "MP", nombre: "Mercado Pago", activo: true };
+  const mpEF = { id: uid(), sucursal_id: sucCentro.id, codigo: "EF", nombre: "Efectivo", activo: true, recargo_pct: 0 };
+  const mpTR = { id: uid(), sucursal_id: sucCentro.id, codigo: "TR", nombre: "Transferencia", activo: true, recargo_pct: 0 };
+  const mpTC = { id: uid(), sucursal_id: sucCentro.id, codigo: "TC", nombre: "Tarjeta credito", activo: true, recargo_pct: 0 };
+  const mpTD = { id: uid(), sucursal_id: sucCentro.id, codigo: "TD", nombre: "Tarjeta debito", activo: true, recargo_pct: 0 };
+  const mpMP = { id: uid(), sucursal_id: sucCentro.id, codigo: "MP", nombre: "Mercado Pago", activo: true, recargo_pct: 0 };
 
   // Rubros de gasto
   const rgInsumos = { id: uid(), rubro: "Insumos", subrubro: "Compra", activo: true };

@@ -25,6 +25,7 @@ function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
     nombre: row.nombre,
     activo: row.activo,
     cuenta_id: row.cuentaId ?? undefined,
+    recargo_pct: row.recargoPct,
   };
 }
 
@@ -72,6 +73,7 @@ export async function createMedioPago(
     nombre: formData.get("nombre"),
     activo: true,
     cuenta_id: formData.get("cuenta_id"),
+    recargo_pct: formData.get("recargo_pct") ?? 0,
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
   if (!isSucursalAllowed(scope, parsed.data.sucursal_id)) {
@@ -114,7 +116,37 @@ export async function createMedioPago(
     nombre: parsed.data.nombre,
     activo: true,
     cuentaId: parsed.data.cuenta_id ?? null,
+    recargoPct: parsed.data.recargo_pct,
   });
+  revalidatePath("/catalogos/medios-pago");
+  return { ok: true };
+}
+
+export async function updateMedioPagoRecargo(
+  mpId: string,
+  recargoPct: number,
+): Promise<ActionResult> {
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
+  const db = getDb();
+
+  const [mp] = await db
+    .select()
+    .from(mediosPagoTable)
+    .where(eq(mediosPagoTable.id, mpId))
+    .limit(1);
+  if (!mp) return { ok: false, errors: { _: ["Medio no encontrado"] } };
+  if (!isSucursalAllowed(scope, mp.sucursalId)) {
+    return { ok: false, errors: { _: ["Sin acceso al medio"] } };
+  }
+  if (!Number.isFinite(recargoPct) || recargoPct < 0 || recargoPct > 100) {
+    return { ok: false, errors: { recargo_pct: ["El recargo debe estar entre 0 y 100"] } };
+  }
+
+  await db
+    .update(mediosPagoTable)
+    .set({ recargoPct })
+    .where(eq(mediosPagoTable.id, mpId));
   revalidatePath("/catalogos/medios-pago");
   return { ok: true };
 }
