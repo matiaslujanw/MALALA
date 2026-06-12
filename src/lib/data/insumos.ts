@@ -164,6 +164,68 @@ export async function registrarCompraInsumo(
   return result;
 }
 
+export type AumentoPreciosResult =
+  | { ok: true; actualizados: number }
+  | { ok: false; errors: Record<string, string[]> };
+
+/**
+ * Aplica un aumento (o baja) porcentual al costo de TODOS los insumos de un
+ * proveedor de una sola vez: actualiza `precio_envase` y recalcula
+ * `precio_unitario`. NO toca el precio de venta (`precio_venta`).
+ */
+export async function aumentarPreciosProveedor(
+  _prev: AumentoPreciosResult | null,
+  formData: FormData,
+): Promise<AumentoPreciosResult> {
+  await requireRole(["admin", "encargada"]);
+  requireSupabaseRuntime("El aumento de precios requiere Supabase configurado.");
+
+  const proveedorId = String(formData.get("proveedor_id") ?? "");
+  const pct = Number(formData.get("pct"));
+
+  if (!proveedorId) {
+    return { ok: false, errors: { _: ["Proveedor requerido"] } };
+  }
+  if (!Number.isFinite(pct) || pct === 0) {
+    return { ok: false, errors: { pct: ["Ingresá un porcentaje distinto de 0"] } };
+  }
+  if (pct < -90 || pct > 1000) {
+    return { ok: false, errors: { pct: ["El porcentaje está fuera de rango"] } };
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(insumosTable)
+    .where(eq(insumosTable.proveedorId, proveedorId));
+
+  if (rows.length === 0) {
+    return { ok: false, errors: { _: ["El proveedor no tiene insumos cargados"] } };
+  }
+
+  const factor = 1 + pct / 100;
+  await db.transaction(async (tx) => {
+    for (const row of rows) {
+      const nuevoPrecioEnvase = Math.round(row.precioEnvase * factor * 100) / 100;
+      const nuevoPrecioUnitario =
+        row.tamanoEnvase > 0
+          ? nuevoPrecioEnvase / row.tamanoEnvase
+          : row.precioUnitario;
+      await tx
+        .update(insumosTable)
+        .set({
+          precioEnvase: nuevoPrecioEnvase,
+          precioUnitario: nuevoPrecioUnitario,
+        })
+        .where(eq(insumosTable.id, row.id));
+    }
+  });
+
+  revalidatePath("/catalogos/insumos");
+  revalidatePath(`/catalogos/proveedores/${proveedorId}`);
+  return { ok: true, actualizados: rows.length };
+}
+
 export async function listInsumosByProveedor(
   proveedorId: string,
 ): Promise<Insumo[]> {

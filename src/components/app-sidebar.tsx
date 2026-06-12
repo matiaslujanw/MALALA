@@ -15,6 +15,7 @@ import {
   Package,
   Receipt,
   ShoppingBag,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const ICONS: Record<string, ComponentType<{ className?: string }>> = {
   BookOpen,
   BarChart3,
   MessageCircle,
+  Users,
 };
 
 export function AppSidebar({ navItems }: SidebarProps) {

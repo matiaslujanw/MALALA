@@ -108,6 +108,14 @@ export interface HorarioSucursal {
   cierre: string; // HH:mm
 }
 
+export interface ServicioHorario {
+  id: ID;
+  servicio_id: ID;
+  dia_semana: number; // 0 domingo ... 6 sabado
+  apertura: string; // HH:mm
+  cierre: string; // HH:mm
+}
+
 export interface ProfesionalAgenda {
   id: ID;
   empleado_id: ID;

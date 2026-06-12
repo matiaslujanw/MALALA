@@ -3,6 +3,7 @@ import type {
   HorarioSucursal,
   ProfesionalAgenda,
   Servicio,
+  ServicioHorario,
   Sucursal,
   Turno,
   TurnoEstado,
@@ -95,16 +96,46 @@ export function buildAvailableSlots(args: {
   turnos: Turno[];
   horarios: HorarioSucursal[];
   profesionales: ProfesionalReserva[];
+  serviciosHorarios?: ServicioHorario[];
 }) {
   const service = args.servicios.find((item) => item.id === args.servicioId);
   if (!service) return [];
 
-  const windows = args.horarios.filter((item) => {
-    const date = new Date(`${args.fecha}T12:00:00`);
-    return (
-      item.sucursal_id === args.sucursalId && item.dia_semana === date.getDay()
-    );
-  });
+  const day = new Date(`${args.fecha}T12:00:00`).getDay();
+
+  const sucursalWindows = args.horarios.filter(
+    (item) => item.sucursal_id === args.sucursalId && item.dia_semana === day,
+  );
+  if (sucursalWindows.length === 0) return [];
+
+  // Disponibilidad por servicio: si el servicio tiene franjas cargadas,
+  // las ventanas efectivas son la intersección con las de la sucursal.
+  // Si no tiene ninguna, queda disponible en todo el horario de la sucursal.
+  const serviceWindowsAll = (args.serviciosHorarios ?? []).filter(
+    (item) => item.servicio_id === args.servicioId,
+  );
+  const serviceHasConfig = serviceWindowsAll.length > 0;
+  const serviceDayWindows = serviceWindowsAll.filter(
+    (item) => item.dia_semana === day,
+  );
+  if (serviceHasConfig && serviceDayWindows.length === 0) return [];
+
+  const windows: Array<{ apertura: string; cierre: string }> = [];
+  for (const w of sucursalWindows) {
+    if (!serviceHasConfig) {
+      windows.push({ apertura: w.apertura, cierre: w.cierre });
+      continue;
+    }
+    const wStart = timeToMinutes(w.apertura);
+    const wEnd = timeToMinutes(w.cierre);
+    for (const sw of serviceDayWindows) {
+      const start = Math.max(wStart, timeToMinutes(sw.apertura));
+      const end = Math.min(wEnd, timeToMinutes(sw.cierre));
+      if (end > start) {
+        windows.push({ apertura: minutesToTime(start), cierre: minutesToTime(end) });
+      }
+    }
+  }
   if (windows.length === 0) return [];
 
   const profesionales = args.profesionalId

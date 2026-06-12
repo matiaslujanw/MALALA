@@ -51,7 +51,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
     return `/turnos?${params.toString()}`;
   }
 
-  const MAX_VISIBLE = 3;
+  const MAX_VISIBLE = 5;
 
   return (
     <section className="rounded-[1.75rem] border border-border bg-card p-4">
@@ -72,7 +72,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
           return (
             <div
               key={iso}
-              className={`rounded-2xl border p-3 min-h-[140px] transition ${
+              className={`rounded-2xl border p-3 min-h-[200px] transition ${
                 isCurrentDay
                   ? "border-sage-300 bg-sage-50/50"
                   : "border-stone-100 bg-white hover:border-sage-200"
@@ -80,13 +80,15 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
             >
               <Link
                 href={buildDayHref(iso)}
-                className="flex items-center gap-1.5 group"
+                className="flex items-center gap-2 group"
               >
-                <span className="text-xs text-muted-foreground">{dayName}</span>
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  {dayName}
+                </span>
                 <span
-                  className={`text-sm font-semibold ${
+                  className={`text-base font-semibold ${
                     isCurrentDay
-                      ? "bg-sage-900 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                      ? "bg-sage-900 text-white rounded-full w-7 h-7 flex items-center justify-center"
                       : "text-ink group-hover:text-sage-700"
                   }`}
                 >
@@ -94,21 +96,23 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                 </span>
               </Link>
 
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-2.5 space-y-1.5">
                 {dayTurnos.slice(0, MAX_VISIBLE).map((turno) => (
                   <Link
                     key={turno.id}
                     href={buildTurnoHref(turno.id)}
-                    className="block rounded-lg bg-stone-50 px-2 py-1 transition hover:bg-sage-50 group"
+                    className="block rounded-lg bg-stone-50 px-2 py-1.5 transition hover:bg-sage-50 group"
                   >
                     <div className="flex items-center gap-1.5">
                       <div
-                        className="h-2 w-2 rounded-full flex-shrink-0"
+                        className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: turno.profesional?.color ?? "#999" }}
                       />
-                      <span className="text-[10px] font-medium text-ink">{turno.hora}</span>
+                      <span className="text-xs font-semibold text-ink tabular-nums">
+                        {turno.hora}
+                      </span>
                     </div>
-                    <p className="text-[10px] text-stone-700 truncate">
+                    <p className="mt-0.5 text-xs text-stone-700 truncate">
                       {turno.cliente_nombre}
                     </p>
                   </Link>
@@ -116,13 +120,13 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                 {dayTurnos.length > MAX_VISIBLE && (
                   <Link
                     href={buildDayHref(iso)}
-                    className="block text-[10px] text-sage-700 font-medium hover:underline px-2"
+                    className="block text-xs text-sage-700 font-medium hover:underline px-2"
                   >
                     +{dayTurnos.length - MAX_VISIBLE} más
                   </Link>
                 )}
                 {dayTurnos.length === 0 && (
-                  <p className="text-[10px] text-stone-400 px-1">Sin turnos</p>
+                  <p className="text-xs text-stone-400 px-1">Sin turnos</p>
                 )}
               </div>
             </div>

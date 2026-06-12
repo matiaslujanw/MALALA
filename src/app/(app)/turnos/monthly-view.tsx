@@ -4,15 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { TurnoDetalle } from "@/lib/turnos-helpers";
 
-const STATUS_DOT: Record<string, string> = {
-  pendiente: "bg-[#c9a961]",
-  confirmado: "bg-sage-500",
-  en_curso: "bg-[#1f5d99]",
-  completado: "bg-stone-500",
-  cancelado: "bg-[#a84a3d]",
-  ausente: "bg-stone-400",
-};
-
 interface Props {
   fecha: string; // any date within the month (used to derive the month)
   turnosPorFecha: Record<string, TurnoDetalle[]>;
@@ -77,6 +68,12 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
     return `/turnos?${params.toString()}`;
   }
 
+  function buildTurnoHref(turnoId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("turno", turnoId);
+    return `/turnos?${params.toString()}`;
+  }
+
   return (
     <section className="rounded-[1.75rem] border border-border bg-card p-4">
       <div className="mb-3">
@@ -94,7 +91,7 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
           {HEADERS.map((h) => (
             <div
               key={h}
-              className="bg-cream/70 px-2 py-2 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground"
+              className="bg-cream/70 px-2 py-2.5 text-center text-xs uppercase tracking-wider font-medium text-muted-foreground"
             >
               {h}
             </div>
@@ -103,47 +100,64 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
             const dayTurnos = turnosPorFecha[cell.iso] ?? [];
             const isToday = cell.iso === today;
             const hasItems = dayTurnos.length > 0;
+            const MAX_VISIBLE = 4;
             return (
-              <Link
+              <div
                 key={cell.iso}
-                href={buildDayHref(cell.iso)}
-                className={`bg-white min-h-[80px] p-1.5 transition hover:bg-sage-50/40 ${
-                  !cell.isCurrentMonth ? "opacity-40" : ""
-                }`}
+                className={`bg-white min-h-[132px] p-2 transition ${
+                  !cell.isCurrentMonth ? "opacity-50" : ""
+                } ${isToday ? "bg-sage-50/40" : ""}`}
               >
-                <div className="flex items-center justify-between">
+                <Link
+                  href={buildDayHref(cell.iso)}
+                  className="flex items-center justify-between group"
+                >
                   <span
-                    className={`text-xs font-medium ${
+                    className={`text-sm font-semibold ${
                       isToday
-                        ? "bg-sage-900 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                        : "text-ink"
+                        ? "bg-sage-900 text-white rounded-full w-7 h-7 flex items-center justify-center"
+                        : "text-ink group-hover:text-sage-700"
                     }`}
                   >
                     {cell.dayNum}
                   </span>
                   {hasItems && (
-                    <span className="text-[10px] font-medium text-sage-700">
+                    <span className="rounded-full bg-sage-100 text-sage-900 px-1.5 py-0.5 text-[10px] font-semibold">
                       {dayTurnos.length}
                     </span>
                   )}
-                </div>
+                </Link>
                 {hasItems && (
-                  <div className="mt-1 flex flex-wrap gap-0.5">
-                    {dayTurnos.slice(0, 5).map((t) => (
-                      <div
+                  <div className="mt-1.5 space-y-1">
+                    {dayTurnos.slice(0, MAX_VISIBLE).map((t) => (
+                      <Link
                         key={t.id}
-                        className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[t.estado]}`}
-                        title={`${t.hora} - ${t.cliente_nombre}`}
-                      />
+                        href={buildTurnoHref(t.id)}
+                        className="flex items-center gap-1.5 rounded-md bg-stone-50 px-1.5 py-1 transition hover:bg-sage-50"
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: t.profesional?.color ?? "#999" }}
+                        />
+                        <span className="text-xs font-medium text-ink tabular-nums">
+                          {t.hora}
+                        </span>
+                        <span className="text-xs text-stone-600 truncate">
+                          {t.cliente_nombre}
+                        </span>
+                      </Link>
                     ))}
-                    {dayTurnos.length > 5 && (
-                      <span className="text-[8px] text-muted-foreground ml-0.5">
-                        +{dayTurnos.length - 5}
-                      </span>
+                    {dayTurnos.length > MAX_VISIBLE && (
+                      <Link
+                        href={buildDayHref(cell.iso)}
+                        className="block px-1.5 text-xs font-medium text-sage-700 hover:underline"
+                      >
+                        +{dayTurnos.length - MAX_VISIBLE} más
+                      </Link>
                     )}
                   </div>
                 )}
-              </Link>
+              </div>
             );
           })}
         </div>

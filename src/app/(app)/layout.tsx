@@ -27,6 +27,7 @@ const NAV: NavDef[] = [
   { href: "/dashboard", label: "Dashboard", iconKey: "LayoutDashboard", group: "Operación", visible: () => true },
   { href: "/ventas", label: "Ventas", iconKey: "ShoppingBag", group: "Operación", visible: () => true },
   { href: "/turnos", label: "Turnos", iconKey: "CalendarDays", group: "Operación", visible: () => true },
+  { href: "/catalogos/clientes", label: "Clientes", iconKey: "Users", group: "Operación", visible: () => true },
   { href: "/caja", label: "Caja", iconKey: "Wallet", group: "Operación", visible: (s) => s.puedeVerCaja },
   { href: "/bancos", label: "Bancos", iconKey: "Landmark", group: "Finanzas", visible: (s) => s.puedeVerCaja },
   { href: "/liquidaciones", label: "Liquidaciones", iconKey: "HandCoins", group: "Finanzas", visible: (s) => s.puedeVerCaja },

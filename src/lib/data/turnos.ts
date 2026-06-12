@@ -17,6 +17,10 @@ import {
 } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
+  listServicioHorarios,
+  listServiciosHorariosAll,
+} from "@/lib/data/servicios-horarios";
+import {
   buildAvailableSlots,
   buildTurnoDetalle,
   listOpenDatesForSucursal,
@@ -378,13 +382,14 @@ async function buildAgendaTurnos(args: {
 
 export async function getReservaPublicaSnapshot() {
   const today = new Date().toISOString().slice(0, 10);
-  const [sucursales, servicios, horarios, profesionales, turnos] =
+  const [sucursales, servicios, horarios, profesionales, turnos, serviciosHorarios] =
     await Promise.all([
       getSucursalesActivas(),
       getServiciosActivos(),
       getHorarios(),
       getProfesionalesReserva(),
       getTurnosRaw({ desdeFechaTurno: today }),
+      listServiciosHorariosAll(),
     ]);
 
   return {
@@ -393,6 +398,7 @@ export async function getReservaPublicaSnapshot() {
     horarios,
     profesionales,
     turnos,
+    serviciosHorarios,
   };
 }
 
@@ -566,17 +572,19 @@ export async function getSlotsDisponibles(args: {
   servicioId: string;
   profesionalId?: string;
 }) {
-  const [horarios, profesionales, servicios, turnos] = await Promise.all([
-    getHorarios(args.sucursalId),
-    getProfesionalesReserva({
-      soloSucursalId: args.sucursalId,
-    }),
-    getServiciosActivos(),
-    getTurnosRaw({
-      fecha: args.fecha,
-      sucursalId: args.sucursalId,
-    }),
-  ]);
+  const [horarios, profesionales, servicios, turnos, serviciosHorarios] =
+    await Promise.all([
+      getHorarios(args.sucursalId),
+      getProfesionalesReserva({
+        soloSucursalId: args.sucursalId,
+      }),
+      getServiciosActivos(),
+      getTurnosRaw({
+        fecha: args.fecha,
+        sucursalId: args.sucursalId,
+      }),
+      listServicioHorarios(args.servicioId),
+    ]);
 
   return buildAvailableSlots({
     fecha: args.fecha,
@@ -587,6 +595,7 @@ export async function getSlotsDisponibles(args: {
     profesionales,
     servicios,
     turnos,
+    serviciosHorarios,
   });
 }
 

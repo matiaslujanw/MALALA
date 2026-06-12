@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { TableActionLink } from "@/components/table-action-link";
 import { ProveedorForm } from "@/components/forms/proveedor-form";
+import { AumentoPreciosProveedorForm } from "@/components/forms/aumento-precios-proveedor";
 import {
   getProveedor,
   updateProveedor,
@@ -43,7 +45,8 @@ export default async function EditarProveedorPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<SearchParams>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const puedeRegistrarCompra = user.rol === "admin" || user.rol === "encargada";
   const { id } = await params;
   const sp = await searchParams;
   const rango = sp.rango ?? "3meses";
@@ -72,20 +75,31 @@ export default async function EditarProveedorPage({
 
   return (
     <div className="space-y-10 max-w-5xl">
-      <header className="space-y-1">
-        <Link
-          href="/catalogos/proveedores"
-          className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          ← Volver a proveedores
-        </Link>
-        <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          {proveedor.nombre}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {proveedor.cuit ? `CUIT ${proveedor.cuit} · ` : ""}
-          {proveedor.telefono ?? "Sin teléfono"}
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <Link
+            href="/catalogos/proveedores"
+            className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+          >
+            ← Volver a proveedores
+          </Link>
+          <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
+            {proveedor.nombre}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {proveedor.cuit ? `CUIT ${proveedor.cuit} · ` : ""}
+            {proveedor.telefono ?? "Sin teléfono"}
+          </p>
+        </div>
+        {puedeRegistrarCompra && (
+          <Link
+            href={`/egresos/nuevo?proveedor=${proveedor.id}&compra=1`}
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+          >
+            <Plus className="h-4 w-4 stroke-[1.5]" />
+            Registrar compra
+          </Link>
+        )}
       </header>
 
       {/* KPIs */}
@@ -221,6 +235,15 @@ export default async function EditarProveedorPage({
             </table>
           </div>
         </section>
+      )}
+
+      {/* Aumento masivo de precios */}
+      {puedeRegistrarCompra && insumosDelProveedor.length > 0 && (
+        <AumentoPreciosProveedorForm
+          proveedorId={proveedor.id}
+          proveedorNombre={proveedor.nombre}
+          cantidadInsumos={insumosDelProveedor.length}
+        />
       )}
 
       {/* Compras por insumo */}

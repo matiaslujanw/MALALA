@@ -25,7 +25,7 @@ import {
 } from "@/lib/turnos-helpers";
 import { HeroVideoShowcase } from "@/components/booking/hero-video-showcase";
 import { cn, formatARS } from "@/lib/utils";
-import type { HorarioSucursal, Servicio, Sucursal, Turno } from "@/lib/types";
+import type { HorarioSucursal, Servicio, ServicioHorario, Sucursal, Turno } from "@/lib/types";
 
 interface Props {
   snapshot: {
@@ -34,6 +34,7 @@ interface Props {
     horarios: HorarioSucursal[];
     profesionales: ProfesionalReserva[];
     turnos: Turno[];
+    serviciosHorarios: ServicioHorario[];
   };
   loggedInLabel?: string;
 }
@@ -138,6 +139,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
       profesionales: snapshot.profesionales,
       servicios: snapshot.servicios,
       turnos: snapshot.turnos,
+      serviciosHorarios: snapshot.serviciosHorarios,
     });
   }, [
     bookingSucursalId,
@@ -145,6 +147,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     profesionalId,
     servicioSeleccionado,
     snapshot.horarios,
+    snapshot.serviciosHorarios,
     snapshot.profesionales,
     snapshot.servicios,
     snapshot.turnos,

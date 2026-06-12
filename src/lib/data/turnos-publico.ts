@@ -14,6 +14,7 @@ import {
   turnos as turnosTable,
 } from "@/lib/db/schema";
 import { buildAvailableSlots, buildTurnoDetalle, type ProfesionalReserva, type TurnoDetalle } from "@/lib/turnos-helpers";
+import { listServiciosHorariosAll } from "@/lib/data/servicios-horarios";
 import { turnoReprogramacionSchema } from "@/lib/validations/turno";
 import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
 import { fieldErrors } from "./_helpers";
@@ -176,6 +177,7 @@ export async function getSlotsDisponiblesPorToken(args: TurnoPublicSlotsArgs) {
     turnos: turnosRows
       .filter((t) => t.turno.id !== row.id)
       .map((t) => mapTurno(t.turno, t.cliente)),
+    serviciosHorarios: await listServiciosHorariosAll(),
   });
 }
 
@@ -315,6 +317,7 @@ export async function reprogramarTurnoPorTokenAction(
         turnos: blocked
           .filter((t) => t.turno.id !== row.id)
           .map((t) => mapTurno(t.turno, t.cliente)),
+        serviciosHorarios: await listServiciosHorariosAll(),
       });
 
       if (!slots.some((s) => s.hora === parsed.data.hora)) {

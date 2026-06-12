@@ -15,6 +15,7 @@ import {
 import { failure, fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import { buildAccessScope } from "@/lib/auth/access";
 import { buildAvailableSlots, type ProfesionalReserva } from "@/lib/turnos-helpers";
+import { listServiciosHorariosAll } from "@/lib/data/servicios-horarios";
 import {
   turnoCreateSchema,
   turnoEstadoSchema,
@@ -191,6 +192,7 @@ async function createTurnoInternal(
         ),
         servicios: servRows.map(mapServicio),
         turnos: blockedRows.map((row) => mapTurno(row.turno, row.cliente)),
+        serviciosHorarios: await listServiciosHorariosAll(),
       });
 
       const exists = slots.some((slot) => slot.hora === parsed.data.hora);
@@ -464,6 +466,7 @@ export async function reprogramTurnoAction(
         turnos: blockedRows
           .filter((row) => row.turno.id !== parsed.data.turno_id)
           .map((row) => mapTurno(row.turno, row.cliente)),
+        serviciosHorarios: await listServiciosHorariosAll(),
       });
 
       const available = slots.some((slot) => slot.hora === parsed.data.hora);
