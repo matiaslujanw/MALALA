@@ -66,8 +66,10 @@ function mapIngreso(row: typeof ingresosTable.$inferSelect): Ingreso {
     total: row.total,
     mp1_id: row.mp1Id,
     valor1: row.valor1,
+    mp1_cuenta_id: row.mp1CuentaId ?? undefined,
     mp2_id: row.mp2Id ?? undefined,
     valor2: row.valor2 ?? undefined,
+    mp2_cuenta_id: row.mp2CuentaId ?? undefined,
     observacion: row.observacion ?? undefined,
     usuario_id: row.usuarioId,
     anulado: row.anulado,
@@ -108,6 +110,7 @@ function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
     nombre: row.nombre,
     activo: row.activo,
     cuenta_id: row.cuentaId ?? undefined,
+    recargo_pct: row.recargoPct,
   };
 }
 
@@ -450,8 +453,10 @@ export async function createIngreso(
     descuento_motivo_id: formData.get("descuento_motivo_id"),
     mp1_id: formData.get("mp1_id"),
     valor1: formData.get("valor1"),
+    mp1_cuenta_id: formData.get("mp1_cuenta_id"),
     mp2_id: formData.get("mp2_id"),
     valor2: formData.get("valor2"),
+    mp2_cuenta_id: formData.get("mp2_cuenta_id"),
     observacion: formData.get("observacion"),
   });
 
@@ -482,13 +487,75 @@ export async function createIngreso(
       : subtotal > 0
         ? (data.descuento_valor / subtotal) * 100
         : 0;
-  const total = subtotal - descuentoMonto;
+  const totalNeto = subtotal - descuentoMonto; // neto de servicios/productos (antes de recargo)
+
+  const db = getDb();
+
+  // Recargo automático según el medio de pago (ej. tarjeta de crédito).
+  // El recargo se calcula sobre la porción base cobrada con cada medio.
+  const mpIds = [data.mp1_id, data.mp2_id].filter(Boolean) as string[];
+  const mediosRows =
+    mpIds.length > 0
+      ? await db
+          .select()
+          .from(mediosPagoTable)
+          .where(inArray(mediosPagoTable.id, mpIds))
+      : [];
+  const recargoPctById = new Map(mediosRows.map((m) => [m.id, m.recargoPct]));
+  const recargo1 = data.valor1 * ((recargoPctById.get(data.mp1_id) ?? 0) / 100);
+  const recargo2 =
+    data.mp2_id && data.valor2 != null
+      ? data.valor2 * ((recargoPctById.get(data.mp2_id) ?? 0) / 100)
+      : 0;
+  const valor1Cobrado = data.valor1 + recargo1;
+  const valor2Cobrado = data.valor2 != null ? data.valor2 + recargo2 : null;
+  const total = totalNeto + recargo1 + recargo2; // lo que efectivamente paga el cliente
+
+  // Precio de lista por servicio: base de la comisión cuando la empleada NO absorbe el descuento.
+  const servicioIdsComision = Array.from(
+    new Set(
+      data.lineas
+        .filter(
+          (l): l is Extract<typeof l, { tipo: "servicio" }> =>
+            l.tipo === "servicio",
+        )
+        .map((l) => l.servicio_id),
+    ),
+  );
+  const serviciosComisionRows =
+    servicioIdsComision.length > 0
+      ? await db
+          .select({
+            id: serviciosTable.id,
+            precioLista: serviciosTable.precioLista,
+          })
+          .from(serviciosTable)
+          .where(inArray(serviciosTable.id, servicioIdsComision))
+      : [];
+  const precioListaById = new Map(
+    serviciosComisionRows.map((s) => [s.id, s.precioLista]),
+  );
+
+  // Comisión por línea de servicio:
+  //   soporta_descuento = true  → sobre el precio final pagado (descuento prorrateado)
+  //   soporta_descuento = false → sobre el precio de lista (regular)
+  const comisionMontoDeLinea = (
+    linea: Extract<(typeof data.lineas)[number], { tipo: "servicio" }>,
+  ): number => {
+    const subtotalLineaServicio = linea.precio_efectivo;
+    const descProrrateado =
+      subtotal > 0 ? descuentoMonto * (subtotalLineaServicio / subtotal) : 0;
+    const base = linea.soporta_descuento
+      ? subtotalLineaServicio - descProrrateado
+      : (precioListaById.get(linea.servicio_id) ?? subtotalLineaServicio);
+    return base * (linea.comision_pct / 100);
+  };
+
   const ingresoId = createId();
   const fecha = new Date();
   const hoyYmd = fecha.toISOString().slice(0, 10);
   const warnings: string[] = [];
 
-  const db = getDb();
   try {
     await db.transaction(async (tx) => {
       const [cierreDelDia] = await tx
@@ -520,9 +587,11 @@ export async function createIngreso(
           descuentoMonto > 0 ? (data.descuento_motivo_id ?? null) : null,
         total,
         mp1Id: data.mp1_id,
-        valor1: data.valor1,
+        valor1: valor1Cobrado,
+        mp1CuentaId: data.mp1_cuenta_id ?? null,
         mp2Id: data.mp2_id ?? null,
-        valor2: data.valor2 ?? null,
+        valor2: valor2Cobrado,
+        mp2CuentaId: data.mp2_cuenta_id ?? null,
         observacion: data.observacion ?? null,
         usuarioId: user.id,
         anulado: false,
@@ -585,7 +654,7 @@ export async function createIngreso(
             cantidad: 1,
             subtotal: linea.precio_efectivo,
             comisionPct: linea.comision_pct,
-            comisionMonto: linea.precio_efectivo * (linea.comision_pct / 100),
+            comisionMonto: comisionMontoDeLinea(linea),
           };
         }),
       );
@@ -657,14 +726,27 @@ export async function createIngreso(
       }
 
       // Movimientos bancarios: una entrada por cada medio de pago usado
-      const cobros: Array<{ mpId: string; monto: number }> = [
-        { mpId: data.mp1_id, monto: data.valor1 },
+      const cobros: Array<{
+        mpId: string;
+        monto: number;
+        cuentaOverride?: string;
+      }> = [
+        {
+          mpId: data.mp1_id,
+          monto: valor1Cobrado,
+          cuentaOverride: data.mp1_cuenta_id,
+        },
       ];
-      if (data.mp2_id && data.valor2) {
-        cobros.push({ mpId: data.mp2_id, monto: data.valor2 });
+      if (data.mp2_id && valor2Cobrado != null) {
+        cobros.push({
+          mpId: data.mp2_id,
+          monto: valor2Cobrado,
+          cuentaOverride: data.mp2_cuenta_id,
+        });
       }
       for (const cobro of cobros) {
-        const cuentaId = await getCuentaIdForMpTx(tx, cobro.mpId);
+        const cuentaId =
+          cobro.cuentaOverride ?? (await getCuentaIdForMpTx(tx, cobro.mpId));
         if (!cuentaId) {
           warnings.push(
             "Medio de pago sin cuenta asignada: el cobro no impacta en bancos hasta asignarla.",

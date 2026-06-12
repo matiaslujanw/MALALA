@@ -8,6 +8,7 @@ import { listInsumosVendibles } from "@/lib/data/insumos";
 import { listMediosPago } from "@/lib/data/medios-pago";
 import { listServicios } from "@/lib/data/servicios";
 import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
+import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function NuevaVentaPage() {
@@ -15,17 +16,26 @@ export default async function NuevaVentaPage() {
   const sucursal = await getActiveSucursal();
   if (!sucursal) redirect("/dev/login");
 
-  const [clientes, servicios, empleados, mediosPago, productos, motivosDescuento] =
-    await Promise.all([
-      listClientes(),
-      listServicios(),
-      listEmpleados(),
-      listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
-      listInsumosVendibles(),
-      listMotivosDescuento(),
-    ]);
+  const [
+    clientes,
+    servicios,
+    empleados,
+    mediosPago,
+    productos,
+    motivosDescuento,
+    cuentas,
+  ] = await Promise.all([
+    listClientes(),
+    listServicios(),
+    listEmpleados(),
+    listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+    listInsumosVendibles(),
+    listMotivosDescuento(),
+    listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
+  ]);
 
   const mediosActivos = mediosPago;
+  const cuentasBanco = cuentas.filter((c) => c.tipo === "banco");
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -54,6 +64,7 @@ export default async function NuevaVentaPage() {
         mediosPago={mediosActivos}
         productos={productos}
         motivosDescuento={motivosDescuento.filter((m) => m.activo)}
+        cuentasBanco={cuentasBanco}
       />
     </div>
   );
