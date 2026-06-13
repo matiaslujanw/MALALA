@@ -18,6 +18,9 @@ function mapEmpleado(row: typeof empleadosTable.$inferSelect): Empleado {
     tipo_comision: row.tipoComision,
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
+    valor_hora: row.valorHora,
+    horas_por_dia: row.horasPorDia,
+    dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,
   };
 }
@@ -70,7 +73,9 @@ function parse(formData: FormData) {
     sucursal_principal_id: formData.get("sucursal_principal_id"),
     tipo_comision: formData.get("tipo_comision"),
     porcentaje_default: formData.get("porcentaje_default"),
-    sueldo_asegurado: formData.get("sueldo_asegurado"),
+    valor_hora: formData.get("valor_hora"),
+    horas_por_dia: formData.get("horas_por_dia"),
+    dias_trabajo: formData.getAll("dias_trabajo"),
     observacion: formData.get("observacion"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
   });
@@ -94,7 +99,9 @@ export async function createEmpleado(
     sucursalPrincipalId: parsed.data.sucursal_principal_id,
     tipoComision: parsed.data.tipo_comision,
     porcentajeDefault: parsed.data.porcentaje_default,
-    sueldoAsegurado: parsed.data.sueldo_asegurado,
+    valorHora: parsed.data.valor_hora,
+    horasPorDia: parsed.data.horas_por_dia,
+    diasTrabajo: parsed.data.dias_trabajo,
     observacion: parsed.data.observacion ?? null,
   });
 
@@ -125,7 +132,9 @@ export async function updateEmpleado(
       sucursalPrincipalId: parsed.data.sucursal_principal_id,
       tipoComision: parsed.data.tipo_comision,
       porcentajeDefault: parsed.data.porcentaje_default,
-      sueldoAsegurado: parsed.data.sueldo_asegurado,
+      valorHora: parsed.data.valor_hora,
+      horasPorDia: parsed.data.horas_por_dia,
+      diasTrabajo: parsed.data.dias_trabajo,
       observacion: parsed.data.observacion ?? null,
     })
     .where(eq(empleadosTable.id, empleadoId));

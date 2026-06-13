@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, Scissors, Package } from "lucide-react";
+import { X, AlertTriangle, Scissors, Package, CreditCard } from "lucide-react";
 import { createIngreso } from "@/lib/data/ingresos-actions";
 import { createClienteQuick } from "@/lib/data/clientes";
 import type {
@@ -157,6 +157,13 @@ export function NuevaVentaForm({
         [...prev, res.cliente].sort((a, b) => a.nombre.localeCompare(b.nombre)),
       );
       setClienteId(res.cliente.id);
+      // Un cliente recién creado no tiene CC: si había un medio en CC, lo reseteamos.
+      if (medioCc) {
+        if (mp1Id === medioCc.id) {
+          setMp1Id(efectivo?.id ?? mediosNormales[0]?.id ?? "");
+        }
+        if (mp2Id === medioCc.id) setMp2Id("");
+      }
       setShowNewCliente(false);
       setNewClienteNombre("");
       setNewClienteTel("");
@@ -175,9 +182,16 @@ export function NuevaVentaForm({
   const [descValor, setDescValor] = useState(0);
   const [descMotivoId, setDescMotivoId] = useState("");
 
+  // Cuenta corriente: el medio con código "CC" es especial (genera deuda, no
+  // entra a bancos) y solo se ofrece si el cliente elegido tiene CC habilitada.
+  const medioCc = mediosPago.find((m) => m.codigo === "CC");
+  const mediosNormales = mediosPago.filter((m) => m.codigo !== "CC");
+
   // Pagos
-  const efectivo = mediosPago.find((m) => m.codigo === "EF");
-  const [mp1Id, setMp1Id] = useState(efectivo?.id ?? mediosPago[0]?.id ?? "");
+  const efectivo = mediosNormales.find((m) => m.codigo === "EF");
+  const [mp1Id, setMp1Id] = useState(
+    efectivo?.id ?? mediosNormales[0]?.id ?? "",
+  );
   const [valor1, setValor1] = useState<number>(0);
   const [mp1CuentaId, setMp1CuentaId] = useState("");
   const [mp2Id, setMp2Id] = useState("");
@@ -210,6 +224,16 @@ export function NuevaVentaForm({
     0,
   );
   const paraElLocal = total - totalComisiones;
+
+  // Cliente seleccionado y si admite cuenta corriente.
+  const clienteSel = clientesList.find((c) => c.id === clienteId);
+  const clienteTieneCc =
+    !!medioCc && !!clienteSel?.cuenta_corriente_habilitada;
+  const mp1EsCc = !!medioCc && mp1Id === medioCc.id;
+  const mp2EsCc = !!medioCc && mp2Id === medioCc.id;
+  const usaCc = mp1EsCc || mp2EsCc;
+  const montoFiado =
+    (mp1EsCc ? Number(valor1) || 0 : 0) + (mp2EsCc ? Number(valor2) || 0 : 0);
 
   // Recargo automático por medio de pago (ej. tarjeta de crédito).
   const mp1 = mediosPago.find((m) => m.id === mp1Id);
@@ -327,6 +351,23 @@ export function NuevaVentaForm({
     setLineas((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }
 
+  // Si un medio estaba en CC y el cliente ya no admite cuenta corriente, lo
+  // reseteamos para no dejar una venta fiada a un cliente sin CC.
+  function resetCcSiNoCorresponde(nuevoClienteId: string) {
+    if (!medioCc) return;
+    const nuevo = clientesList.find((c) => c.id === nuevoClienteId);
+    if (nuevo?.cuenta_corriente_habilitada) return;
+    if (mp1Id === medioCc.id) {
+      setMp1Id(efectivo?.id ?? mediosNormales[0]?.id ?? "");
+    }
+    if (mp2Id === medioCc.id) setMp2Id("");
+  }
+
+  function handleClienteChange(nuevoId: string) {
+    setClienteId(nuevoId);
+    resetCcSiNoCorresponde(nuevoId);
+  }
+
   // ----- Submit -----
   function handleSubmit(formData: FormData) {
     setErrors({});
@@ -431,7 +472,7 @@ export function NuevaVentaForm({
             <div className="flex gap-2">
               <select
                 value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
+                onChange={(e) => handleClienteChange(e.target.value)}
                 className="flex-1 px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">— Consumidor Final —</option>
@@ -766,11 +807,14 @@ export function NuevaVentaForm({
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
               required
             >
-              {mediosPago.map((m) => (
+              {mediosNormales.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.codigo} — {m.nombre}
                 </option>
               ))}
+              {clienteTieneCc && medioCc && (
+                <option value={medioCc.id}>CC — Cuenta corriente</option>
+              )}
             </select>
           </div>
           <div className="space-y-1.5">
@@ -823,13 +867,16 @@ export function NuevaVentaForm({
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
             >
               <option value="">— Ninguno —</option>
-              {mediosPago
+              {mediosNormales
                 .filter((m) => m.id !== mp1Id)
                 .map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.codigo} — {m.nombre}
                   </option>
                 ))}
+              {clienteTieneCc && medioCc && !mp1EsCc && (
+                <option value={medioCc.id}>CC — Cuenta corriente</option>
+              )}
             </select>
           </div>
           {mp2Id && (
@@ -894,6 +941,28 @@ export function NuevaVentaForm({
         )}
         {errors.valor1 && (
           <p className="text-xs text-destructive">{errors.valor1.join(", ")}</p>
+        )}
+
+        {usaCc && montoFiado > 0 && (
+          <div
+            className="border rounded-md p-3 flex items-start gap-2.5 text-sm"
+            style={{
+              backgroundColor: "rgb(201 169 97 / 0.08)",
+              borderColor: "var(--warning)",
+            }}
+          >
+            <CreditCard
+              className="h-4 w-4 stroke-[1.5] shrink-0 mt-0.5"
+              style={{ color: "var(--warning)" }}
+            />
+            <p className="text-xs">
+              Se generará una deuda de{" "}
+              <strong className="tabular-nums">{formatARS(montoFiado)}</strong> en
+              la cuenta corriente de{" "}
+              <strong>{clienteSel?.nombre ?? "el cliente"}</strong>. Esta parte no
+              entra a bancos hasta que se salde.
+            </p>
+          </div>
         )}
       </section>
 

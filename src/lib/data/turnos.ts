@@ -82,6 +82,9 @@ export function mapEmpleado(
     tipo_comision: row.tipoComision,
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
+    valor_hora: row.valorHora,
+    horas_por_dia: row.horasPorDia,
+    dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,
   };
 }
@@ -110,6 +113,7 @@ export function mapCliente(
     observacion: row.observacion ?? undefined,
     activo: row.activo,
     saldo_cc: row.saldoCc,
+    cuenta_corriente_habilitada: row.cuentaCorrienteHabilitada,
   };
 }
 

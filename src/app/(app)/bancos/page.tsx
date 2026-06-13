@@ -94,10 +94,13 @@ export default async function BancosPage({ searchParams }: PageProps) {
     <div className="space-y-8 max-w-6xl">
       <header className="space-y-1">
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          Bancos
+          Cuentas y saldos
         </h1>
         <p className="text-sm text-muted-foreground">
-          Saldos en tiempo real por cuenta — cada cobro y egreso pago impacta automáticamente.
+          Saldo de cada cuenta en tiempo real — cada cobro y egreso pago impacta automáticamente.{" "}
+          <a href="/caja" className="underline hover:text-foreground">
+            ¿Buscás el cierre del día? →
+          </a>
         </p>
       </header>
 

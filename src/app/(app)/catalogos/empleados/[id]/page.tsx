@@ -1,12 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 import { EmpleadoForm } from "@/components/forms/empleado-form";
+import { AnticiposPanel } from "@/components/anticipos-panel";
 import {
   getEmpleado,
   toggleEmpleadoActivo,
   updateEmpleado,
 } from "@/lib/data/empleados";
+import { listAnticipos } from "@/lib/data/anticipos";
+import { listMediosPago } from "@/lib/data/medios-pago";
 import { listSucursales } from "@/lib/data/sucursales";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function EditarEmpleadoPage({
   params,
@@ -17,9 +20,14 @@ export default async function EditarEmpleadoPage({
   if (user.rol !== "admin") redirect("/catalogos/empleados");
 
   const { id } = await params;
-  const [empleado, sucursales] = await Promise.all([
+  const sucursal = await getActiveSucursal();
+  const [empleado, sucursales, anticipos, mediosPago] = await Promise.all([
     getEmpleado(id),
     listSucursales(),
+    listAnticipos(id),
+    sucursal
+      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
+      : Promise.resolve([]),
   ]);
   if (!empleado) notFound();
 
@@ -46,6 +54,13 @@ export default async function EditarEmpleadoPage({
         action={update}
         submitLabel="Guardar"
       />
+
+      <AnticiposPanel
+        empleadoId={empleado.id}
+        anticipos={anticipos}
+        mediosPago={mediosPago}
+      />
+
       <div className="border-t border-border pt-6">
         <form action={toggle}>
           <button

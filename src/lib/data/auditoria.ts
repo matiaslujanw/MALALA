@@ -5,11 +5,15 @@ import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireRole, s } from "./_helpers";
 import { getDb } from "@/lib/db/client/postgres";
 import {
+  anticipos as anticiposTable,
   cierresCaja as cierresCajaTable,
   clientes as clientesTable,
   egresos as egresosTable,
+  empleados as empleadosTable,
   ingresos as ingresosTable,
   insumos as insumosTable,
+  liquidaciones as liquidacionesTable,
+  movimientosCc as movimientosCcTable,
   movimientosStock as movimientosStockTable,
   profiles as profilesTable,
   proveedores as proveedoresTable,
@@ -20,6 +24,10 @@ import {
 export type AuditEventType =
   | "venta"
   | "egreso"
+  | "liquidacion"
+  | "anticipo"
+  | "cc_cargo"
+  | "cc_pago"
   | "cierre"
   | "stock_compra"
   | "stock_venta"
@@ -97,30 +105,53 @@ export async function getAuditTimeline(
   const movimientoFilters = [
     inArray(movimientosStockTable.sucursalId, scope.sucursalIdsPermitidas),
   ];
+  // Solo liquidaciones pagadas (las pendientes todavía no mueven plata).
+  const liquidacionFilters = [
+    inArray(liquidacionesTable.sucursalId, scope.sucursalIdsPermitidas),
+    eq(liquidacionesTable.estado, "pagada"),
+  ];
+  const anticipoFilters = [
+    inArray(anticiposTable.sucursalId, scope.sucursalIdsPermitidas),
+  ];
+  const ccFilters = [
+    inArray(movimientosCcTable.sucursalId, scope.sucursalIdsPermitidas),
+  ];
 
   if (sucursalId) {
     ingresoFilters.push(eq(ingresosTable.sucursalId, sucursalId));
     egresoFilters.push(eq(egresosTable.sucursalId, sucursalId));
     cierreFilters.push(eq(cierresCajaTable.sucursalId, sucursalId));
     movimientoFilters.push(eq(movimientosStockTable.sucursalId, sucursalId));
+    liquidacionFilters.push(eq(liquidacionesTable.sucursalId, sucursalId));
+    anticipoFilters.push(eq(anticiposTable.sucursalId, sucursalId));
+    ccFilters.push(eq(movimientosCcTable.sucursalId, sucursalId));
   }
   if (filtros.usuarioId) {
     ingresoFilters.push(eq(ingresosTable.usuarioId, filtros.usuarioId));
     egresoFilters.push(eq(egresosTable.usuarioId, filtros.usuarioId));
     cierreFilters.push(eq(cierresCajaTable.cerradoPor, filtros.usuarioId));
     movimientoFilters.push(eq(movimientosStockTable.usuarioId, filtros.usuarioId));
+    liquidacionFilters.push(eq(liquidacionesTable.usuarioId, filtros.usuarioId));
+    anticipoFilters.push(eq(anticiposTable.usuarioId, filtros.usuarioId));
+    ccFilters.push(eq(movimientosCcTable.usuarioId, filtros.usuarioId));
   }
   if (desde) {
     ingresoFilters.push(gte(ingresosTable.fecha, desde));
     egresoFilters.push(gte(egresosTable.fecha, desde));
     cierreFilters.push(gte(cierresCajaTable.fechaCierre, desde));
     movimientoFilters.push(gte(movimientosStockTable.fecha, desde));
+    liquidacionFilters.push(gte(liquidacionesTable.fechaPago, desde));
+    anticipoFilters.push(gte(anticiposTable.fecha, desde));
+    ccFilters.push(gte(movimientosCcTable.fecha, desde));
   }
   if (hasta) {
     ingresoFilters.push(lte(ingresosTable.fecha, hasta));
     egresoFilters.push(lte(egresosTable.fecha, hasta));
     cierreFilters.push(lte(cierresCajaTable.fechaCierre, hasta));
     movimientoFilters.push(lte(movimientosStockTable.fecha, hasta));
+    liquidacionFilters.push(lte(liquidacionesTable.fechaPago, hasta));
+    anticipoFilters.push(lte(anticiposTable.fecha, hasta));
+    ccFilters.push(lte(movimientosCcTable.fecha, hasta));
   }
 
   const ingresosRows = await db
@@ -211,6 +242,78 @@ export async function getAuditTimeline(
     .where(and(...movimientoFilters))
     .orderBy(desc(movimientosStockTable.fecha));
 
+  const liquidacionesRows = await db
+    .select({
+      id: liquidacionesTable.id,
+      fechaPago: liquidacionesTable.fechaPago,
+      usuarioId: liquidacionesTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: liquidacionesTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      empleadoNombre: empleadosTable.nombre,
+      periodoDesde: liquidacionesTable.periodoDesde,
+      periodoHasta: liquidacionesTable.periodoHasta,
+      totalPagar: liquidacionesTable.totalPagar,
+      egresoId: liquidacionesTable.egresoId,
+    })
+    .from(liquidacionesTable)
+    .leftJoin(profilesTable, eq(liquidacionesTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(liquidacionesTable.sucursalId, sucursalesTable.id))
+    .leftJoin(empleadosTable, eq(liquidacionesTable.empleadoId, empleadosTable.id))
+    .where(and(...liquidacionFilters))
+    .orderBy(desc(liquidacionesTable.fechaPago));
+
+  const anticiposRows = await db
+    .select({
+      id: anticiposTable.id,
+      fecha: anticiposTable.fecha,
+      usuarioId: anticiposTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: anticiposTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      empleadoId: anticiposTable.empleadoId,
+      empleadoNombre: empleadosTable.nombre,
+      monto: anticiposTable.monto,
+      observacion: anticiposTable.observacion,
+      egresoId: anticiposTable.egresoId,
+    })
+    .from(anticiposTable)
+    .leftJoin(profilesTable, eq(anticiposTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(anticiposTable.sucursalId, sucursalesTable.id))
+    .leftJoin(empleadosTable, eq(anticiposTable.empleadoId, empleadosTable.id))
+    .where(and(...anticipoFilters))
+    .orderBy(desc(anticiposTable.fecha));
+
+  const ccRows = await db
+    .select({
+      id: movimientosCcTable.id,
+      fecha: movimientosCcTable.fecha,
+      usuarioId: movimientosCcTable.usuarioId,
+      usuarioNombre: profilesTable.nombre,
+      usuarioRol: profilesTable.rol,
+      sucursalId: movimientosCcTable.sucursalId,
+      sucursalNombre: sucursalesTable.nombre,
+      clienteId: movimientosCcTable.clienteId,
+      clienteNombre: clientesTable.nombre,
+      tipo: movimientosCcTable.tipo,
+      monto: movimientosCcTable.monto,
+      descripcion: movimientosCcTable.descripcion,
+    })
+    .from(movimientosCcTable)
+    .leftJoin(profilesTable, eq(movimientosCcTable.usuarioId, profilesTable.userId))
+    .leftJoin(sucursalesTable, eq(movimientosCcTable.sucursalId, sucursalesTable.id))
+    .leftJoin(clientesTable, eq(movimientosCcTable.clienteId, clientesTable.id))
+    .where(and(...ccFilters))
+    .orderBy(desc(movimientosCcTable.fecha));
+
+  // Egresos que en realidad son un anticipo o el pago de una liquidación: se
+  // muestran con su etiqueta propia, no como egreso genérico (evita duplicar).
+  const egresoIdsReclasificados = new Set<string>();
+  for (const a of anticiposRows) if (a.egresoId) egresoIdsReclasificados.add(a.egresoId);
+  for (const l of liquidacionesRows) if (l.egresoId) egresoIdsReclasificados.add(l.egresoId);
+
   const events: AuditEvent[] = [];
 
   if (!tipos || tipos.has("venta")) {
@@ -239,6 +342,7 @@ export async function getAuditTimeline(
 
   if (!tipos || tipos.has("egreso")) {
     for (const row of egresosRows) {
+      if (egresoIdsReclasificados.has(row.id)) continue;
       const detail = [
         row.subrubro ? `${row.rubro} · ${row.subrubro}` : row.rubro,
         row.insumoNombre
@@ -267,6 +371,77 @@ export async function getAuditTimeline(
         meta: { pagado: row.pagado ? 1 : 0 },
       });
     }
+  }
+
+  if (!tipos || tipos.has("liquidacion")) {
+    for (const row of liquidacionesRows) {
+      if (!row.fechaPago) continue;
+      const actor = row.usuarioNombre ?? "Sistema";
+      const title = "Liquidación pagada";
+      const detail = `${row.empleadoNombre ?? "Empleado"} · ${row.periodoDesde} a ${row.periodoHasta}`;
+      if (!buildSearch(detail, title, actor, search)) continue;
+      events.push({
+        id: `liquidacion:${row.id}`,
+        fecha: row.fechaPago.toISOString(),
+        tipo: "liquidacion",
+        usuario_id: row.usuarioId,
+        usuario_nombre: actor,
+        usuario_rol: row.usuarioRol ?? "-",
+        sucursal_id: row.sucursalId,
+        sucursal_nombre: row.sucursalNombre ?? "-",
+        titulo: title,
+        detalle: detail,
+        monto: row.totalPagar,
+        href: `/liquidaciones/${row.id}`,
+      });
+    }
+  }
+
+  if (!tipos || tipos.has("anticipo")) {
+    for (const row of anticiposRows) {
+      const actor = row.usuarioNombre ?? "Sistema";
+      const title = "Anticipo a empleado";
+      const detail = `${row.empleadoNombre ?? "Empleado"}${row.observacion ? ` · ${row.observacion}` : ""}`;
+      if (!buildSearch(detail, title, actor, search)) continue;
+      events.push({
+        id: `anticipo:${row.id}`,
+        fecha: row.fecha.toISOString(),
+        tipo: "anticipo",
+        usuario_id: row.usuarioId,
+        usuario_nombre: actor,
+        usuario_rol: row.usuarioRol ?? "-",
+        sucursal_id: row.sucursalId,
+        sucursal_nombre: row.sucursalNombre ?? "-",
+        titulo: title,
+        detalle: detail,
+        monto: row.monto,
+        href: `/catalogos/empleados/${row.empleadoId}`,
+      });
+    }
+  }
+
+  for (const row of ccRows) {
+    const esPago = row.tipo === "pago";
+    const tipo: AuditEventType = esPago ? "cc_pago" : "cc_cargo";
+    if (tipos && !tipos.has(tipo)) continue;
+    const actor = row.usuarioNombre ?? "Sistema";
+    const title = esPago ? "Cobro de cuenta corriente" : "Cargo a cuenta corriente";
+    const detail = `${row.clienteNombre ?? "Cliente"}${row.descripcion ? ` · ${row.descripcion}` : ""}`;
+    if (!buildSearch(detail, title, actor, search)) continue;
+    events.push({
+      id: `cc:${row.id}`,
+      fecha: row.fecha.toISOString(),
+      tipo,
+      usuario_id: row.usuarioId,
+      usuario_nombre: actor,
+      usuario_rol: row.usuarioRol ?? "-",
+      sucursal_id: row.sucursalId ?? "-",
+      sucursal_nombre: row.sucursalNombre ?? "-",
+      titulo: title,
+      detalle: detail,
+      monto: row.monto,
+      href: row.clienteId ? `/catalogos/clientes/${row.clienteId}` : undefined,
+    });
   }
 
   if (!tipos || tipos.has("cierre")) {

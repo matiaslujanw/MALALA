@@ -158,6 +158,9 @@ async function main() {
       tipoComision: item.tipo_comision,
       porcentajeDefault: item.porcentaje_default,
       sueldoAsegurado: item.sueldo_asegurado,
+      valorHora: item.valor_hora,
+      horasPorDia: item.horas_por_dia,
+      diasTrabajo: item.dias_trabajo,
       observacion: item.observacion ?? null,
     })),
   );

@@ -129,6 +129,7 @@ export function seed(): Store {
   const mpTC = { id: uid(), sucursal_id: sucCentro.id, codigo: "TC", nombre: "Tarjeta credito", activo: true, recargo_pct: 0 };
   const mpTD = { id: uid(), sucursal_id: sucCentro.id, codigo: "TD", nombre: "Tarjeta debito", activo: true, recargo_pct: 0 };
   const mpMP = { id: uid(), sucursal_id: sucCentro.id, codigo: "MP", nombre: "Mercado Pago", activo: true, recargo_pct: 0 };
+  const mpCC = { id: uid(), sucursal_id: sucCentro.id, codigo: "CC", nombre: "Cuenta corriente", activo: true, recargo_pct: 0 };
 
   // Rubros de gasto
   const rgInsumos = { id: uid(), rubro: "Insumos", subrubro: "Compra", activo: true };
@@ -150,6 +151,9 @@ export function seed(): Store {
     tipo_comision: "mixto" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 800000,
+    valor_hora: 5000,
+    horas_por_dia: 8,
+    dias_trabajo: [2, 3, 4, 5, 6],
     observacion: "Color y brushing",
   };
   const empCamila = {
@@ -160,6 +164,9 @@ export function seed(): Store {
     tipo_comision: "porcentaje" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 500000,
+    valor_hora: 4000,
+    horas_por_dia: 8,
+    dias_trabajo: [1, 2, 3, 4, 5],
     observacion: "Nails artist",
   };
   const empEliana = {
@@ -170,6 +177,9 @@ export function seed(): Store {
     tipo_comision: "porcentaje" as const,
     porcentaje_default: 30,
     sueldo_asegurado: 500000,
+    valor_hora: 4000,
+    horas_por_dia: 6,
+    dias_trabajo: [3, 4, 5, 6],
     observacion: "Nails y pedicuria",
   };
   const empCarolina = {
@@ -180,6 +190,9 @@ export function seed(): Store {
     tipo_comision: "sueldo_fijo" as const,
     porcentaje_default: 10,
     sueldo_asegurado: 1150000,
+    valor_hora: 6000,
+    horas_por_dia: 9,
+    dias_trabajo: [1, 2, 3, 4, 5, 6],
     observacion: "Encargada y cejas",
   };
 
@@ -235,10 +248,10 @@ export function seed(): Store {
   ];
 
   // Clientes
-  const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0 };
-  const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0 };
-  const cliSofia = { id: uid(), nombre: "Sofia Lopez", telefono: "+5493815552003", activo: true, saldo_cc: 0 };
-  const cliConsumidor = { id: uid(), nombre: "Consumidor Final", activo: true, saldo_cc: 0 };
+  const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
+  const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
+  const cliSofia = { id: uid(), nombre: "Sofia Lopez", telefono: "+5493815552003", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
+  const cliConsumidor = { id: uid(), nombre: "Consumidor Final", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
 
   // Servicios
   const servCorteMujer = {
@@ -772,6 +785,7 @@ export function seed(): Store {
         email: base.cliente_email,
         activo: true,
         saldo_cc: 0,
+        cuenta_corriente_habilitada: false,
       });
     }
     return {
@@ -895,7 +909,7 @@ export function seed(): Store {
     ],
     insumos,
     recetas,
-    mediosPago: [mpEF, mpTR, mpTC, mpTD, mpMP],
+    mediosPago: [mpEF, mpTR, mpTC, mpTD, mpMP, mpCC],
     rubrosGasto: [rgInsumos, rgServicios, rgSueldos, rgVarios],
     stockSucursal,
     movimientosStock: [],

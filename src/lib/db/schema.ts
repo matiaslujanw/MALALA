@@ -103,7 +103,12 @@ export const empleados = pgTable("empleados", {
     .references(() => sucursales.id),
   tipoComision: tipoComisionEnum("tipo_comision").notNull(),
   porcentajeDefault: doublePrecision("porcentaje_default").notNull(),
-  sueldoAsegurado: doublePrecision("sueldo_asegurado").notNull(),
+  // Legacy: monto fijo asegurado, ya no se usa en el cálculo. Reemplazado por valorHora.
+  sueldoAsegurado: doublePrecision("sueldo_asegurado").notNull().default(0),
+  valorHora: doublePrecision("valor_hora").notNull().default(0),
+  // Jornada: horas por día y días de la semana que trabaja (0=domingo … 6=sábado).
+  horasPorDia: doublePrecision("horas_por_dia").notNull().default(0),
+  diasTrabajo: jsonb("dias_trabajo").$type<number[]>().notNull().default([]),
   observacion: text("observacion"),
 });
 
@@ -138,6 +143,9 @@ export const clientes = pgTable(
     observacion: text("observacion"),
     activo: boolean("activo").notNull().default(true),
     saldoCc: doublePrecision("saldo_cc").notNull().default(0),
+    cuentaCorrienteHabilitada: boolean("cuenta_corriente_habilitada")
+      .notNull()
+      .default(false),
   },
   (table) => ({
     telefonoE164Idx: uniqueIndex("clientes_telefono_e164_uq").on(table.telefonoE164),
@@ -526,6 +534,11 @@ export const liquidaciones = pgTable(
     totalServicios: integer("total_servicios").notNull().default(0),
     diasTrabajados: integer("dias_trabajados").notNull().default(0),
     totalComision: doublePrecision("total_comision").notNull().default(0),
+    horasTrabajadas: doublePrecision("horas_trabajadas").notNull().default(0),
+    valorHora: doublePrecision("valor_hora").notNull().default(0),
+    sueldoHoras: doublePrecision("sueldo_horas").notNull().default(0),
+    totalAnticipos: doublePrecision("total_anticipos").notNull().default(0),
+    totalPagar: doublePrecision("total_pagar").notNull().default(0),
     estado: liquidacionEstadoEnum("estado").notNull().default("pendiente"),
     mpId: text("mp_id").references(() => mediosPago.id),
     fechaPago: timestamp("fecha_pago", { withTimezone: true }),
@@ -574,6 +587,68 @@ export const liquidacionLineas = pgTable(
   }),
 );
 
+export const movimientosCc = pgTable(
+  "movimientos_cc",
+  {
+    id: text("id").primaryKey(),
+    clienteId: text("cliente_id")
+      .notNull()
+      .references(() => clientes.id, { onDelete: "cascade" }),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull(),
+    tipo: text("tipo").notNull(), // "cargo" | "pago"
+    monto: doublePrecision("monto").notNull(),
+    sucursalId: text("sucursal_id").references(() => sucursales.id),
+    mpId: text("mp_id").references(() => mediosPago.id),
+    refTipo: text("ref_tipo"),
+    refId: text("ref_id"),
+    descripcion: text("descripcion"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    clienteFechaIdx: index("mov_cc_cliente_fecha_idx").on(
+      table.clienteId,
+      table.fecha,
+    ),
+    refIdx: index("mov_cc_ref_idx").on(table.refTipo, table.refId),
+  }),
+);
+
+export const anticipos = pgTable(
+  "anticipos",
+  {
+    id: text("id").primaryKey(),
+    empleadoId: text("empleado_id")
+      .notNull()
+      .references(() => empleados.id),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull(),
+    monto: doublePrecision("monto").notNull(),
+    mpId: text("mp_id").references(() => mediosPago.id),
+    egresoId: text("egreso_id").references(() => egresos.id),
+    liquidacionId: text("liquidacion_id").references(() => liquidaciones.id),
+    observacion: text("observacion"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    empleadoLiqIdx: index("anticipos_empleado_liq_idx").on(
+      table.empleadoId,
+      table.liquidacionId,
+    ),
+    empleadoFechaIdx: index("anticipos_empleado_fecha_idx").on(
+      table.empleadoId,
+      table.fecha,
+    ),
+  }),
+);
+
 export const schema = {
   authUsers,
   profiles,
@@ -604,4 +679,6 @@ export const schema = {
   whatsappEnvios,
   liquidaciones,
   liquidacionLineas,
+  movimientosCc,
+  anticipos,
 };

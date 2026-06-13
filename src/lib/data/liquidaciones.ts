@@ -1,12 +1,13 @@
 "use server";
 
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
+  anticipos as anticiposTable,
   cierresCaja as cierresCajaTable,
   empleados as empleadosTable,
   egresos as egresosTable,
@@ -71,6 +72,11 @@ function mapLiquidacion(
     total_servicios: row.totalServicios,
     dias_trabajados: row.diasTrabajados,
     total_comision: row.totalComision,
+    horas_trabajadas: row.horasTrabajadas,
+    valor_hora: row.valorHora,
+    sueldo_horas: row.sueldoHoras,
+    total_anticipos: row.totalAnticipos,
+    total_pagar: row.totalPagar,
     estado: row.estado as LiquidacionEstado,
     mp_id: row.mpId ?? undefined,
     fecha_pago: row.fechaPago?.toISOString() ?? undefined,
@@ -107,6 +113,13 @@ export interface LiquidacionPreviewLinea {
   comision_monto: number;
 }
 
+export interface LiquidacionPreviewAnticipo {
+  id: string;
+  fecha: string;
+  monto: number;
+  observacion?: string;
+}
+
 export interface LiquidacionPreview {
   empleado_id: string;
   sucursal_id: string;
@@ -116,6 +129,10 @@ export interface LiquidacionPreview {
   total_comision: number;
   total_servicios: number;
   dias_trabajados: number;
+  valor_hora: number;
+  horas_sugeridas: number;
+  anticipos: LiquidacionPreviewAnticipo[];
+  total_anticipos: number;
 }
 
 async function fetchLineasPendientes(args: {
@@ -168,6 +185,78 @@ async function fetchLineasPendientes(args: {
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/** Cuenta los días del rango [desde, hasta] cuyo día de semana está en `dias`. */
+function contarDiasLaborables(
+  desde: string,
+  hasta: string,
+  dias: number[],
+): number {
+  if (dias.length === 0) return 0;
+  const set = new Set(dias);
+  let count = 0;
+  const cur = new Date(`${desde}T12:00:00`);
+  const fin = new Date(`${hasta}T12:00:00`);
+  while (cur <= fin) {
+    if (set.has(cur.getDay())) count += 1;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+
+/** Valor hora + jornada del empleado + anticipos pendientes de descontar en el período. */
+async function fetchValorHoraYAnticipos(args: {
+  empleadoId: string;
+  sucursalId: string;
+  desde: string;
+  hasta: string;
+}): Promise<{
+  valorHora: number;
+  horasSugeridas: number;
+  anticipos: { id: string; fecha: string; monto: number; observacion?: string }[];
+}> {
+  const db = getDb();
+
+  const [empleado] = await db
+    .select({
+      valorHora: empleadosTable.valorHora,
+      horasPorDia: empleadosTable.horasPorDia,
+      diasTrabajo: empleadosTable.diasTrabajo,
+    })
+    .from(empleadosTable)
+    .where(eq(empleadosTable.id, args.empleadoId))
+    .limit(1);
+
+  const anticipoRows = await db
+    .select()
+    .from(anticiposTable)
+    .where(
+      and(
+        eq(anticiposTable.empleadoId, args.empleadoId),
+        eq(anticiposTable.sucursalId, args.sucursalId),
+        isNull(anticiposTable.liquidacionId),
+        gte(anticiposTable.fecha, new Date(isoStart(args.desde))),
+        lte(anticiposTable.fecha, new Date(isoEnd(args.hasta))),
+      ),
+    )
+    .orderBy(asc(anticiposTable.fecha));
+
+  const diasTrabajo = empleado?.diasTrabajo ?? [];
+  const horasPorDia = empleado?.horasPorDia ?? 0;
+  const horasSugeridas =
+    contarDiasLaborables(args.desde, args.hasta, diasTrabajo) * horasPorDia;
+
+  return {
+    valorHora: empleado?.valorHora ?? 0,
+    horasSugeridas,
+    anticipos: anticipoRows.map((a) => ({
+      id: a.id,
+      fecha: ymd(a.fecha),
+      monto: a.monto,
+      observacion: a.observacion ?? undefined,
+    })),
+  };
+}
+
 export async function previewLiquidacion(input: {
   sucursalId: string;
   empleadoId: string;
@@ -204,6 +293,15 @@ export async function previewLiquidacion(input: {
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
 
+  const { valorHora, horasSugeridas, anticipos } =
+    await fetchValorHoraYAnticipos({
+      empleadoId: parsed.data.empleado_id,
+      sucursalId: parsed.data.sucursal_id,
+      desde: parsed.data.periodo_desde,
+      hasta: parsed.data.periodo_hasta,
+    });
+  const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
+
   return {
     ok: true,
     preview: {
@@ -215,6 +313,10 @@ export async function previewLiquidacion(input: {
       total_comision: totalComision,
       total_servicios: lineas.length,
       dias_trabajados: dias.size,
+      valor_hora: valorHora,
+      horas_sugeridas: horasSugeridas,
+      anticipos,
+      total_anticipos: totalAnticipos,
     },
   };
 }
@@ -242,6 +344,8 @@ export async function createLiquidacion(
     return { ok: false, errors: { sucursal_id: ["Sin acceso a esa sucursal"] } };
   }
 
+  const horasTrabajadas = Math.max(0, Number(formData.get("horas_trabajadas")) || 0);
+
   const lineas = await fetchLineasPendientes({
     sucursalId: parsed.data.sucursal_id,
     empleadoId: parsed.data.empleado_id,
@@ -249,15 +353,27 @@ export async function createLiquidacion(
     hasta: parsed.data.periodo_hasta,
   });
 
-  if (lineas.length === 0) {
+  if (lineas.length === 0 && horasTrabajadas <= 0) {
     return {
       ok: false,
-      errors: { _: ["No hay líneas pendientes para liquidar en ese período"] },
+      errors: {
+        _: ["No hay servicios ni horas para liquidar en ese período"],
+      },
     };
   }
 
+  const { valorHora, anticipos } = await fetchValorHoraYAnticipos({
+    empleadoId: parsed.data.empleado_id,
+    sucursalId: parsed.data.sucursal_id,
+    desde: parsed.data.periodo_desde,
+    hasta: parsed.data.periodo_hasta,
+  });
+
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
+  const sueldoHoras = horasTrabajadas * valorHora;
+  const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
+  const totalPagar = totalComision + sueldoHoras - totalAnticipos;
   const liquidacionId = createId();
 
   const db = getDb();
@@ -271,9 +387,27 @@ export async function createLiquidacion(
       totalServicios: lineas.length,
       diasTrabajados: dias.size,
       totalComision,
+      horasTrabajadas,
+      valorHora,
+      sueldoHoras,
+      totalAnticipos,
+      totalPagar,
       estado: "pendiente",
       usuarioId: user.id,
     });
+
+    // Marcar los anticipos del período como descontados en esta liquidación.
+    if (anticipos.length > 0) {
+      await tx
+        .update(anticiposTable)
+        .set({ liquidacionId })
+        .where(
+          inArray(
+            anticiposTable.id,
+            anticipos.map((a) => a.id),
+          ),
+        );
+    }
 
     const rows = lineas.map((l) => ({
       id: createId(),
@@ -367,6 +501,9 @@ function mapEmpleadoRow(row: typeof empleadosTable.$inferSelect): Empleado {
     tipo_comision: row.tipoComision,
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
+    valor_hora: row.valorHora,
+    horas_por_dia: row.horasPorDia,
+    dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,
   };
 }
@@ -536,31 +673,40 @@ export async function marcarLiquidacionPagada(
         );
       }
 
-      await tx.insert(egresosTable).values({
-        id: egresoId,
-        fecha: ahora,
-        sucursalId: existing.sucursalId,
-        rubroId: rubro.id,
-        valor: existing.totalComision,
-        mpId: parsed.data.mp_id,
-        observacion: observacionEgreso,
-        pagado: true,
-        usuarioId: user.id,
-      });
+      // Monto neto a pagar al empleado: comisiones + sueldo por horas − anticipos
+      // (los anticipos ya salieron de caja al registrarse). Solo genera egreso si
+      // queda saldo a favor del empleado.
+      const montoAPagar = existing.totalPagar;
+      let egresoIdFinal: string | null = null;
 
-      const cuentaId = await getCuentaIdForMpTx(tx, parsed.data.mp_id);
-      if (cuentaId) {
-        await emitMovimientoBancarioTx(tx, {
-          cuentaId,
+      if (montoAPagar > 0.01) {
+        egresoIdFinal = egresoId;
+        await tx.insert(egresosTable).values({
+          id: egresoId,
           fecha: ahora,
-          monto: -Math.abs(existing.totalComision),
-          tipo: "egreso",
           sucursalId: existing.sucursalId,
-          refTipo: "egreso",
-          refId: egresoId,
-          descripcion: observacionEgreso,
+          rubroId: rubro.id,
+          valor: montoAPagar,
+          mpId: parsed.data.mp_id,
+          observacion: observacionEgreso,
+          pagado: true,
           usuarioId: user.id,
         });
+
+        const cuentaId = await getCuentaIdForMpTx(tx, parsed.data.mp_id);
+        if (cuentaId) {
+          await emitMovimientoBancarioTx(tx, {
+            cuentaId,
+            fecha: ahora,
+            monto: -Math.abs(montoAPagar),
+            tipo: "egreso",
+            sucursalId: existing.sucursalId,
+            refTipo: "egreso",
+            refId: egresoId,
+            descripcion: observacionEgreso,
+            usuarioId: user.id,
+          });
+        }
       }
 
       await tx
@@ -570,7 +716,7 @@ export async function marcarLiquidacionPagada(
           mpId: parsed.data.mp_id,
           fechaPago: ahora,
           observacion: parsed.data.observacion ?? null,
-          egresoId,
+          egresoId: egresoIdFinal,
         })
         .where(eq(liquidacionesTable.id, id));
     });
@@ -643,6 +789,13 @@ export async function anularLiquidacion(
           await tx.delete(egresosTable).where(eq(egresosTable.id, existing.egresoId));
         }
       }
+
+      // Liberar los anticipos descontados: vuelven a quedar pendientes para una
+      // futura liquidación (la plata del anticipo NO se devuelve, su egreso sigue).
+      await tx
+        .update(anticiposTable)
+        .set({ liquidacionId: null })
+        .where(eq(anticiposTable.liquidacionId, id));
 
       // Borrar libera las líneas para futuras liquidaciones
       await tx.delete(liquidacionesTable).where(eq(liquidacionesTable.id, id));

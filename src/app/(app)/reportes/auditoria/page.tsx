@@ -16,6 +16,8 @@ import { getAnalyticsSnapshot } from "@/lib/data/analytics";
 
 interface SearchParams {
   rango?: "hoy" | "semana" | "mes" | "todo";
+  desde?: string; // YYYY-MM-DD (tiene prioridad sobre rango)
+  hasta?: string; // YYYY-MM-DD
   tipo?: string;
   usuario?: string;
   sucursal?: string;
@@ -42,6 +44,10 @@ function rangoToFechas(rango: NonNullable<SearchParams["rango"]>) {
 const ALL_TIPOS: AuditEventType[] = [
   "venta",
   "egreso",
+  "liquidacion",
+  "anticipo",
+  "cc_cargo",
+  "cc_pago",
   "cierre",
   "stock_compra",
   "stock_venta",
@@ -52,6 +58,10 @@ const ALL_TIPOS: AuditEventType[] = [
 const TIPO_COLORS: Record<AuditEventType, string> = {
   venta: "var(--sage-700)",
   egreso: "var(--ink)",
+  liquidacion: "var(--ink)",
+  anticipo: "var(--ink)",
+  cc_cargo: "var(--danger)",
+  cc_pago: "var(--sage-700)",
   cierre: "var(--sage-700)",
   stock_compra: "var(--ink)",
   stock_venta: "var(--ink)",
@@ -72,8 +82,11 @@ export default async function ReportesPage({
   }
 
   const sp = await searchParams;
+  const usaFechasCustom = !!(sp.desde || sp.hasta);
   const rango = sp.rango ?? "hoy";
-  const { desde, hasta } = rangoToFechas(rango);
+  const { desde, hasta } = usaFechasCustom
+    ? { desde: sp.desde || undefined, hasta: sp.hasta || undefined }
+    : rangoToFechas(rango);
   const tipos = sp.tipo
     ? [sp.tipo as AuditEventType].filter((t) => ALL_TIPOS.includes(t))
     : undefined;
@@ -119,7 +132,9 @@ export default async function ReportesPage({
           Línea de tiempo de cada movimiento operativo: quién lo hizo, cuándo, en
           qué sucursal y por qué monto. {agg.total} evento
           {agg.total !== 1 ? "s" : ""} ·{" "}
-          {RANGOS.find((r) => r.value === rango)?.label.toLowerCase()}
+          {usaFechasCustom
+            ? `${sp.desde ?? "inicio"} → ${sp.hasta ?? "hoy"}`
+            : RANGOS.find((r) => r.value === rango)?.label.toLowerCase()}
           {user.rol !== "admin" ? " · vista limitada" : ""}
         </p>
       </header>
@@ -174,25 +189,50 @@ export default async function ReportesPage({
 
       {/* Filtros */}
       <form
-        action="/reportes"
+        action="/reportes/auditoria"
         method="get"
         className="bg-card border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3 items-end"
       >
         <div className="space-y-1.5">
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Rango
+            Rango rápido
           </label>
           <select
             name="rango"
-            defaultValue={rango}
+            defaultValue={usaFechasCustom ? "" : rango}
             className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
           >
+            {usaFechasCustom && <option value="">— Por fechas —</option>}
             {RANGOS.map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
             ))}
           </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Desde
+          </label>
+          <input
+            type="date"
+            name="desde"
+            defaultValue={sp.desde ?? ""}
+            max={sp.hasta || undefined}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Hasta
+          </label>
+          <input
+            type="date"
+            name="hasta"
+            defaultValue={sp.hasta ?? ""}
+            min={sp.desde || undefined}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          />
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
