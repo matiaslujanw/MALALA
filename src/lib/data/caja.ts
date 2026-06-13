@@ -115,7 +115,11 @@ export async function getResumenDelDia(
   const desde = isoStartOfDay(fecha);
   const hasta = isoEndOfDay(fecha);
 
-  const mediosPago = await listMediosPago({ sucursalId });
+  // El medio "CC" no representa plata cobrada: las ventas fiadas generan deuda,
+  // no entran a caja. Se excluye del resumen para no inflar lo cobrado del día.
+  const mediosPago = (await listMediosPago({ sucursalId })).filter(
+    (m) => m.codigo !== "CC",
+  );
   const ingresosDelDia = await listIngresos({
     sucursalId,
     desde,

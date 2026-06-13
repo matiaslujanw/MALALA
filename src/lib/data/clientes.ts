@@ -25,6 +25,7 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
     observacion: row.observacion ?? undefined,
     activo: row.activo,
     saldo_cc: row.saldoCc,
+    cuenta_corriente_habilitada: row.cuentaCorrienteHabilitada,
   };
 }
 
@@ -167,6 +168,7 @@ export async function createClienteQuick(input: {
       observacion: parsed.data.observacion ?? undefined,
       activo: true,
       saldo_cc: 0,
+      cuenta_corriente_habilitada: false,
     },
   };
 }

@@ -146,7 +146,7 @@ export default async function LiquidacionesPage({
                       {item.liquidacion.dias_trabajados}
                     </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums">
-                      {formatARS(item.liquidacion.total_comision)}
+                      {formatARS(item.liquidacion.total_pagar)}
                     </td>
                     <td className="px-4 py-3">
                       <span

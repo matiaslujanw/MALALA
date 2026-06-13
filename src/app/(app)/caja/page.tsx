@@ -79,10 +79,13 @@ export default async function CajaPage({
             {capitalize(formatLongDate(ymdToLocalDate(hoy)))} · {formatYMD(hoy)}
           </p>
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-            Caja
+            Caja diaria
           </h1>
           <p className="text-sm text-muted-foreground">
-            {sucursal.nombre} · Cierre diario por sucursal
+            {sucursal.nombre} · Movimientos y cierre del día.{" "}
+            <Link href="/bancos" className="underline hover:text-foreground">
+              ¿Buscás los saldos de las cuentas? →
+            </Link>
           </p>
         </div>
 

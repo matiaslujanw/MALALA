@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 import { ClienteForm } from "@/components/forms/cliente-form";
+import { CuentaCorrientePanel } from "@/components/cuenta-corriente-panel";
 import {
   getCliente,
   toggleClienteActivo,
   updateCliente,
 } from "@/lib/data/clientes";
 import { listIngresos } from "@/lib/data/ingresos";
-import { requireUser } from "@/lib/auth/session";
+import { listMovimientosCc } from "@/lib/data/cuenta-corriente";
+import { listMediosPago } from "@/lib/data/medios-pago";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 function fmtFecha(iso: string): string {
@@ -29,6 +32,14 @@ export default async function EditarClientePage({
   if (!cliente) notFound();
 
   const puedeEditar = user.rol === "admin" || user.rol === "encargada";
+
+  const sucursal = await getActiveSucursal();
+  const [movimientosCc, mediosPago] = await Promise.all([
+    listMovimientosCc(id),
+    sucursal
+      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
+      : Promise.resolve([]),
+  ]);
 
   const historial = await listIngresos({ clienteId: id });
   const totalServicios = historial.reduce(
@@ -68,6 +79,13 @@ export default async function EditarClientePage({
           </div>
         </dl>
       )}
+
+      <CuentaCorrientePanel
+        cliente={cliente}
+        movimientos={movimientosCc}
+        mediosPago={mediosPago}
+        puedeGestionar={puedeEditar}
+      />
 
       <section className="space-y-3 border-t border-border pt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

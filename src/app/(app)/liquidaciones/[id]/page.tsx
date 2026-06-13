@@ -46,7 +46,7 @@ export default async function LiquidacionDetallePage({
     soloActivos: true,
   });
 
-  const diferencia = efectivo.neto_ef - liquidacion.total_comision;
+  const diferencia = efectivo.neto_ef - liquidacion.total_pagar;
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -150,11 +150,27 @@ export default async function LiquidacionDetallePage({
             </h2>
             <KV label="Servicios" value={String(liquidacion.total_servicios)} />
             <KV label="Días trabajados" value={String(liquidacion.dias_trabajados)} />
-            <KV
-              label="Comisión"
-              value={formatARS(liquidacion.total_comision)}
-              strong
-            />
+            <KV label="Comisiones" value={formatARS(liquidacion.total_comision)} />
+            {liquidacion.horas_trabajadas > 0 && (
+              <KV
+                label={`Sueldo (${liquidacion.horas_trabajadas} h × ${formatARS(liquidacion.valor_hora)})`}
+                value={formatARS(liquidacion.sueldo_horas)}
+              />
+            )}
+            {liquidacion.total_anticipos > 0 && (
+              <KV
+                label="Anticipos"
+                value={`− ${formatARS(liquidacion.total_anticipos)}`}
+                color="var(--warning)"
+              />
+            )}
+            <div className="pt-2 border-t border-border">
+              <KV
+                label="Total a pagar"
+                value={formatARS(liquidacion.total_pagar)}
+                strong
+              />
+            </div>
           </section>
 
           <section className="bg-cream/40 border border-border rounded-md p-5 space-y-3">

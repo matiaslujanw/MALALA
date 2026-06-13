@@ -64,7 +64,10 @@ export interface Empleado {
   sucursal_principal_id: ID;
   tipo_comision: TipoComision;
   porcentaje_default: number; // 0-100
-  sueldo_asegurado: number;
+  sueldo_asegurado: number; // legacy, ya no se usa en el cálculo
+  valor_hora: number;
+  horas_por_dia: number;
+  dias_trabajo: number[]; // 0=domingo … 6=sábado
   observacion?: string;
 }
 
@@ -77,6 +80,24 @@ export interface Cliente {
   observacion?: string;
   activo: boolean;
   saldo_cc: number;
+  cuenta_corriente_habilitada: boolean;
+}
+
+export type TipoMovimientoCc = "cargo" | "pago";
+
+export interface MovimientoCc {
+  id: ID;
+  cliente_id: ID;
+  fecha: string; // ISO
+  tipo: TipoMovimientoCc;
+  monto: number; // siempre positivo; el tipo define el signo sobre el saldo
+  sucursal_id?: ID;
+  mp_id?: ID;
+  ref_tipo?: string;
+  ref_id?: ID;
+  descripcion?: string;
+  usuario_id: ID;
+  creado_en: string; // ISO
 }
 
 export interface Proveedor {
@@ -345,11 +366,30 @@ export interface Liquidacion {
   total_servicios: number;
   dias_trabajados: number;
   total_comision: number;
+  horas_trabajadas: number;
+  valor_hora: number; // snapshot del valor hora al liquidar
+  sueldo_horas: number; // horas_trabajadas * valor_hora
+  total_anticipos: number; // anticipos descontados
+  total_pagar: number; // total_comision + sueldo_horas - total_anticipos
   estado: LiquidacionEstado;
   mp_id?: ID;
   fecha_pago?: string; // ISO
   observacion?: string;
   egreso_id?: ID;
+  usuario_id: ID;
+  creado_en: string; // ISO
+}
+
+export interface Anticipo {
+  id: ID;
+  empleado_id: ID;
+  sucursal_id: ID;
+  fecha: string; // ISO
+  monto: number;
+  mp_id?: ID;
+  egreso_id?: ID;
+  liquidacion_id?: ID; // null mientras está pendiente de descontar
+  observacion?: string;
   usuario_id: ID;
   creado_en: string; // ISO
 }

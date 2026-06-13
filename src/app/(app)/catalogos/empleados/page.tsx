@@ -48,7 +48,7 @@ export default async function EmpleadosPage() {
               <th className="text-left font-medium px-4 py-3">Sucursal</th>
               <th className="text-left font-medium px-4 py-3">Comisión</th>
               <th className="text-right font-medium px-4 py-3">% default</th>
-              <th className="text-right font-medium px-4 py-3">Asegurado</th>
+              <th className="text-right font-medium px-4 py-3">Valor/hora</th>
               <th className="text-center font-medium px-4 py-3">Estado</th>
               {user.rol === "admin" && <th className="px-4 py-3 w-20"></th>}
             </tr>
@@ -67,7 +67,7 @@ export default async function EmpleadosPage() {
                   {e.porcentaje_default}%
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(e.sueldo_asegurado)}
+                  {formatARS(e.valor_hora)}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {e.activo ? (

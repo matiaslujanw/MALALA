@@ -10,6 +10,10 @@ export function aggregateAudit(events: AuditEvent[]): AuditAggregates {
   const porTipo: Record<AuditEventType, number> = {
     venta: 0,
     egreso: 0,
+    liquidacion: 0,
+    anticipo: 0,
+    cc_cargo: 0,
+    cc_pago: 0,
     cierre: 0,
     stock_compra: 0,
     stock_venta: 0,
@@ -43,6 +47,10 @@ export function aggregateAudit(events: AuditEvent[]): AuditAggregates {
 export const TIPO_LABELS: Record<AuditEventType, string> = {
   venta: "Ventas",
   egreso: "Egresos",
+  liquidacion: "Liquidaciones",
+  anticipo: "Anticipos",
+  cc_cargo: "CC · cargos",
+  cc_pago: "CC · cobros",
   cierre: "Cierres de caja",
   stock_compra: "Stock · compras",
   stock_venta: "Stock · consumo por venta",

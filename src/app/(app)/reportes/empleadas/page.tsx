@@ -27,7 +27,6 @@ interface AggEmpleada {
   comisiones: number;
   costoInsumos: number;
   netoNegocio: number;
-  sueldoAsegurado: number;
 }
 
 export default async function ReportesEmpleadasPage({
@@ -73,7 +72,6 @@ export default async function ReportesEmpleadasPage({
         comisiones: 0,
         costoInsumos: 0,
         netoNegocio: 0,
-        sueldoAsegurado: empleado.sueldo_asegurado,
       };
       entry.servicios += linea.cantidad;
       entry.facturado += linea.subtotal;
@@ -147,10 +145,6 @@ export default async function ReportesEmpleadasPage({
                 Comisiones
               </th>
               <th className="text-right font-medium px-3 py-3 w-28">
-                Asegurado
-              </th>
-              <th className="text-right font-medium px-3 py-3 w-32">A pagar</th>
-              <th className="text-right font-medium px-3 py-3 w-28">
                 Neto negocio
               </th>
             </tr>
@@ -159,54 +153,34 @@ export default async function ReportesEmpleadasPage({
             {filas.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={5}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                   Sin servicios cargados a empleadas en el período.
                 </td>
               </tr>
             ) : (
-              filas.map((f) => {
-                // "A pagar" = max(comisiones, asegurado)
-                const aPagar = Math.max(f.comisiones, f.sueldoAsegurado);
-                const cubreAsegurado = f.comisiones >= f.sueldoAsegurado;
-                return (
-                  <tr key={f.empleadoId} className="hover:bg-cream/30">
-                    <td className="px-3 py-3 font-medium">{f.nombre}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {f.servicios}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {formatARS(f.facturado)}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">
-                      {formatARS(f.comisiones)}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-muted-foreground">
-                      {formatARS(f.sueldoAsegurado)}
-                    </td>
-                    <td
-                      className={`px-3 py-3 text-right tabular-nums font-medium ${
-                        cubreAsegurado ? "text-sage-700" : "text-amber-700"
-                      }`}
-                    >
-                      {formatARS(aPagar)}
-                      <div className="text-[10px] uppercase tracking-wider font-normal mt-0.5">
-                        {cubreAsegurado
-                          ? "se autofinancia"
-                          : "empresa cubre diferencia"}
-                      </div>
-                    </td>
-                    <td
-                      className={`px-3 py-3 text-right tabular-nums font-medium ${
-                        f.netoNegocio >= 0 ? "text-sage-700" : "text-rose-600"
-                      }`}
-                    >
-                      {formatARS(f.netoNegocio)}
-                    </td>
-                  </tr>
-                );
-              })
+              filas.map((f) => (
+                <tr key={f.empleadoId} className="hover:bg-cream/30">
+                  <td className="px-3 py-3 font-medium">{f.nombre}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {f.servicios}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {formatARS(f.facturado)}
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    {formatARS(f.comisiones)}
+                  </td>
+                  <td
+                    className={`px-3 py-3 text-right tabular-nums font-medium ${
+                      f.netoNegocio >= 0 ? "text-sage-700" : "text-rose-600"
+                    }`}
+                  >
+                    {formatARS(f.netoNegocio)}
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
           {filas.length > 0 && (
@@ -222,8 +196,6 @@ export default async function ReportesEmpleadasPage({
                 <td className="px-3 py-3 text-right tabular-nums font-semibold">
                   {formatARS(totales.comisiones)}
                 </td>
-                <td />
-                <td />
                 <td
                   className={`px-3 py-3 text-right tabular-nums font-semibold ${
                     totales.netoNegocio >= 0 ? "text-sage-700" : "text-rose-600"
@@ -238,10 +210,9 @@ export default async function ReportesEmpleadasPage({
       </div>
 
       <p className="text-xs text-muted-foreground italic">
-        Tip: <strong>A pagar</strong> es el máximo entre la comisión generada y
-        el sueldo asegurado. <strong>Neto negocio</strong> = facturado − comisión
-        − costo insumos (es lo que le queda al negocio antes de gastos
-        generales).
+        Tip: <strong>Neto negocio</strong> = facturado − comisión − costo insumos
+        (es lo que le queda al negocio antes de gastos generales). El sueldo por
+        horas y los anticipos se ven en cada liquidación.
       </p>
     </div>
   );

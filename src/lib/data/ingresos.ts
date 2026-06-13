@@ -11,6 +11,7 @@ import {
   ingresos as ingresosTable,
   insumos as insumosTable,
   mediosPago as mediosPagoTable,
+  movimientosCc as movimientosCcTable,
   recetas as recetasTable,
   servicios as serviciosTable,
 } from "@/lib/db/schema";
@@ -99,6 +100,7 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
     observacion: row.observacion ?? undefined,
     activo: row.activo,
     saldo_cc: row.saldoCc,
+    cuenta_corriente_habilitada: row.cuentaCorrienteHabilitada,
   };
 }
 
@@ -138,6 +140,9 @@ function mapEmpleado(row: typeof empleadosTable.$inferSelect): Empleado {
     tipo_comision: row.tipoComision,
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
+    valor_hora: row.valorHora,
+    horas_por_dia: row.horasPorDia,
+    dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,
   };
 }
@@ -502,6 +507,24 @@ export async function createIngreso(
           .where(inArray(mediosPagoTable.id, mpIds))
       : [];
   const recargoPctById = new Map(mediosRows.map((m) => [m.id, m.recargoPct]));
+
+  // Cuenta corriente: el medio con código "CC" no es un cobro real, sino que
+  // genera deuda en la cuenta corriente del cliente (no impacta en bancos).
+  const codigoById = new Map(mediosRows.map((m) => [m.id, m.codigo]));
+  const mp1EsCc = codigoById.get(data.mp1_id) === "CC";
+  const mp2EsCc = data.mp2_id ? codigoById.get(data.mp2_id) === "CC" : false;
+  const usaCc = mp1EsCc || mp2EsCc;
+  if (usaCc && !data.cliente_id) {
+    return {
+      ok: false,
+      errors: {
+        cliente_id: [
+          "Para cargar a cuenta corriente tenés que elegir un cliente",
+        ],
+      },
+    };
+  }
+
   const recargo1 = data.valor1 * ((recargoPctById.get(data.mp1_id) ?? 0) / 100);
   const recargo2 =
     data.mp2_id && data.valor2 != null
@@ -730,11 +753,13 @@ export async function createIngreso(
         mpId: string;
         monto: number;
         cuentaOverride?: string;
+        esCc: boolean;
       }> = [
         {
           mpId: data.mp1_id,
           monto: valor1Cobrado,
           cuentaOverride: data.mp1_cuenta_id,
+          esCc: mp1EsCc,
         },
       ];
       if (data.mp2_id && valor2Cobrado != null) {
@@ -742,9 +767,48 @@ export async function createIngreso(
           mpId: data.mp2_id,
           monto: valor2Cobrado,
           cuentaOverride: data.mp2_cuenta_id,
+          esCc: mp2EsCc,
         });
       }
+
+      // Porción fiada: genera deuda en la cuenta corriente del cliente en lugar
+      // de impactar en bancos. Un único cargo por venta.
+      const montoCc = cobros.reduce(
+        (acc, c) => (c.esCc ? acc + c.monto : acc),
+        0,
+      );
+      if (montoCc > 0) {
+        const clienteIdCc = data.cliente_id!;
+        const [cli] = await tx
+          .select()
+          .from(clientesTable)
+          .where(eq(clientesTable.id, clienteIdCc))
+          .limit(1);
+        if (!cli) throw new Error("Cliente no encontrado");
+        if (!cli.cuentaCorrienteHabilitada) {
+          throw new Error("El cliente no tiene la cuenta corriente habilitada");
+        }
+        await tx.insert(movimientosCcTable).values({
+          id: createId(),
+          clienteId: clienteIdCc,
+          fecha,
+          tipo: "cargo",
+          monto: montoCc,
+          sucursalId: data.sucursal_id,
+          mpId: null,
+          refTipo: "ingreso",
+          refId: ingresoId,
+          descripcion: "Venta fiada a cuenta corriente",
+          usuarioId: user.id,
+        });
+        await tx
+          .update(clientesTable)
+          .set({ saldoCc: cli.saldoCc + montoCc })
+          .where(eq(clientesTable.id, clienteIdCc));
+      }
+
       for (const cobro of cobros) {
+        if (cobro.esCc) continue; // lo fiado no entra a bancos
         const cuentaId =
           cobro.cuentaOverride ?? (await getCuentaIdForMpTx(tx, cobro.mpId));
         if (!cuentaId) {
@@ -780,5 +844,6 @@ export async function createIngreso(
   revalidatePath("/dashboard");
   revalidatePath("/caja");
   revalidatePath("/bancos");
+  if (usaCc) revalidatePath("/catalogos/clientes");
   return { ok: true, ingresoId, warnings: warnings.length ? warnings : undefined };
 }

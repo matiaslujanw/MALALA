@@ -86,6 +86,7 @@ export function NuevaLiquidacionForm({
   const [previewing, startPreview] = useTransition();
   const [saving, startSaving] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [horas, setHoras] = useState(0);
 
   function applyRange(r: { desde: string; hasta: string }) {
     setDesde(r.desde);
@@ -114,13 +115,19 @@ export function NuevaLiquidacionForm({
         return;
       }
       setPreview(res.preview);
+      // Proponer las horas según la jornada del empleado (editable).
+      setHoras(res.preview.horas_sugeridas);
     });
   }
 
   function doSave() {
     setErrors({});
-    if (!preview || preview.lineas.length === 0) {
+    if (!preview) {
       setErrors({ _: ["Primero calculá el período"] });
+      return;
+    }
+    if (preview.lineas.length === 0 && horas <= 0) {
+      setErrors({ _: ["No hay servicios ni horas para liquidar"] });
       return;
     }
     const fd = new FormData();
@@ -128,6 +135,7 @@ export function NuevaLiquidacionForm({
     fd.set("empleado_id", empleadoId);
     fd.set("periodo_desde", desde);
     fd.set("periodo_hasta", hasta);
+    fd.set("horas_trabajadas", String(horas));
     startSaving(async () => {
       const res = await createLiquidacion(fd);
       if (!res.ok) {
@@ -142,12 +150,21 @@ export function NuevaLiquidacionForm({
   useEffect(() => {
     setPreview(null);
     setPreviewError(null);
+    setHoras(0);
   }, [sucursalId, empleadoId, desde, hasta]);
 
   const empleadosActivos = useMemo(
     () => empleados.filter((e) => e.activo),
     [empleados],
   );
+
+  // Desglose en vivo (depende de las horas que carga el usuario).
+  const sueldoHoras = horas * (preview?.valor_hora ?? 0);
+  const totalPagar = preview
+    ? preview.total_comision + sueldoHoras - preview.total_anticipos
+    : 0;
+  const puedeGuardar =
+    !!preview && (preview.lineas.length > 0 || horas > 0);
 
   return (
     <div className="space-y-6">
@@ -275,21 +292,18 @@ export function NuevaLiquidacionForm({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <Kpi label="Servicios" value={String(preview.total_servicios)} />
             <Kpi label="Días trabajados" value={String(preview.dias_trabajados)} />
+            <Kpi label="Comisiones" value={formatARS(preview.total_comision)} />
             <Kpi
-              label="Total a pagar"
-              value={formatARS(preview.total_comision)}
-              highlight
-            />
-            <Kpi
-              label="Líneas ya liquidadas"
-              value="—"
-              hint="Las líneas que ya fueron liquidadas antes no se incluyen"
+              label="Valor por hora"
+              value={formatARS(preview.valor_hora)}
+              hint="Configurado en la ficha del empleado"
             />
           </div>
 
           {preview.lineas.length === 0 ? (
             <p className="text-sm text-muted-foreground italic">
-              No hay líneas pendientes para este empleado en el período.
+              No hay servicios con comisión para este empleado en el período. Podés
+              liquidar solo el sueldo por horas.
             </p>
           ) : (
             <div className="overflow-hidden rounded-md border border-border">
@@ -326,28 +340,137 @@ export function NuevaLiquidacionForm({
             </div>
           )}
 
-          {preview.lineas.length > 0 && (
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={doSave}
-                disabled={saving}
-                className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
-              >
-                {saving ? "Guardando…" : "Guardar liquidación"}
-              </button>
+          {/* Horas trabajadas */}
+          <div className="border-t border-border pt-4">
+            <div className="sm:max-w-xs space-y-1.5">
+              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Horas trabajadas en el período
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={horas || ""}
+                onChange={(e) => setHoras(Math.max(0, Number(e.target.value) || 0))}
+                placeholder="0"
+                className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
               <p className="text-xs text-muted-foreground">
-                Se generará una liquidación pendiente. Luego registrás el pago al
-                empleado.
+                {horas > 0
+                  ? `${horas} h × ${formatARS(preview.valor_hora)} = ${formatARS(sueldoHoras)}`
+                  : "Cargá las horas efectivamente trabajadas"}
               </p>
+              {preview.horas_sugeridas > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Sugerido por la jornada: {preview.horas_sugeridas} h.
+                  {horas !== preview.horas_sugeridas && (
+                    <button
+                      type="button"
+                      onClick={() => setHoras(preview.horas_sugeridas)}
+                      className="ml-1 underline hover:text-foreground"
+                    >
+                      Usar sugerido
+                    </button>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Anticipos del período */}
+          {preview.anticipos.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Anticipos del período (se descuentan)
+              </p>
+              <ul className="divide-y divide-border rounded-md border border-border bg-cream/30">
+                {preview.anticipos.map((a) => (
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between px-3 py-2 text-sm"
+                  >
+                    <span className="text-muted-foreground">
+                      {formatYMD(a.fecha)}
+                      {a.observacion ? ` · ${a.observacion}` : ""}
+                    </span>
+                    <span className="tabular-nums text-amber-700">
+                      − {formatARS(a.monto)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+
+          {/* Desglose total */}
+          <div className="rounded-md border border-border bg-cream/40 p-4 space-y-1.5">
+            <DesgloseRow
+              label="Comisiones"
+              value={formatARS(preview.total_comision)}
+            />
+            <DesgloseRow
+              label="Sueldo por horas"
+              value={formatARS(sueldoHoras)}
+            />
+            {preview.total_anticipos > 0 && (
+              <DesgloseRow
+                label="Anticipos"
+                value={`− ${formatARS(preview.total_anticipos)}`}
+                muted
+              />
+            )}
+            <div className="flex items-center justify-between border-t border-border pt-2 mt-1">
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                Total a pagar
+              </span>
+              <span
+                className="font-display text-xl tabular-nums"
+                style={{ color: "var(--sage-700)" }}
+              >
+                {formatARS(totalPagar)}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={doSave}
+              disabled={saving || !puedeGuardar}
+              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Guardando…" : "Guardar liquidación"}
+            </button>
+            <p className="text-xs text-muted-foreground">
+              Se generará una liquidación pendiente. Luego registrás el pago al
+              empleado.
+            </p>
+          </div>
 
           {errors._ && (
             <p className="text-sm text-destructive">{errors._.join(", ")}</p>
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+function DesgloseRow({
+  label,
+  value,
+  muted,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`tabular-nums ${muted ? "text-amber-700" : ""}`}>
+        {value}
+      </span>
     </div>
   );
 }

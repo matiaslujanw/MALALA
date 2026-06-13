@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
@@ -32,6 +32,12 @@ function mapMedioPago(row: typeof mediosPagoTable.$inferSelect): MedioPago {
 export interface ListMediosPagoOpts {
   sucursalId?: string;
   soloActivos?: boolean;
+  /**
+   * Incluir el medio "CC" (Cuenta corriente). Por defecto se excluye: solo
+   * tiene sentido al fiar una venta, no para pagar gastos/liquidaciones ni
+   * para el resumen de caja.
+   */
+  incluirCuentaCorriente?: boolean;
 }
 
 export async function listMediosPago(
@@ -48,6 +54,9 @@ export async function listMediosPago(
   }
   if (opts.soloActivos) {
     filters.push(eq(mediosPagoTable.activo, true));
+  }
+  if (!opts.incluirCuentaCorriente) {
+    filters.push(ne(mediosPagoTable.codigo, "CC"));
   }
 
   const rows = await db

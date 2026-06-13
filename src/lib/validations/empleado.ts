@@ -5,7 +5,12 @@ export const empleadoSchema = z.object({
   sucursal_principal_id: z.string().min(1, "Sucursal requerida"),
   tipo_comision: z.enum(["porcentaje", "mixto", "sueldo_fijo"]),
   porcentaje_default: z.coerce.number().min(0).max(100),
-  sueldo_asegurado: z.coerce.number().nonnegative(),
+  valor_hora: z.coerce.number().nonnegative(),
+  horas_por_dia: z.coerce.number().nonnegative(),
+  dias_trabajo: z
+    .array(z.coerce.number().int().min(0).max(6))
+    .default([])
+    .transform((arr) => Array.from(new Set(arr)).sort((a, b) => a - b)),
   observacion: z
     .string()
     .optional()

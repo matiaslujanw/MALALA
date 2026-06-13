@@ -28,7 +28,11 @@ export default async function NuevaVentaPage() {
     listClientes(),
     listServicios(),
     listEmpleados(),
-    listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+    listMediosPago({
+      sucursalId: sucursal.id,
+      soloActivos: true,
+      incluirCuentaCorriente: true,
+    }),
     listInsumosVendibles(),
     listMotivosDescuento(),
     listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
