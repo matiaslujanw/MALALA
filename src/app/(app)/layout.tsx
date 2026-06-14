@@ -35,7 +35,9 @@ const NAV: NavDef[] = [
   { href: "/egresos", label: "Gastos", iconKey: "Receipt", group: "Gestión", visible: (s) => s.rol !== "empleado" },
   { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", group: "Gestión", visible: (s) => s.puedeVerCatalogos },
   { href: "/reportes", label: "Reportes", iconKey: "BarChart3", group: "Gestión", visible: (s) => s.puedeVerReportes },
-  { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", visible: (s) => s.rol !== "empleado" },
+  // Oculto del sidebar para todos los roles (es config y confunde al cliente).
+  // La ruta sigue accesible directamente por URL: /configuracion/integraciones-whatsapp
+  { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", visible: () => false },
 ];
 
 export default async function AppLayout({
