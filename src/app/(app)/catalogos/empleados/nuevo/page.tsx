@@ -3,11 +3,32 @@ import { EmpleadoForm } from "@/components/forms/empleado-form";
 import { createEmpleado } from "@/lib/data/empleados";
 import { listSucursales } from "@/lib/data/sucursales";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
+
+const ROL_LABEL: Record<string, string> = {
+  empleado: "Empleado",
+  encargada: "Encargada",
+  admin: "Admin",
+};
 
 export default async function NuevoEmpleadoPage() {
   const user = await requireUser();
-  if (user.rol !== "admin") redirect("/catalogos/empleados");
-  const sucursales = await listSucursales();
+  if (user.rol !== "admin" && user.rol !== "superadmin") {
+    redirect("/catalogos/empleados");
+  }
+  const scope = buildAccessScope(user);
+  const todas = await listSucursales();
+  // El admin solo ve su(s) sucursal(es); el superadmin, todas.
+  const sucursales = todas.filter((s) => scope.sucursalIdsPermitidas.includes(s.id));
+
+  const rolesPermitidos =
+    user.rol === "superadmin"
+      ? ["empleado", "encargada", "admin"]
+      : ["empleado", "encargada"];
+  const rolesDisponibles = rolesPermitidos.map((value) => ({
+    value,
+    label: ROL_LABEL[value] ?? value,
+  }));
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";
@@ -23,6 +44,7 @@ export default async function NuevoEmpleadoPage() {
       </header>
       <EmpleadoForm
         sucursales={sucursales}
+        rolesDisponibles={rolesDisponibles}
         action={action}
         submitLabel="Crear"
       />

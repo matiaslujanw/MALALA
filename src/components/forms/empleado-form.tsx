@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CrudForm } from "./crud-form";
 import { CheckboxField, CurrencyField, Field, SelectField } from "./field";
 import type { Empleado, Sucursal } from "@/lib/types";
@@ -8,6 +9,8 @@ import type { ActionResult } from "@/lib/data/_helpers";
 interface Props {
   empleado?: Empleado;
   sucursales: Sucursal[];
+  /** Roles que el usuario actual puede asignar. Si está vacío, no se ofrece crear acceso. */
+  rolesDisponibles?: { value: string; label: string }[];
   action: (
     state: ActionResult | null,
     formData: FormData,
@@ -24,9 +27,13 @@ const TIPOS = [
 export function EmpleadoForm({
   empleado,
   sucursales,
+  rolesDisponibles,
   action,
   submitLabel,
 }: Props) {
+  const [crearAcceso, setCrearAcceso] = useState(false);
+  const ofreceAcceso = !empleado && (rolesDisponibles?.length ?? 0) > 0;
+
   return (
     <CrudForm
       action={action}
@@ -95,6 +102,59 @@ export function EmpleadoForm({
             defaultValue={empleado?.observacion}
             error={errors.observacion}
           />
+
+          {ofreceAcceso && (
+            <div className="space-y-3 rounded-md border border-border bg-cream/30 p-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="crear_acceso"
+                  checked={crearAcceso}
+                  onChange={(e) => setCrearAcceso(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-sage-500"
+                />
+                <span className="font-medium">Crear acceso al sistema</span>
+                <span className="text-xs text-muted-foreground">
+                  (login con email y rol)
+                </span>
+              </label>
+
+              {crearAcceso && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field
+                      label="Email de acceso"
+                      name="email"
+                      type="email"
+                      error={errors.email}
+                      required
+                    />
+                    <SelectField
+                      label="Rol"
+                      name="rol"
+                      error={errors.rol}
+                      options={rolesDisponibles ?? []}
+                      placeholder="Seleccioná rol"
+                      required
+                    />
+                  </div>
+                  <Field
+                    label="Contraseña"
+                    name="password"
+                    type="password"
+                    error={errors.password}
+                    hint="Mínimo 8 caracteres. Compartísela al empleado; la puede cambiar después."
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El empleado va a entrar con este email y contraseña, con el
+                    rol y la sucursal elegidos.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
           <CheckboxField
             label="Activo"
             name="activo"

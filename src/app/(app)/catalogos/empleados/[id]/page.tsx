@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { EmpleadoForm } from "@/components/forms/empleado-form";
 import { AnticiposPanel } from "@/components/anticipos-panel";
+import { AccesoEmpleadoPanel } from "@/components/forms/acceso-empleado-panel";
 import {
+  crearAccesoEmpleado,
+  getAccesoDeEmpleado,
   getEmpleado,
   toggleEmpleadoActivo,
   updateEmpleado,
@@ -11,25 +14,43 @@ import { listMediosPago } from "@/lib/data/medios-pago";
 import { listSucursales } from "@/lib/data/sucursales";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
+const ROL_LABEL: Record<string, string> = {
+  empleado: "Empleado",
+  encargada: "Encargada",
+  admin: "Admin",
+};
+
 export default async function EditarEmpleadoPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const user = await requireUser();
-  if (user.rol !== "admin") redirect("/catalogos/empleados");
+  if (user.rol !== "admin" && user.rol !== "superadmin") {
+    redirect("/catalogos/empleados");
+  }
 
   const { id } = await params;
   const sucursal = await getActiveSucursal();
-  const [empleado, sucursales, anticipos, mediosPago] = await Promise.all([
+  const [empleado, sucursales, anticipos, mediosPago, acceso] = await Promise.all([
     getEmpleado(id),
     listSucursales(),
     listAnticipos(id),
     sucursal
       ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
       : Promise.resolve([]),
+    getAccesoDeEmpleado(id),
   ]);
   if (!empleado) notFound();
+
+  const rolesPermitidos =
+    user.rol === "superadmin"
+      ? ["empleado", "encargada", "admin"]
+      : ["empleado", "encargada"];
+  const rolesDisponibles = rolesPermitidos.map((value) => ({
+    value,
+    label: ROL_LABEL[value] ?? value,
+  }));
 
   async function update(_prev: unknown, formData: FormData) {
     "use server";
@@ -38,6 +59,10 @@ export default async function EditarEmpleadoPage({
   async function toggle() {
     "use server";
     await toggleEmpleadoActivo(id);
+  }
+  async function crearAcceso(_prev: unknown, formData: FormData) {
+    "use server";
+    return await crearAccesoEmpleado(id, formData);
   }
 
   return (
@@ -53,6 +78,12 @@ export default async function EditarEmpleadoPage({
         sucursales={sucursales}
         action={update}
         submitLabel="Guardar"
+      />
+
+      <AccesoEmpleadoPanel
+        acceso={acceso}
+        rolesDisponibles={rolesDisponibles}
+        action={crearAcceso}
       />
 
       <AnticiposPanel

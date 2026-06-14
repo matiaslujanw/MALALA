@@ -17,6 +17,7 @@ import type {
 } from "@/lib/types";
 import { formatARS } from "@/lib/utils";
 import { CurrencyInput } from "@/components/forms/currency-input";
+import { ClienteCombobox } from "@/components/forms/cliente-combobox";
 
 type LineaServicioForm = {
   tempId: string;
@@ -470,19 +471,11 @@ export function NuevaVentaForm({
               Cliente
             </label>
             <div className="flex gap-2">
-              <select
+              <ClienteCombobox
+                clientes={clientesList}
                 value={clienteId}
-                onChange={(e) => handleClienteChange(e.target.value)}
-                className="flex-1 px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">— Consumidor Final —</option>
-                {clientesList.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
-                    {c.telefono ? ` · ${c.telefono}` : ""}
-                  </option>
-                ))}
-              </select>
+                onChange={handleClienteChange}
+              />
               <button
                 type="button"
                 onClick={() => setShowNewCliente(true)}
