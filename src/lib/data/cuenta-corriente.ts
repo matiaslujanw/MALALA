@@ -159,23 +159,20 @@ export async function registrarCargoCc(
 }
 
 /**
- * Procesa un pago de cuenta corriente: baja la deuda del cliente e ingresa la
- * plata a bancos por el medio de pago elegido. Si `saldarTodo` es true, paga el
- * saldo completo vigente (ignora el monto del form). No permite pagar de más.
+ * Registra un pago de cuenta corriente: baja la deuda del cliente e ingresa la
+ * plata a bancos por el medio de pago elegido. No permite pagar de más.
  */
-async function procesarPago(
+export async function registrarPagoCc(
   formData: FormData,
-  saldarTodo: boolean,
 ): Promise<ActionResult> {
   const user = await requireRole(["admin", "encargada"]);
   requireSupabaseRuntime("La cuenta corriente requiere Supabase configurado.");
 
   const parsed = pagoCcSchema.safeParse({
     cliente_id: formData.get("cliente_id"),
-    // En "saldar todo" el monto se resuelve adentro de la tx; mandamos 1 para
-    // pasar la validación de "> 0".
-    monto: saldarTodo ? 1 : formData.get("monto"),
+    monto: formData.get("monto"),
     mp_id: formData.get("mp_id"),
+    cuenta_id: formData.get("cuenta_id"),
     descripcion: formData.get("descripcion"),
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
@@ -200,7 +197,7 @@ async function procesarPago(
         throw new Error("El cliente no tiene deuda pendiente");
       }
 
-      const monto = saldarTodo ? cliente.saldoCc : data.monto;
+      const monto = data.monto;
       if (monto > cliente.saldoCc + EPS) {
         throw new Error(
           `El pago no puede superar la deuda (${cliente.saldoCc.toFixed(2)})`,
@@ -226,10 +223,12 @@ async function procesarPago(
         .set({ saldoCc: cliente.saldoCc - monto })
         .where(eq(clientesTable.id, data.cliente_id));
 
-      // El pago entra a bancos por la cuenta del medio de pago elegido.
-      // Si el medio no tiene cuenta asignada, el pago igual se registra (baja la
-      // deuda) pero no impacta en bancos hasta asignarle una cuenta.
-      const cuentaId = await getCuentaIdForMpTx(tx, data.mp_id);
+      // El pago entra a bancos por la cuenta elegida en el form (override) o,
+      // si no se eligió, por la cuenta por defecto del medio de pago. Si no hay
+      // ninguna, el pago igual se registra (baja la deuda) pero no impacta en
+      // bancos hasta asignarle una cuenta.
+      const cuentaId =
+        data.cuenta_id ?? (await getCuentaIdForMpTx(tx, data.mp_id));
       if (cuentaId) {
         await emitMovimientoBancarioTx(tx, {
           cuentaId,
@@ -257,14 +256,4 @@ async function procesarPago(
   revalidatePath("/catalogos/clientes");
   revalidatePath("/bancos");
   return { ok: true };
-}
-
-export async function registrarPagoCc(
-  formData: FormData,
-): Promise<ActionResult> {
-  return procesarPago(formData, false);
-}
-
-export async function saldarTodoCc(formData: FormData): Promise<ActionResult> {
-  return procesarPago(formData, true);
 }

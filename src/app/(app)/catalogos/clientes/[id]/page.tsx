@@ -9,6 +9,7 @@ import {
 import { listIngresos } from "@/lib/data/ingresos";
 import { listMovimientosCc } from "@/lib/data/cuenta-corriente";
 import { listMediosPago } from "@/lib/data/medios-pago";
+import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
@@ -34,12 +35,16 @@ export default async function EditarClientePage({
   const puedeEditar = user.rol === "admin" || user.rol === "encargada";
 
   const sucursal = await getActiveSucursal();
-  const [movimientosCc, mediosPago] = await Promise.all([
+  const [movimientosCc, mediosPago, cuentas] = await Promise.all([
     listMovimientosCc(id),
     sucursal
       ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
       : Promise.resolve([]),
+    sucursal
+      ? listCuentas({ sucursalId: sucursal.id, soloActivas: true })
+      : Promise.resolve([]),
   ]);
+  const cuentasBanco = cuentas.filter((c) => c.tipo === "banco");
 
   const historial = await listIngresos({ clienteId: id });
   const totalServicios = historial.reduce(
@@ -84,6 +89,7 @@ export default async function EditarClientePage({
         cliente={cliente}
         movimientos={movimientosCc}
         mediosPago={mediosPago}
+        cuentasBanco={cuentasBanco}
         puedeGestionar={puedeEditar}
       />
 
