@@ -8,19 +8,32 @@ import { formatARS } from "@/lib/utils";
 import {
   registrarCargoCc,
   registrarPagoCc,
-  saldarTodoCc,
   toggleCuentaCorriente,
 } from "@/lib/data/cuenta-corriente";
-import type { Cliente, MedioPago, MovimientoCc } from "@/lib/types";
+import type {
+  Cliente,
+  CuentaBancaria,
+  MedioPago,
+  MovimientoCc,
+} from "@/lib/types";
 
 interface Props {
   cliente: Cliente;
   movimientos: MovimientoCc[];
   mediosPago: MedioPago[];
+  cuentasBanco: CuentaBancaria[];
   puedeGestionar: boolean;
 }
 
 type Modo = null | "cargo" | "pago";
+
+// ¿El medio de pago impacta en una cuenta de banco? (habilita elegir a cuál).
+// Efectivo (EF) y Cuenta corriente (CC) no van a bancos.
+function usaCuentaBanco(mp: MedioPago | undefined): boolean {
+  if (!mp) return false;
+  const cod = mp.codigo.toUpperCase();
+  return cod !== "EF" && cod !== "CC";
+}
 
 function fmtFechaHora(iso: string): string {
   const d = new Date(iso);
@@ -37,6 +50,7 @@ export function CuentaCorrientePanel({
   cliente,
   movimientos,
   mediosPago,
+  cuentasBanco,
   puedeGestionar,
 }: Props) {
   const router = useRouter();
@@ -47,6 +61,12 @@ export function CuentaCorrientePanel({
   const [monto, setMonto] = useState(0);
   const [descripcion, setDescripcion] = useState("");
   const [mpId, setMpId] = useState(mediosPago[0]?.id ?? "");
+  const [cuentaId, setCuentaId] = useState("");
+
+  const mpSel = mediosPago.find((m) => m.id === mpId);
+  const mostrarSelectorCuenta = usaCuentaBanco(mpSel);
+  // Cuenta a enviar: solo aplica si el medio impacta en bancos.
+  const cuentaIdEnvio = mostrarSelectorCuenta ? cuentaId : "";
 
   const saldo = cliente.saldo_cc;
   const tieneDeuda = saldo > 0.01;
@@ -109,30 +129,10 @@ export function CuentaCorrientePanel({
     fd.set("cliente_id", cliente.id);
     fd.set("monto", String(monto));
     fd.set("mp_id", mpId);
+    fd.set("cuenta_id", cuentaIdEnvio);
     fd.set("descripcion", descripcion);
     startTransition(async () => {
       const res = await registrarPagoCc(fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", "));
-        return;
-      }
-      resetForm();
-      router.refresh();
-    });
-  }
-
-  function handleSaldarTodo() {
-    setError(null);
-    if (!mpId) {
-      setError("Elegí un medio de pago para saldar la deuda");
-      return;
-    }
-    const fd = new FormData();
-    fd.set("cliente_id", cliente.id);
-    fd.set("mp_id", mpId);
-    fd.set("descripcion", "Saldo total de cuenta corriente");
-    startTransition(async () => {
-      const res = await saldarTodoCc(fd);
       if (!res.ok) {
         setError(Object.values(res.errors).flat().join(", "));
         return;
@@ -242,16 +242,6 @@ export function CuentaCorrientePanel({
             <Minus className="h-3.5 w-3.5 stroke-[1.5]" />
             Registrar pago
           </button>
-          <button
-            type="button"
-            onClick={handleSaldarTodo}
-            disabled={!tieneDeuda || pending || !mpId}
-            title={!mpId ? "No hay medios de pago disponibles" : undefined}
-            className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white hover:bg-sage-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 stroke-[1.5]" />
-            Saldar todo
-          </button>
         </div>
       )}
 
@@ -290,6 +280,32 @@ export function CuentaCorrientePanel({
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+            {modo === "pago" && mostrarSelectorCuenta && (
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Cuenta de cobro
+                </label>
+                {cuentasBanco.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No hay cuentas bancarias cargadas. Cargalas en Catálogos →
+                    Cuentas bancarias.
+                  </p>
+                ) : (
+                  <select
+                    value={cuentaId}
+                    onChange={(e) => setCuentaId(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                  >
+                    <option value="">— Cuenta por defecto del medio —</option>
+                    {cuentasBanco.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             )}
           </div>

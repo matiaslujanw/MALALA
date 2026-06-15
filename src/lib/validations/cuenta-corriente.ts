@@ -13,6 +13,12 @@ export const pagoCcSchema = z.object({
   cliente_id: z.string().min(1, "Cliente requerido"),
   monto: z.coerce.number().positive("El monto debe ser mayor a 0"),
   mp_id: z.string().min(1, "Medio de pago requerido"),
+  // Cuenta de banco a la que entra la plata. Opcional: si no se elige, se usa
+  // la cuenta por defecto del medio de pago.
+  cuenta_id: z
+    .string()
+    .nullish()
+    .transform((s) => (s ? s : undefined)),
   descripcion: z
     .string()
     .optional()
