@@ -63,13 +63,13 @@ const newLineaServicio = (): LineaServicioForm => ({
   soporta_descuento: true,
 });
 
-// ¿El medio de pago es una transferencia? (habilita elegir banco destino)
-function esTransferencia(mp: MedioPago | undefined): boolean {
+// ¿El medio de pago impacta en una cuenta de banco? (habilita elegir a cuál).
+// Efectivo (EF) y Cuenta corriente (CC) no van a bancos, así que no muestran
+// selector de cuenta; el resto (tarjeta, transferencia, etc.) sí.
+function usaCuentaBanco(mp: MedioPago | undefined): boolean {
   if (!mp) return false;
-  return (
-    mp.codigo.toUpperCase().startsWith("TR") ||
-    mp.nombre.toLowerCase().includes("transfer")
-  );
+  const cod = mp.codigo.toUpperCase();
+  return cod !== "EF" && cod !== "CC";
 }
 
 const newLineaProducto = (): LineaProductoForm => ({
@@ -420,14 +420,14 @@ export function NuevaVentaForm({
     formData.set("valor1", String(Number(valor1) || 0));
     formData.set(
       "mp1_cuenta_id",
-      esTransferencia(mp1) ? mp1CuentaId : "",
+      usaCuentaBanco(mp1) ? mp1CuentaId : "",
     );
     if (mp2Id) {
       formData.set("mp2_id", mp2Id);
       formData.set("valor2", String(Number(valor2) || 0));
       formData.set(
         "mp2_cuenta_id",
-        esTransferencia(mp2) ? mp2CuentaId : "",
+        usaCuentaBanco(mp2) ? mp2CuentaId : "",
       );
     }
     formData.set("observacion", observacion);
@@ -831,12 +831,12 @@ export function NuevaVentaForm({
           </div>
         </div>
 
-        {esTransferencia(mp1) && (
+        {usaCuentaBanco(mp1) && (
           <BancoSelector
             cuentas={cuentasBanco}
             value={mp1CuentaId}
             onChange={setMp1CuentaId}
-            label="Banco de la transferencia (Medio 1)"
+            label="Cuenta de cobro (Medio 1)"
           />
         )}
 
@@ -895,12 +895,12 @@ export function NuevaVentaForm({
           )}
         </div>
 
-        {mp2Id && esTransferencia(mp2) && (
+        {mp2Id && usaCuentaBanco(mp2) && (
           <BancoSelector
             cuentas={cuentasBanco}
             value={mp2CuentaId}
             onChange={setMp2CuentaId}
-            label="Banco de la transferencia (Medio 2)"
+            label="Cuenta de cobro (Medio 2)"
           />
         )}
 
