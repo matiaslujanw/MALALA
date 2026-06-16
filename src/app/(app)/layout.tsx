@@ -49,7 +49,13 @@ export default async function AppLayout({
   if (!user) redirect("/dev/login");
   const sucursal = await getActiveSucursalForUser(user);
   if (!sucursal) redirect("/dev/login");
-  const sucursales = await listSucursales({ soloActivas: true });
+  // El selector de sucursal solo aparece cuando el usuario tiene más de una
+  // permitida (en la práctica, superadmin). Para el resto evitamos el query
+  // en cada navegación y pasamos solo la sucursal activa.
+  const puedeCambiarSucursal = (user.sucursal_ids_permitidas?.length ?? 0) > 1;
+  const sucursales = puedeCambiarSucursal
+    ? await listSucursales({ soloActivas: true })
+    : [sucursal];
 
   const scope = buildAccessScope(user);
   const navItems = NAV
