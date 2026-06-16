@@ -119,6 +119,21 @@ export interface Servicio {
   duracion_min?: number;
   descripcion_corta?: string;
   destacado_pct?: number;
+  es_promo?: boolean;
+  vence_el?: string; // YYYY-MM-DD, vencimiento opcional (solo promos)
+}
+
+export interface PromocionComponente {
+  servicio_id: ID;
+  nombre: string;
+  precio_lista: number;
+  comision_default_pct: number;
+  orden: number;
+}
+
+/** Una promo es un Servicio (es_promo=true) más sus servicios componentes. */
+export interface Promocion extends Servicio {
+  componentes: PromocionComponente[];
 }
 
 export interface HorarioSucursal {
@@ -313,6 +328,7 @@ export interface IngresoLinea {
   subtotal: number;
   comision_pct: number;
   comision_monto: number;
+  promo_servicio_id?: ID;
 }
 
 export interface Egreso {

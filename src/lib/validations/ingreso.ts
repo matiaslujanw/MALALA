@@ -9,6 +9,11 @@ export const lineaServicioSchema = z.object({
   // true  → la empleada absorbe el descuento: comisión sobre el precio final pagado.
   // false → la empleada NO lo absorbe: comisión sobre el precio de lista (regular).
   soporta_descuento: z.coerce.boolean().default(false),
+  // Si la línea proviene de una promo, id del servicio-promo (trazabilidad).
+  promo_servicio_id: z
+    .string()
+    .nullish()
+    .transform((s) => (s ? s : undefined)),
 });
 
 export const lineaProductoSchema = z.object({

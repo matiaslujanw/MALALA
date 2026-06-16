@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, Scissors, Package, CreditCard } from "lucide-react";
+import { X, AlertTriangle, Scissors, Package, CreditCard, Tags } from "lucide-react";
 import { createIngreso } from "@/lib/data/ingresos-actions";
 import { createClienteQuick } from "@/lib/data/clientes";
 import type {
@@ -13,8 +13,11 @@ import type {
   Insumo,
   MedioPago,
   MotivoDescuento,
+  Promocion,
   Servicio,
+  ServicioHorario,
 } from "@/lib/types";
+import { estaVigente } from "@/lib/promo-vigencia";
 import { formatARS } from "@/lib/utils";
 import { CurrencyInput } from "@/components/forms/currency-input";
 import { ClienteCombobox } from "@/components/forms/cliente-combobox";
@@ -28,6 +31,9 @@ type LineaServicioForm = {
   precio_tipo: "lista" | "efectivo";
   comision_pct: number;
   soporta_descuento: boolean;
+  // Si la línea proviene de una promo: id del servicio-promo y su nombre (display).
+  promo_servicio_id?: string;
+  promo_nombre?: string;
 };
 
 type LineaProductoForm = {
@@ -50,6 +56,8 @@ interface Props {
   productos: Insumo[];
   motivosDescuento: MotivoDescuento[];
   cuentasBanco: CuentaBancaria[];
+  promociones: Promocion[];
+  promoHorariosById: Record<string, ServicioHorario[]>;
 }
 
 const newLineaServicio = (): LineaServicioForm => ({
@@ -112,6 +120,8 @@ export function NuevaVentaForm({
   productos,
   motivosDescuento,
   cuentasBanco,
+  promociones,
+  promoHorariosById,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -254,6 +264,29 @@ export function NuevaVentaForm({
   );
   const avisoDobleDescuento = descMonto > 0 && hayLineaEfectivo;
 
+  // Advertencia (no bloquea): promos en el carrito fuera de franja o vencidas.
+  const promosEnCarrito = Array.from(
+    new Set(
+      lineas
+        .filter(
+          (l): l is LineaServicioForm =>
+            l.tipo === "servicio" && !!l.promo_servicio_id,
+        )
+        .map((l) => l.promo_servicio_id as string),
+    ),
+  );
+  const avisosPromo = promosEnCarrito
+    .map((promoId) => {
+      const promo = promociones.find((p) => p.id === promoId);
+      if (!promo) return null;
+      const { vigente, motivo } = estaVigente(
+        promo,
+        promoHorariosById[promoId] ?? [],
+      );
+      return vigente ? null : { nombre: promo.nombre, motivo: motivo ?? "" };
+    })
+    .filter((x): x is { nombre: string; motivo: string } => x !== null);
+
   // Comisiones por empleado en este ticket
   const comisionPorEmpleado = lineas.reduce<
     Map<string, { nombre: string; total: number; lineas: number }>
@@ -348,6 +381,49 @@ export function NuevaVentaForm({
     setLineas((prev) => [...prev, newLineaProducto()]);
   }
 
+  // Agrega una promo: la explota en una línea de servicio por componente, con el
+  // precio combo prorrateado según el peso del precio de lista de cada uno (el
+  // ajuste de redondeo va en la última línea para que la suma == precio combo).
+  function addPromo(promoId: string) {
+    const promo = promociones.find((p) => p.id === promoId);
+    if (!promo || promo.componentes.length === 0) return;
+    const sumaLista = promo.componentes.reduce(
+      (acc, c) => acc + c.precio_lista,
+      0,
+    );
+    let acumulado = 0;
+    const nuevas: LineaServicioForm[] = promo.componentes.map((c, i) => {
+      const esUltima = i === promo.componentes.length - 1;
+      const proporcion = sumaLista > 0 ? c.precio_lista / sumaLista : 1 / promo.componentes.length;
+      const precio = esUltima
+        ? Math.round((promo.precio_efectivo - acumulado) * 100) / 100
+        : Math.round(promo.precio_efectivo * proporcion * 100) / 100;
+      acumulado += precio;
+      return {
+        tempId: crypto.randomUUID(),
+        tipo: "servicio",
+        servicio_id: c.servicio_id,
+        empleado_id: "",
+        precio,
+        precio_tipo: "efectivo",
+        comision_pct: c.comision_default_pct,
+        soporta_descuento: true,
+        promo_servicio_id: promo.id,
+        promo_nombre: promo.nombre,
+      };
+    });
+    setLineas((prev) => {
+      // Si la única línea es una de servicio vacía inicial, la reemplazamos.
+      const base =
+        prev.length === 1 &&
+        prev[0].tipo === "servicio" &&
+        !prev[0].servicio_id
+          ? []
+          : prev;
+      return [...base, ...nuevas];
+    });
+  }
+
   function removeLinea(idx: number) {
     setLineas((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }
@@ -409,6 +485,7 @@ export function NuevaVentaForm({
             precio_efectivo: Number(l.precio) || 0,
             comision_pct: Number(l.comision_pct) || 0,
             soporta_descuento: l.soporta_descuento,
+            promo_servicio_id: l.promo_servicio_id,
           };
         }),
       ),
@@ -516,7 +593,25 @@ export function NuevaVentaForm({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {promociones.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) addPromo(e.target.value);
+                  e.currentTarget.value = "";
+                }}
+                title="Agregar una promoción (se explota en sus servicios)"
+                className="inline-flex items-center rounded-md border border-sage-700 bg-sage-50 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-sage-700 hover:bg-sage-100 transition-colors"
+              >
+                <option value="">+ Agregar promo</option>
+                {promociones.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} · {formatARS(p.precio_efectivo)}
+                  </option>
+                ))}
+              </select>
+            )}
             <button
               type="button"
               onClick={addLineaServicio}
@@ -558,6 +653,7 @@ export function NuevaVentaForm({
                   servicios={serviciosActivos}
                   empleados={empleadosActivos}
                   comision={comisionDe(l)}
+                  promoNombre={l.promo_nombre}
                   onServicio={(id) => handleServicioChange(idx, id)}
                   onEmpleado={(id) => handleEmpleadoChange(idx, id)}
                   onPrecio={(v) => updateLinea(idx, { precio: v })}
@@ -779,6 +875,34 @@ export function NuevaVentaForm({
               descuento manual, las líneas deberían ir a precio de{" "}
               <strong>Lista</strong>.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Aviso: promo fuera de franja / vencida (no bloquea) */}
+      {avisosPromo.length > 0 && (
+        <div
+          className="border rounded-md p-4 flex items-start gap-3"
+          style={{
+            backgroundColor: "rgb(201 169 97 / 0.08)",
+            borderColor: "var(--warning)",
+          }}
+        >
+          <AlertTriangle
+            className="h-5 w-5 stroke-[1.5] shrink-0"
+            style={{ color: "var(--warning)" }}
+          />
+          <div className="space-y-0.5 text-sm">
+            <p className="font-medium" style={{ color: "var(--warning)" }}>
+              Promo fuera de vigencia
+            </p>
+            <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+              {avisosPromo.map((a) => (
+                <li key={a.nombre}>
+                  <strong>{a.nombre}</strong>: {a.motivo}. Podés vender igual.
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       )}
@@ -1134,6 +1258,7 @@ function LineaServicioRow({
   servicios,
   empleados,
   comision,
+  promoNombre,
   onServicio,
   onEmpleado,
   onPrecio,
@@ -1146,6 +1271,7 @@ function LineaServicioRow({
   servicios: Servicio[];
   empleados: Empleado[];
   comision: number;
+  promoNombre?: string;
   onServicio: (id: string) => void;
   onEmpleado: (id: string) => void;
   onPrecio: (v: number) => void;
@@ -1157,6 +1283,12 @@ function LineaServicioRow({
   const servicio = servicios.find((s) => s.id === linea.servicio_id);
   return (
     <div className="space-y-2">
+      {promoNombre && (
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sage-700 text-white">
+          <Tags className="h-3 w-3 stroke-[1.5]" />
+          Promo · {promoNombre}
+        </span>
+      )}
       <div className="grid grid-cols-12 gap-2 items-start">
         <div className="col-span-12 sm:col-span-2 flex items-center">
           <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-sage-100 text-sage-800 ring-1 ring-inset ring-sage-700/30">

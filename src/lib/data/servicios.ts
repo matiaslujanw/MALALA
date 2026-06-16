@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { servicios as serviciosTable } from "@/lib/db/schema";
@@ -22,6 +22,8 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
     duracion_min: row.duracionMin ?? undefined,
     descripcion_corta: row.descripcionCorta ?? undefined,
     destacado_pct: row.destacadoPct ?? undefined,
+    es_promo: row.esPromo,
+    vence_el: row.venceEl ?? undefined,
   };
 }
 
@@ -29,15 +31,20 @@ export async function listServicios(opts?: {
   incluirInactivos?: boolean;
 }): Promise<Servicio[]> {
   const db = getDb();
+  // Las promociones también son filas de `servicios` (es_promo=true) pero se
+  // gestionan en su propio catálogo; acá se excluyen.
   const rows = opts?.incluirInactivos
     ? await db
         .select()
         .from(serviciosTable)
+        .where(eq(serviciosTable.esPromo, false))
         .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre))
     : await db
         .select()
         .from(serviciosTable)
-        .where(eq(serviciosTable.activo, true))
+        .where(
+          and(eq(serviciosTable.activo, true), eq(serviciosTable.esPromo, false)),
+        )
         .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
 
   return rows.map(mapServicio);
