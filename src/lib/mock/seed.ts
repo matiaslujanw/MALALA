@@ -248,9 +248,9 @@ export function seed(): Store {
   ];
 
   // Clientes
-  const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
-  const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
-  const cliSofia = { id: uid(), nombre: "Sofia Lopez", telefono: "+5493815552003", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
+  const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: true };
+  const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: true };
+  const cliSofia = { id: uid(), nombre: "Sofia Lopez", telefono: "+5493815552003", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: true };
   const cliConsumidor = { id: uid(), nombre: "Consumidor Final", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: false };
 
   // Servicios
@@ -785,7 +785,7 @@ export function seed(): Store {
         email: base.cliente_email,
         activo: true,
         saldo_cc: 0,
-        cuenta_corriente_habilitada: false,
+        cuenta_corriente_habilitada: true,
       });
     }
     return {
