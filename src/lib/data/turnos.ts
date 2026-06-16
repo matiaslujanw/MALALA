@@ -5,6 +5,7 @@ import {
   empleados as empleadosTable,
   horariosSucursal as horariosSucursalTable,
   profesionalesAgenda as profesionalesAgendaTable,
+  promocionItems as promocionItemsTable,
   servicios as serviciosTable,
   sucursales as sucursalesTable,
   turnos as turnosTable,
@@ -68,6 +69,8 @@ export function mapServicio(
     duracion_min: row.duracionMin ?? undefined,
     descripcion_corta: row.descripcionCorta ?? undefined,
     destacado_pct: row.destacadoPct ?? undefined,
+    es_promo: row.esPromo,
+    vence_el: row.venceEl ?? undefined,
   };
 }
 
@@ -171,7 +174,38 @@ async function getServiciosActivos() {
     .from(serviciosTable)
     .where(eq(serviciosTable.activo, true))
     .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
-  return rows.map(mapServicio);
+  const servicios = rows.map(mapServicio);
+
+  // Para las promos, adjuntar los nombres de los servicios que combinan
+  // (se muestran como descripción en la reserva).
+  const promoIds = rows.filter((r) => r.esPromo).map((r) => r.id);
+  if (promoIds.length > 0) {
+    const items = await db
+      .select({
+        promoId: promocionItemsTable.promoServicioId,
+        nombre: serviciosTable.nombre,
+        orden: promocionItemsTable.orden,
+      })
+      .from(promocionItemsTable)
+      .innerJoin(
+        serviciosTable,
+        eq(promocionItemsTable.componenteServicioId, serviciosTable.id),
+      )
+      .where(inArray(promocionItemsTable.promoServicioId, promoIds))
+      .orderBy(asc(promocionItemsTable.orden));
+    const byPromo = new Map<string, string[]>();
+    for (const it of items) {
+      const list = byPromo.get(it.promoId) ?? [];
+      list.push(it.nombre);
+      byPromo.set(it.promoId, list);
+    }
+    for (const s of servicios) {
+      const comp = byPromo.get(s.id);
+      if (comp) s.promo_componentes = comp;
+    }
+  }
+
+  return servicios;
 }
 
 export async function getHorarios(sucursalId?: string) {
@@ -609,7 +643,17 @@ export async function getFechasDisponibles(sucursalId: string) {
 }
 
 export type TurnoActionState =
-  | { ok: true; turnoId: string; message: string }
+  | {
+      ok: true;
+      turnoId: string;
+      message: string;
+      // Datos del turno reservado para la pantalla de confirmación (no dependen
+      // del estado del cliente, que pierde el slot al revalidarse la agenda).
+      fecha_turno?: string;
+      hora?: string;
+      servicio_nombre?: string;
+      profesional_nombre?: string;
+    }
   | { ok: false; errors: Record<string, string[]> };
 
 export async function listTurnosByDayAndProfesional(
