@@ -51,12 +51,19 @@ export default async function CierreDetallePage({
         </div>
       </header>
 
-      {/* Esperado por medio */}
+      {/* Efectivo esperado (conciliación de caja) + neto por cada medio real
+          del día. El efectivo va aparte porque suma el saldo inicial. */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <SummaryBox label="Efectivo esperado" value={formatARS(efectivoEsperado)} />
-        <SummaryBox label="Transferencia" value={formatARS(resumen.tr.neto)} />
-        <SummaryBox label="Tarjeta crédito" value={formatARS(resumen.tc.ingresos)} />
-        <SummaryBox label="Tarjeta débito" value={formatARS(resumen.td.ingresos)} />
+        {resumen.porMp
+          .filter((row) => row.mp.codigo !== "EF")
+          .map((row) => (
+            <SummaryBox
+              key={row.mp.id}
+              label={row.mp.nombre}
+              value={formatARS(row.neto)}
+            />
+          ))}
       </section>
 
       {/* Tickets del día */}
@@ -131,18 +138,65 @@ export default async function CierreDetallePage({
         </section>
       )}
 
-      {/* Movimientos por medio */}
+      {/* Movimientos por medio, recalculado en vivo para incluir todos los
+          medios reales del día (no solo EF/TR/TC/TD). */}
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Movimientos del día
         </h2>
-        <div className="bg-card border border-border rounded-md overflow-hidden">
-          <FlowRow label="Ingresos efectivo" value={cierre.ingresos_ef} />
-          <FlowRow label="Egresos efectivo" value={-cierre.egresos_ef} tone="negative" />
-          <FlowRow label="Ingresos transferencia" value={cierre.ingresos_banc} />
-          <FlowRow label="Egresos transferencia" value={-cierre.egresos_banc} tone="negative" />
-          <FlowRow label="Cobros tarjeta crédito" value={cierre.cobros_tc} />
-          <FlowRow label="Cobros tarjeta débito" value={cierre.cobros_td} />
+        <div className="overflow-hidden rounded-md border border-border bg-card">
+          <table className="w-full text-sm">
+            <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium">Medio</th>
+                <th className="px-4 py-3 text-right font-medium">Ingresos</th>
+                <th className="px-4 py-3 text-right font-medium">Egresos</th>
+                <th className="px-4 py-3 text-right font-medium">Neto</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {resumen.porMp.map((row) => (
+                <tr key={row.mp.id}>
+                  <td className="px-4 py-3 font-medium">
+                    {row.mp.nombre}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      ({row.mp.codigo})
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {formatARS(row.ingresos)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                    {formatARS(row.egresos)}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-right font-medium tabular-nums"
+                    style={{ color: row.neto >= 0 ? "var(--ink)" : "var(--danger)" }}
+                  >
+                    {formatARS(row.neto)}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-cream/40 font-medium">
+                <td className="px-4 py-3">Totales</td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {formatARS(resumen.totalIngresos)}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {formatARS(resumen.totalEgresos)}
+                </td>
+                <td
+                  className="px-4 py-3 text-right tabular-nums"
+                  style={{
+                    color:
+                      resumen.totalNeto >= 0 ? "var(--sage-700)" : "var(--danger)",
+                  }}
+                >
+                  {formatARS(resumen.totalNeto)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -165,24 +219,6 @@ function SummaryBox({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="font-display text-2xl mt-2 tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function FlowRow({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "negative";
-}) {
-  const valueClass = tone === "negative" ? "text-muted-foreground" : "";
-  return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0">
-      <p className="text-sm">{label}</p>
-      <p className={`text-sm tabular-nums ${valueClass}`}>{formatARS(value)}</p>
     </div>
   );
 }

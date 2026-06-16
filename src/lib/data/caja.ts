@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
-import { cierresCaja as cierresCajaTable, profiles as profilesTable, sucursales as sucursalesTable } from "@/lib/db/schema";
+import { cierresCaja as cierresCajaTable, cuentasBancarias as cuentasBancariasTable, profiles as profilesTable, sucursales as sucursalesTable } from "@/lib/db/schema";
 import { fieldErrors, requireRole } from "./_helpers";
 import { cierreCajaSchema, DENOMINACIONES_ARS } from "@/lib/validations/caja";
 import type { CierreCaja, Cliente, Empleado, MedioPago } from "@/lib/types";
@@ -71,8 +71,48 @@ function isoEndOfDay(fecha: string): string {
   return new Date(`${fecha}T23:59:59.999`).toISOString();
 }
 
+function ymdLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayYMD(): string {
+  return ymdLocal(new Date());
+}
+
+function addDaysYMD(fecha: string, delta: number): string {
+  const d = new Date(`${fecha}T00:00:00`);
+  d.setDate(d.getDate() + delta);
+  return ymdLocal(d);
+}
+
+function isoToLocalYMD(iso: string): string {
+  return ymdLocal(new Date(iso));
+}
+
 function emptyMpTotals() {
   return { ingresos: 0, egresos: 0, neto: 0 };
+}
+
+/**
+ * IDs de cuentas de tipo "efectivo" de la sucursal. Sirve para identificar qué
+ * medios de pago son efectivo SIN depender del código (que varía por sucursal:
+ * "EFECTIVO", "EF", etc.); un medio es efectivo si su cuenta lo es.
+ */
+async function getEfectivoCuentaIds(sucursalId: string): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ id: cuentasBancariasTable.id })
+    .from(cuentasBancariasTable)
+    .where(
+      and(
+        eq(cuentasBancariasTable.sucursalId, sucursalId),
+        eq(cuentasBancariasTable.tipo, "efectivo"),
+      ),
+    );
+  return new Set(rows.map((r) => r.id));
 }
 
 function mapCierre(row: typeof cierresCajaTable.$inferSelect): CierreCaja {
@@ -316,6 +356,145 @@ export async function listCierres(opts?: {
   );
 }
 
+/**
+ * Cierra automáticamente, en cero, los días ANTERIORES a hoy que no tuvieron
+ * ningún movimiento (p. ej. domingos o feriados con el local cerrado).
+ *
+ * Para no romper el control de efectivo arrastra el saldo y los billetes del
+ * último cierre (la caja no se tocó → contado == esperado, diferencia $0).
+ * Solo procesa la racha de días vacíos posterior al último cierre y FRENA en el
+ * primer día con movimiento: ese requiere cierre manual con conteo real.
+ *
+ * Devuelve cuántos cierres automáticos creó. Es idempotente y no revalida cache
+ * (se llama durante el render de la caja, que ya lee el estado actualizado).
+ */
+export async function autocerrarDiasSinMovimiento(
+  sucursalId: string,
+  opts?: { dias?: number },
+): Promise<number> {
+  const user = await requireUser();
+  if (user.rol !== "admin" && user.rol !== "encargada") return 0;
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return 0;
+
+  const dias = opts?.dias ?? 60;
+  const hoy = todayYMD();
+  const ayer = addDaysYMD(hoy, -1);
+
+  // Arranca el día siguiente al último cierre; si nunca cerró, ventana máxima.
+  const ultimo = await getUltimoCierreAntesDe(sucursalId, hoy);
+  const limiteVentana = addDaysYMD(hoy, -dias);
+  let inicio = ultimo ? addDaysYMD(ultimo.cierre.fecha, 1) : limiteVentana;
+  if (inicio < limiteVentana) inicio = limiteVentana;
+  if (inicio > ayer) return 0;
+
+  const [ingresos, egresos] = await Promise.all([
+    listIngresos({ sucursalId, desde: isoStartOfDay(inicio), hasta: isoEndOfDay(ayer) }),
+    listEgresos({ sucursalId, desde: isoStartOfDay(inicio), hasta: isoEndOfDay(ayer) }),
+  ]);
+  const conMovimiento = new Set<string>();
+  for (const row of ingresos) conMovimiento.add(isoToLocalYMD(row.ingreso.fecha));
+  for (const row of egresos) {
+    if (row.egreso.pagado) conMovimiento.add(isoToLocalYMD(row.egreso.fecha));
+  }
+
+  // Saldos a arrastrar desde el último cierre (la caja no se movió en días vacíos).
+  const saldoInicialEf = ultimo ? ultimo.efectivoContado : 0;
+  const saldoBanco = ultimo ? ultimo.cierre.saldo_banco : 0;
+  const billetes = ultimo ? ultimo.cierre.billetes : {};
+
+  const db = getDb();
+  let creados = 0;
+  for (let d = inicio; d <= ayer; d = addDaysYMD(d, 1)) {
+    // Día con movimiento → corta: necesita cierre manual con conteo real.
+    if (conMovimiento.has(d)) break;
+
+    const [dup] = await db
+      .select({ id: cierresCajaTable.id })
+      .from(cierresCajaTable)
+      .where(
+        and(
+          eq(cierresCajaTable.sucursalId, sucursalId),
+          eq(cierresCajaTable.fecha, d),
+        ),
+      )
+      .limit(1);
+    if (dup) continue;
+
+    await db.insert(cierresCajaTable).values({
+      id: createId(),
+      sucursalId,
+      fecha: d,
+      saldoInicialEf,
+      saldoBanco,
+      billetes,
+      ingresosEf: 0,
+      egresosEf: 0,
+      ingresosBanc: 0,
+      egresosBanc: 0,
+      cobrosTc: 0,
+      cobrosTd: 0,
+      vouchers: 0,
+      giftcards: 0,
+      autoconsumos: 0,
+      cheques: 0,
+      aportes: 0,
+      ingresosCc: 0,
+      anticipos: 0,
+      observacion: "Cierre automático: día sin movimientos",
+      cerradoPor: user.id,
+      fechaCierre: new Date(),
+    });
+    creados += 1;
+  }
+
+  return creados;
+}
+
+/**
+ * Devuelve las fechas (YMD, de más vieja a más nueva) de días ANTERIORES a hoy
+ * que tuvieron movimientos de caja pero todavía no tienen cierre. Sirve para
+ * avisar que quedó una caja sin cerrar (p. ej. se olvidaron ayer) y poder
+ * hacer el cierre tardío antes de seguir operando.
+ */
+export async function getCajasPendientesDeCierre(
+  sucursalId: string,
+  opts?: { dias?: number },
+): Promise<string[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return [];
+
+  const dias = opts?.dias ?? 14;
+  const hoy = todayYMD();
+  const ayer = addDaysYMD(hoy, -1);
+  const inicio = addDaysYMD(hoy, -dias);
+  if (ayer < inicio) return [];
+
+  const desde = isoStartOfDay(inicio);
+  const hasta = isoEndOfDay(ayer);
+
+  const [ingresos, egresos, cierres] = await Promise.all([
+    listIngresos({ sucursalId, desde, hasta }),
+    listEgresos({ sucursalId, desde, hasta }),
+    listCierres({ sucursalId }),
+  ]);
+
+  // Un día "tuvo movimiento" si hubo algún ingreso o algún egreso pagado.
+  const conMovimiento = new Set<string>();
+  for (const row of ingresos) conMovimiento.add(isoToLocalYMD(row.ingreso.fecha));
+  for (const row of egresos) {
+    if (row.egreso.pagado) conMovimiento.add(isoToLocalYMD(row.egreso.fecha));
+  }
+  if (conMovimiento.size === 0) return [];
+
+  const cerradas = new Set(cierres.map((c) => c.cierre.fecha));
+
+  return [...conMovimiento]
+    .filter((ymd) => ymd >= inicio && ymd <= ayer && !cerradas.has(ymd))
+    .sort();
+}
+
 export async function getCierre(cierreId: string): Promise<CierreConDetalle | null> {
   const user = await requireUser();
   const scope = buildAccessScope(user);
@@ -534,6 +713,27 @@ export async function createCierre(
   }
 
   const resumen = await getResumenDelDia(data.sucursal_id, data.fecha);
+
+  // Separamos efectivo (por cuenta, no por código) del resto de los medios.
+  // El efectivo es lo que importa para conciliar la caja; el resto se guarda
+  // junto en "banco" para que el snapshot conserve el total del día.
+  const efectivoCuentaIds = await getEfectivoCuentaIds(data.sucursal_id);
+  let ingresosEf = 0;
+  let egresosEf = 0;
+  let ingresosResto = 0;
+  let egresosResto = 0;
+  for (const row of resumen.porMp) {
+    const esEfectivo =
+      row.mp.cuenta_id != null && efectivoCuentaIds.has(row.mp.cuenta_id);
+    if (esEfectivo) {
+      ingresosEf += row.ingresos;
+      egresosEf += row.egresos;
+    } else {
+      ingresosResto += row.ingresos;
+      egresosResto += row.egresos;
+    }
+  }
+
   const cierreId = createId();
 
   await db.insert(cierresCajaTable).values({
@@ -543,12 +743,12 @@ export async function createCierre(
     saldoInicialEf: data.saldo_inicial_ef,
     saldoBanco: data.saldo_banco,
     billetes: data.billetes,
-    ingresosEf: resumen.ef.ingresos,
-    egresosEf: resumen.ef.egresos,
-    ingresosBanc: resumen.tr.ingresos,
-    egresosBanc: resumen.tr.egresos,
-    cobrosTc: resumen.tc.ingresos,
-    cobrosTd: resumen.td.ingresos,
+    ingresosEf,
+    egresosEf,
+    ingresosBanc: ingresosResto,
+    egresosBanc: egresosResto,
+    cobrosTc: 0,
+    cobrosTd: 0,
     vouchers: data.vouchers,
     giftcards: data.giftcards,
     autoconsumos: data.autoconsumos,

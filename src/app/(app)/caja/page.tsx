@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
-import { Plus } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
+  autocerrarDiasSinMovimiento,
+  getCajasPendientesDeCierre,
   getCierreDeFecha,
   getResumenDelDia,
   listCierres,
@@ -65,14 +67,54 @@ export default async function CajaPage({
   }
 
   const hoy = todayYMD();
+  const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
+
+  // Los días anteriores sin ningún movimiento (domingos, feriados) se cierran
+  // solos en cero antes de leer el estado, así no piden nada ni quedan como
+  // pendientes. Los días con movimiento se respetan para el cierre manual.
+  if (puedeCerrar) {
+    await autocerrarDiasSinMovimiento(sucursal.id);
+  }
+
   const resumen = await getResumenDelDia(sucursal.id, hoy);
   const cierres = await listCierres({ sucursalId: sucursal.id, limit: 30 });
   const cierreHoy = await getCierreDeFecha(sucursal.id, hoy);
 
-  const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
+  const pendientesDeCierre = puedeCerrar
+    ? await getCajasPendientesDeCierre(sucursal.id)
+    : [];
 
   return (
     <div className="space-y-8 max-w-6xl">
+      {pendientesDeCierre.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 stroke-[1.5] text-amber-600" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {pendientesDeCierre.length === 1
+                  ? "Quedó una caja sin cerrar"
+                  : `Quedaron ${pendientesDeCierre.length} cajas sin cerrar`}
+              </p>
+              <p className="text-xs text-amber-800">
+                Cerrá la caja de cada día antes de seguir operando, así el
+                control de efectivo no se mezcla entre jornadas.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {pendientesDeCierre.map((fecha) => (
+                  <Link
+                    key={fecha}
+                    href={`/caja/nuevo?fecha=${fecha}`}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                  >
+                    Cerrar caja del {formatYMD(fecha)}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -144,11 +186,17 @@ export default async function CajaPage({
             {formatYMD(hoy)}
           </span>
         </div>
+        {/* Una card por medio de pago real de la sucursal (mismo origen que la
+            tabla de abajo) para que cualquier medio —incluidos los que no son
+            EF/TR/TC/TD, como Mercado Pago o uno nuevo— sume y se actualice. */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
-          <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
-          <Kpi label="Tarjeta credito" value={formatARS(resumen.tc.ingresos)} />
-          <Kpi label="Tarjeta debito" value={formatARS(resumen.td.ingresos)} />
+          {resumen.porMp.map((row) => (
+            <Kpi
+              key={row.mp.id}
+              label={row.mp.nombre}
+              value={formatARS(row.neto)}
+            />
+          ))}
         </div>
         <div className="overflow-hidden rounded-md border border-border bg-card">
           <table className="w-full text-sm">
@@ -229,7 +277,7 @@ export default async function CajaPage({
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Fecha</th>
                   <th className="px-4 py-3 text-left font-medium">Cerrado por</th>
-                  <th className="px-4 py-3 text-right font-medium">EF esperado</th>
+                  <th className="px-4 py-3 text-right font-medium">Total del día</th>
                   <th className="w-20 px-4 py-3"></th>
                 </tr>
               </thead>
@@ -243,7 +291,12 @@ export default async function CajaPage({
                       {item.cerrado_por_nombre}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatARS(item.efectivoEsperado)}
+                      {formatARS(
+                        item.cierre.ingresos_ef +
+                          item.cierre.ingresos_banc +
+                          item.cierre.cobros_tc +
+                          item.cierre.cobros_td,
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <TableActionLink href={`/caja/${item.cierre.id}`} />

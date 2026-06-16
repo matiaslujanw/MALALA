@@ -51,11 +51,18 @@ export default async function NuevoCierrePage({
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Resumen esperado del día
         </h2>
+        {/* Desglose por medio de pago real del día (mismo origen que la tabla de
+            Caja diaria) para que se vea todo, incluidos medios fuera de
+            EF/TR/TC/TD como Mercado Pago. */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
-          <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
-          <Kpi label="Tarjeta crédito" value={formatARS(resumen.tc.ingresos)} />
-          <Kpi label="Tarjeta débito" value={formatARS(resumen.td.ingresos)} />
+          {resumen.porMp.map((row) => (
+            <Kpi
+              key={row.mp.id}
+              label={row.mp.nombre}
+              value={formatARS(row.neto)}
+            />
+          ))}
+          <Kpi label="Total del día" value={formatARS(resumen.totalNeto)} />
         </div>
         <p className="text-xs text-muted-foreground">
           Al cerrar se guarda esta foto del día. Las comisiones a pagar a empleados
