@@ -81,6 +81,27 @@ export interface Cliente {
   activo: boolean;
   saldo_cc: number;
   cuenta_corriente_habilitada: boolean;
+  // Ficha técnica — perfil fijo (estilo historia clínica).
+  tipo_cabello?: string;
+  salud_cabello?: string;
+  alergias?: string;
+  color_actual?: string;
+  observaciones_tecnicas?: string;
+}
+
+/** Registro fechado de la ficha técnica (fórmula de color, servicio, notas). */
+export interface FichaRegistro {
+  id: ID;
+  cliente_id: ID;
+  fecha: string; // ISO
+  servicio_id?: ID;
+  servicio_nombre?: string;
+  formula?: string;
+  notas?: string;
+  empleado_id?: ID;
+  empleado_nombre?: string;
+  usuario_id: ID;
+  creado_en: string; // ISO
 }
 
 export type TipoMovimientoCc = "cargo" | "pago";

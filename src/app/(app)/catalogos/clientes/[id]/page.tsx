@@ -1,12 +1,21 @@
 import { notFound } from "next/navigation";
 import { ClienteForm } from "@/components/forms/cliente-form";
 import { CuentaCorrientePanel } from "@/components/cuenta-corriente-panel";
+import { FichaTecnica } from "@/components/forms/ficha-tecnica";
 import {
   getCliente,
   toggleClienteActivo,
   updateCliente,
 } from "@/lib/data/clientes";
 import { listIngresos } from "@/lib/data/ingresos";
+import {
+  addFichaRegistro,
+  deleteFichaRegistro,
+  listFichaRegistros,
+  updateFichaPerfil,
+} from "@/lib/data/ficha-tecnica";
+import { listEmpleados } from "@/lib/data/empleados";
+import { listServicios } from "@/lib/data/servicios";
 import { listMovimientosCc } from "@/lib/data/cuenta-corriente";
 import { listMediosPago } from "@/lib/data/medios-pago";
 import { listCuentas } from "@/lib/data/cuentas-bancarias";
@@ -46,12 +55,22 @@ export default async function EditarClientePage({
   ]);
   const cuentasBanco = cuentas.filter((c) => c.tipo === "banco");
 
-  const historial = await listIngresos({ clienteId: id });
+  const [historial, fichaRegistros, empleados, servicios] = await Promise.all([
+    listIngresos({ clienteId: id }),
+    listFichaRegistros(id),
+    listEmpleados(),
+    listServicios(),
+  ]);
   const totalServicios = historial.reduce(
     (acc, ing) => acc + ing.lineas.filter((l) => l.servicio).length,
     0,
   );
   const totalGastado = historial.reduce((acc, ing) => acc + ing.ingreso.total, 0);
+
+  const serviciosOpts = servicios.map((s) => ({ id: s.id, nombre: s.nombre }));
+  const empleadosOpts = empleados
+    .filter((e) => e.activo)
+    .map((e) => ({ id: e.id, nombre: e.nombre }));
 
   async function update(_prev: unknown, formData: FormData) {
     "use server";
@@ -60,6 +79,18 @@ export default async function EditarClientePage({
   async function toggle() {
     "use server";
     await toggleClienteActivo(id);
+  }
+  async function updatePerfil(_prev: unknown, formData: FormData) {
+    "use server";
+    return await updateFichaPerfil(id, formData);
+  }
+  async function addRegistro(_prev: unknown, formData: FormData) {
+    "use server";
+    return await addFichaRegistro(id, formData);
+  }
+  async function delRegistro(formData: FormData) {
+    "use server";
+    await deleteFichaRegistro(String(formData.get("id") ?? ""));
   }
 
   return (
@@ -93,10 +124,21 @@ export default async function EditarClientePage({
         puedeGestionar={puedeEditar}
       />
 
+      <FichaTecnica
+        perfil={cliente}
+        registros={fichaRegistros}
+        servicios={serviciosOpts}
+        empleados={empleadosOpts}
+        puedeEliminar={puedeEditar}
+        updatePerfil={updatePerfil}
+        addRegistro={addRegistro}
+        deleteRegistro={delRegistro}
+      />
+
       <section className="space-y-3 border-t border-border pt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-xl tracking-[0.15em] uppercase">
-            Ficha técnica
+            Historial de servicios
           </h2>
           {historial.length > 0 && (
             <p className="text-xs uppercase tracking-wider text-muted-foreground tabular-nums">
@@ -107,7 +149,7 @@ export default async function EditarClientePage({
           )}
         </div>
         <p className="text-xs text-muted-foreground">
-          Historial de servicios realizados al cliente.
+          Historial de ventas y servicios facturados al cliente.
         </p>
 
         {historial.length === 0 ? (
