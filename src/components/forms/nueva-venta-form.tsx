@@ -425,7 +425,23 @@ export function NuevaVentaForm({
   }
 
   function removeLinea(idx: number) {
-    setLineas((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+    setLineas((prev) => {
+      const objetivo = prev[idx];
+      // Si la línea pertenece a una promo, quitar una parte saca la promo entera.
+      const promoId =
+        objetivo?.tipo === "servicio" ? objetivo.promo_servicio_id : undefined;
+      let next: LineaForm[];
+      if (promoId) {
+        next = prev.filter(
+          (l) => !(l.tipo === "servicio" && l.promo_servicio_id === promoId),
+        );
+      } else {
+        if (prev.length <= 1) return prev;
+        next = prev.filter((_, i) => i !== idx);
+      }
+      // Nunca dejar el ticket sin líneas.
+      return next.length > 0 ? next : [newLineaServicio()];
+    });
   }
 
   // Si un medio estaba en CC y el cliente ya no admite cuenta corriente, lo
@@ -654,13 +670,14 @@ export function NuevaVentaForm({
                   empleados={empleadosActivos}
                   comision={comisionDe(l)}
                   promoNombre={l.promo_nombre}
+                  locked={!!l.promo_servicio_id}
                   onServicio={(id) => handleServicioChange(idx, id)}
                   onEmpleado={(id) => handleEmpleadoChange(idx, id)}
                   onPrecio={(v) => updateLinea(idx, { precio: v })}
                   onPrecioTipo={(t) => handlePrecioTipoChange(idx, t)}
                   onSoporta={(v) => updateLinea(idx, { soporta_descuento: v })}
                   onRemove={() => removeLinea(idx)}
-                  removable={lineas.length > 1}
+                  removable={lineas.length > 1 || !!l.promo_servicio_id}
                 />
               ) : (
                 <LineaProductoRow
@@ -1259,6 +1276,7 @@ function LineaServicioRow({
   empleados,
   comision,
   promoNombre,
+  locked,
   onServicio,
   onEmpleado,
   onPrecio,
@@ -1272,6 +1290,7 @@ function LineaServicioRow({
   empleados: Empleado[];
   comision: number;
   promoNombre?: string;
+  locked: boolean;
   onServicio: (id: string) => void;
   onEmpleado: (id: string) => void;
   onPrecio: (v: number) => void;
@@ -1297,18 +1316,24 @@ function LineaServicioRow({
           </span>
         </div>
         <div className="col-span-12 sm:col-span-3">
-          <select
-            value={linea.servicio_id}
-            onChange={(e) => onServicio(e.target.value)}
-            className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">— Servicio —</option>
-            {servicios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nombre}
-              </option>
-            ))}
-          </select>
+          {locked ? (
+            <div className="w-full px-2 py-1.5 border border-border rounded-md bg-cream/40 text-sm truncate">
+              {servicio?.nombre ?? "Servicio de promo"}
+            </div>
+          ) : (
+            <select
+              value={linea.servicio_id}
+              onChange={(e) => onServicio(e.target.value)}
+              className="w-full px-2 py-1.5 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">— Servicio —</option>
+              {servicios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="col-span-12 sm:col-span-3">
           <select
@@ -1325,12 +1350,21 @@ function LineaServicioRow({
           </select>
         </div>
         <div className="col-span-6 sm:col-span-2">
-          <CurrencyInput
-            value={linea.precio}
-            onChange={onPrecio}
-            min={0}
-            className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          {locked ? (
+            <div
+              className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-cream/40 text-sm"
+              title="El precio lo define la promo"
+            >
+              {formatARS(linea.precio)}
+            </div>
+          ) : (
+            <CurrencyInput
+              value={linea.precio}
+              onChange={onPrecio}
+              min={0}
+              className="w-full px-2 py-1.5 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          )}
         </div>
         <div className="col-span-5 sm:col-span-1 text-right tabular-nums text-sm self-center">
           <span
@@ -1360,8 +1394,15 @@ function LineaServicioRow({
         </div>
       </div>
 
+      {/* En líneas de promo el precio es fijo (lo define la promo). */}
+      {locked && (
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground sm:pl-[16.67%]">
+          Precio fijo por promo · prorrateado del precio combo
+        </p>
+      )}
+
       {/* Controles de precio y comisión por descuento */}
-      {linea.servicio_id && (
+      {linea.servicio_id && !locked && (
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-12 sm:col-start-3 sm:col-span-4 flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">

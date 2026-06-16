@@ -142,6 +142,8 @@ export interface Servicio {
   destacado_pct?: number;
   es_promo?: boolean;
   vence_el?: string; // YYYY-MM-DD, vencimiento opcional (solo promos)
+  // Solo promos: nombres de los servicios que combina (para mostrar en la reserva).
+  promo_componentes?: string[];
 }
 
 export interface PromocionComponente {

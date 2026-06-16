@@ -113,6 +113,17 @@ async function createTurnoInternal(
     return turnoFailure("No se pudo validar el turno seleccionado");
   }
 
+  // Las promos no se pueden reservar para una fecha posterior a su vencimiento.
+  if (
+    servicio.es_promo &&
+    servicio.vence_el &&
+    parsed.data.fecha_turno > servicio.vence_el
+  ) {
+    return turnoFailure(
+      `La promoción ${servicio.nombre} vence el ${servicio.vence_el}. Elegí una fecha anterior.`,
+    );
+  }
+
   const db = getDb();
   const turnoId = createId();
   const tokenAcceso = createToken();
@@ -281,6 +292,10 @@ async function createTurnoInternal(
       access === "publico"
         ? "Tu turno fue reservado. Te esperamos en MALALA."
         : "Turno creado en agenda.",
+    fecha_turno: parsed.data.fecha_turno,
+    hora: parsed.data.hora,
+    servicio_nombre: servicio.nombre,
+    profesional_nombre: profesional.empleado.nombre,
   };
 }
 

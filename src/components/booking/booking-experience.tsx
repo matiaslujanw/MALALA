@@ -40,7 +40,15 @@ interface Props {
 }
 
 type ActionState =
-  | { ok: true; turnoId: string; message: string }
+  | {
+      ok: true;
+      turnoId: string;
+      message: string;
+      fecha_turno?: string;
+      hora?: string;
+      servicio_nombre?: string;
+      profesional_nombre?: string;
+    }
   | { ok: false; errors: Record<string, string[]> }
   | null;
 
@@ -118,11 +126,16 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     profesionales.find((item) => item.empleado_id === profesionalId) ?? null;
 
   const fechasDisponibles = useMemo(
-    () =>
-      bookingSucursalId
-        ? listOpenDatesForSucursal(snapshot.horarios, bookingSucursalId, 6)
-        : [],
-    [bookingSucursalId, snapshot.horarios],
+    () => {
+      if (!bookingSucursalId) return [];
+      const fechas = listOpenDatesForSucursal(snapshot.horarios, bookingSucursalId, 6);
+      // Una promo no se puede reservar para una fecha posterior a su vencimiento.
+      const vence = servicioSeleccionado?.es_promo
+        ? servicioSeleccionado.vence_el
+        : undefined;
+      return vence ? fechas.filter((f) => f <= vence) : fechas;
+    },
+    [bookingSucursalId, snapshot.horarios, servicioSeleccionado],
   );
 
   const slots = useMemo(() => {
@@ -807,45 +820,46 @@ function BookingModal({
 
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-5 p-5 sm:p-6 lg:px-8 lg:py-7">
               {state?.ok ? (
-                <ModalStep title={currentStepMeta.title} text={currentStepMeta.text}>
-                  <div className="space-y-4">
-                    <div className="rounded-[1.4rem] border border-sage-200 bg-sage-50 px-4 py-4 text-sm text-sage-900">
-                      <p className="font-medium">{state.message}</p>
-                      <p className="mt-2">
-                        {sucursal?.nombre} · {servicio?.nombre} · {selectedSlot?.hora} con{" "}
-                        {selectedSlot?.profesional_nombre}
-                      </p>
-                    </div>
+                (() => {
+                  // La agenda se revalida al confirmar y el slot deja de estar
+                  // disponible, así que tomamos los datos del resultado del
+                  // servidor (con fallback al estado del cliente).
+                  const fechaConfirmada = state.fecha_turno ?? fechaTurno;
+                  const horaConfirmada = state.hora ?? selectedSlot?.hora ?? "";
+                  const servicioConfirmado =
+                    state.servicio_nombre ?? servicio?.nombre ?? "-";
+                  const profesionalConfirmado =
+                    state.profesional_nombre ??
+                    (profesionalId === "any"
+                      ? "Sin preferencia"
+                      : profesional?.empleado.nombre ?? "-");
+                  const fechaHora = fechaConfirmada
+                    ? `${new Date(`${fechaConfirmada}T12:00:00`).toLocaleDateString(
+                        "es-AR",
+                        { weekday: "short", day: "numeric", month: "short" },
+                      )}${horaConfirmada ? ` · ${horaConfirmada}` : ""}`
+                    : "-";
+                  return (
+                    <ModalStep title={currentStepMeta.title} text={currentStepMeta.text}>
+                      <div className="space-y-4">
+                        <div className="rounded-[1.4rem] border border-sage-200 bg-sage-50 px-4 py-4 text-sm text-sage-900">
+                          <p className="font-medium">{state.message}</p>
+                          <p className="mt-2">
+                            {sucursal?.nombre} · {servicioConfirmado} · {fechaHora} con{" "}
+                            {profesionalConfirmado}
+                          </p>
+                        </div>
 
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <SummaryLine label="Sucursal" value={sucursal?.nombre ?? "-"} />
-                      <SummaryLine label="Servicio" value={servicio?.nombre ?? "-"} />
-                      <SummaryLine
-                        label="Profesional"
-                        value={
-                          profesionalId === "any"
-                            ? "Sin preferencia"
-                            : profesional?.empleado.nombre ?? "-"
-                        }
-                      />
-                      <SummaryLine
-                        label="Fecha y hora"
-                        value={
-                          selectedSlot
-                            ? `${new Date(`${fechaTurno}T12:00:00`).toLocaleDateString(
-                                "es-AR",
-                                {
-                                  weekday: "short",
-                                  day: "numeric",
-                                  month: "short",
-                                },
-                              )} · ${selectedSlot.hora}`
-                            : "-"
-                        }
-                      />
-                    </div>
-                  </div>
-                </ModalStep>
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <SummaryLine label="Sucursal" value={sucursal?.nombre ?? "-"} />
+                          <SummaryLine label="Servicio" value={servicioConfirmado} />
+                          <SummaryLine label="Profesional" value={profesionalConfirmado} />
+                          <SummaryLine label="Fecha y hora" value={fechaHora} />
+                        </div>
+                      </div>
+                    </ModalStep>
+                  );
+                })()
               ) : (
                 <ModalStep title={currentStepMeta.title} text={currentStepMeta.text}>
                   {renderStepContent({
@@ -888,6 +902,12 @@ function BookingModal({
                         ? `${servicio.duracion_min} min · desde ${formatARS(servicio.precio_efectivo)}`
                         : "Estas a un paso de confirmar tu cita."}
                     </p>
+                    {servicio?.promo_componentes &&
+                    servicio.promo_componentes.length > 0 ? (
+                      <p className="text-sm text-sage-800">
+                        Incluye: {servicio.promo_componentes.join(" · ")}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-2">
@@ -1068,10 +1088,22 @@ function renderStepContent(args: {
               ) : null}
               <div className="space-y-3">
                 <div>
-                  <p className="text-lg font-semibold text-ink">{item.nombre}</p>
+                  <p className="text-lg font-semibold text-ink">
+                    {item.nombre}
+                    {item.es_promo ? (
+                      <span className="ml-2 rounded-full bg-sage-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white align-middle">
+                        Promo
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="mt-1 text-sm text-stone-700">
                     {item.descripcion_corta}
                   </p>
+                  {item.promo_componentes && item.promo_componentes.length > 0 ? (
+                    <p className="mt-1 text-sm text-sage-800">
+                      Incluye: {item.promo_componentes.join(" · ")}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-stone-700">
                   <span className="font-semibold text-ink">
@@ -1164,6 +1196,15 @@ function renderStepContent(args: {
   }
 
   if (args.currentStep === 4) {
+    if (args.fechasDisponibles.length === 0) {
+      return (
+        <div className="rounded-[1.35rem] border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
+          No hay fechas disponibles para esta selección. Si es una promoción,
+          puede estar vencida. Volvé y elegí otro servicio.
+        </div>
+      );
+    }
+
     return (
       <div className="grid gap-3 md:grid-cols-2">
         {args.fechasDisponibles.map((item) => (
