@@ -1,6 +1,7 @@
 // Re-exports para que la página índice consulte conteos sin tirar del proxy "use server"
 // directamente con todas las dependencias.
 export { listServicios } from "@/lib/data/servicios";
+export { listPromociones } from "@/lib/data/promociones";
 export { listInsumos } from "@/lib/data/insumos";
 export { listClientes } from "@/lib/data/clientes";
 export { listEmpleados } from "@/lib/data/empleados";

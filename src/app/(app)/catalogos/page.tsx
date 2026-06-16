@@ -10,6 +10,7 @@ import {
   NotebookText,
   Landmark,
   TicketPercent,
+  Tags,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -21,6 +22,7 @@ import {
   listRubrosGasto,
   listMotivosDescuento,
   listServicios,
+  listPromociones,
   listCuentas,
 } from "./_counts";
 import { listRecetasResumen } from "@/lib/data/recetas";
@@ -31,6 +33,12 @@ const items = [
     label: "Servicios",
     Icon: BookOpen,
     desc: "Catálogo de servicios prestados",
+  },
+  {
+    href: "/catalogos/promociones",
+    label: "Promociones",
+    Icon: Tags,
+    desc: "Combos de servicios con franja y vencimiento",
   },
   {
     href: "/catalogos/insumos",
@@ -92,6 +100,7 @@ export default async function CatalogosPage() {
   await requireUser();
 
   const servicios = await listServicios();
+  const promociones = await listPromociones({ incluirInactivas: true });
   const insumos = await listInsumos();
   const recetas = await listRecetasResumen();
   const clientes = await listClientes();
@@ -106,6 +115,7 @@ export default async function CatalogosPage() {
 
   const counts: Record<string, number> = {
     "/catalogos/servicios": servicios.length,
+    "/catalogos/promociones": promociones.length,
     "/catalogos/insumos": insumos.length,
     "/catalogos/recetas": recetasCargadas,
     "/catalogos/clientes": clientes.length,

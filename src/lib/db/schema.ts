@@ -171,6 +171,21 @@ export const servicios = pgTable("servicios", {
   duracionMin: integer("duracion_min"),
   descripcionCorta: text("descripcion_corta"),
   destacadoPct: integer("destacado_pct"),
+  // Promociones: una promo es un servicio (es_promo=true) que combina varios
+  // servicios componentes (ver promocion_items). vence_el = vencimiento opcional.
+  esPromo: boolean("es_promo").notNull().default(false),
+  venceEl: date("vence_el"),
+});
+
+export const promocionItems = pgTable("promocion_items", {
+  id: text("id").primaryKey(),
+  promoServicioId: text("promo_servicio_id")
+    .notNull()
+    .references(() => servicios.id, { onDelete: "cascade" }),
+  componenteServicioId: text("componente_servicio_id")
+    .notNull()
+    .references(() => servicios.id, { onDelete: "cascade" }),
+  orden: integer("orden").notNull().default(0),
 });
 
 export const horariosSucursal = pgTable("horarios_sucursal", {
@@ -376,6 +391,8 @@ export const ingresoLineas = pgTable("ingreso_lineas", {
   subtotal: doublePrecision("subtotal").notNull(),
   comisionPct: doublePrecision("comision_pct").notNull(),
   comisionMonto: doublePrecision("comision_monto").notNull(),
+  // Trazabilidad: si esta línea proviene de una promo, apunta al servicio-promo.
+  promoServicioId: text("promo_servicio_id").references(() => servicios.id),
 });
 
 export const egresos = pgTable("egresos", {
@@ -657,6 +674,7 @@ export const schema = {
   clientes,
   proveedores,
   servicios,
+  promocionItems,
   horariosSucursal,
   serviciosHorarios,
   profesionalesAgenda,
