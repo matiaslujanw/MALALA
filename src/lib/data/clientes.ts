@@ -26,6 +26,11 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
     activo: row.activo,
     saldo_cc: row.saldoCc,
     cuenta_corriente_habilitada: row.cuentaCorrienteHabilitada,
+    tipo_cabello: row.tipoCabello ?? undefined,
+    salud_cabello: row.saludCabello ?? undefined,
+    alergias: row.alergias ?? undefined,
+    color_actual: row.colorActual ?? undefined,
+    observaciones_tecnicas: row.observacionesTecnicas ?? undefined,
   };
 }
 

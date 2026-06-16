@@ -146,9 +146,41 @@ export const clientes = pgTable(
     cuentaCorrienteHabilitada: boolean("cuenta_corriente_habilitada")
       .notNull()
       .default(false),
+    // Ficha técnica — perfil fijo del cliente (estilo historia clínica).
+    tipoCabello: text("tipo_cabello"),
+    saludCabello: text("salud_cabello"),
+    alergias: text("alergias"),
+    colorActual: text("color_actual"),
+    observacionesTecnicas: text("observaciones_tecnicas"),
   },
   (table) => ({
     telefonoE164Idx: uniqueIndex("clientes_telefono_e164_uq").on(table.telefonoE164),
+  }),
+);
+
+// Ficha técnica — registros fechados (evolución: fórmula de color, técnica, notas).
+export const clienteFichaRegistros = pgTable(
+  "cliente_ficha_registros",
+  {
+    id: text("id").primaryKey(),
+    clienteId: text("cliente_id")
+      .notNull()
+      .references(() => clientes.id, { onDelete: "cascade" }),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull(),
+    servicioId: text("servicio_id").references(() => servicios.id),
+    formula: text("formula"),
+    notas: text("notas"),
+    empleadoId: text("empleado_id").references(() => empleados.id),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    clienteFechaIdx: index("cliente_ficha_registros_cliente_fecha_idx").on(
+      table.clienteId,
+      table.fecha,
+    ),
   }),
 );
 
@@ -672,6 +704,7 @@ export const schema = {
   sucursales,
   empleados,
   clientes,
+  clienteFichaRegistros,
   proveedores,
   servicios,
   promocionItems,
