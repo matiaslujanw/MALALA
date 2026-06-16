@@ -243,6 +243,11 @@ export default async function EditarProveedorPage({
           proveedorId={proveedor.id}
           proveedorNombre={proveedor.nombre}
           cantidadInsumos={insumosDelProveedor.length}
+          cantidadVendibles={
+            insumosDelProveedor.filter(
+              (i) => i.vendible && i.precio_venta != null,
+            ).length
+          }
         />
       )}
 

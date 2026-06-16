@@ -169,9 +169,12 @@ export type AumentoPreciosResult =
   | { ok: false; errors: Record<string, string[]> };
 
 /**
- * Aplica un aumento (o baja) porcentual al costo de TODOS los insumos de un
- * proveedor de una sola vez: actualiza `precio_envase` y recalcula
- * `precio_unitario`. NO toca el precio de venta (`precio_venta`).
+ * Aplica un aumento (o baja) porcentual a TODOS los insumos de un proveedor de
+ * una sola vez. Según `target`:
+ *   - "costo" (default): actualiza `precio_envase` y recalcula `precio_unitario`.
+ *     NO toca el precio de venta.
+ *   - "venta": actualiza el `precio_venta` de los insumos vendibles que tengan
+ *     precio de venta cargado. NO toca el costo.
  */
 export async function aumentarPreciosProveedor(
   _prev: AumentoPreciosResult | null,
@@ -181,6 +184,7 @@ export async function aumentarPreciosProveedor(
   requireSupabaseRuntime("El aumento de precios requiere Supabase configurado.");
 
   const proveedorId = String(formData.get("proveedor_id") ?? "");
+  const target = formData.get("target") === "venta" ? "venta" : "costo";
   const pct = Number(formData.get("pct"));
 
   if (!proveedorId) {
@@ -204,6 +208,34 @@ export async function aumentarPreciosProveedor(
   }
 
   const factor = 1 + pct / 100;
+
+  if (target === "venta") {
+    const vendibles = rows.filter(
+      (r) => r.vendible && r.precioVenta != null,
+    );
+    if (vendibles.length === 0) {
+      return {
+        ok: false,
+        errors: {
+          _: ["El proveedor no tiene productos vendibles con precio de venta"],
+        },
+      };
+    }
+    await db.transaction(async (tx) => {
+      for (const row of vendibles) {
+        const nuevoPrecioVenta =
+          Math.round((row.precioVenta as number) * factor * 100) / 100;
+        await tx
+          .update(insumosTable)
+          .set({ precioVenta: nuevoPrecioVenta })
+          .where(eq(insumosTable.id, row.id));
+      }
+    });
+    revalidatePath("/catalogos/insumos");
+    revalidatePath(`/catalogos/proveedores/${proveedorId}`);
+    return { ok: true, actualizados: vendibles.length };
+  }
+
   await db.transaction(async (tx) => {
     for (const row of rows) {
       const nuevoPrecioEnvase = Math.round(row.precioEnvase * factor * 100) / 100;
