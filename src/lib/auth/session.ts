@@ -29,18 +29,19 @@ const getSupabaseCurrentUser = cache(async (): Promise<Usuario | null> => {
   requireSupabaseRuntime("La sesion interna requiere credenciales de Supabase.");
 
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  // getClaims valida el JWT localmente cuando el proyecto usa signing keys
+  // asimétricas (sin roundtrip a Auth en cada navegación). Si no, cae al mismo
+  // comportamiento que getUser(). El id de usuario está en el claim `sub`.
+  const { data, error } = await supabase.auth.getClaims();
+  const userId = data?.claims?.sub;
 
-  if (error || !user) return null;
+  if (error || !userId) return null;
 
   const db = getDb();
   const [profile] = await db
     .select()
     .from(profiles)
-    .where(eq(profiles.userId, user.id))
+    .where(eq(profiles.userId, userId))
     .limit(1);
 
   if (!profile || !profile.activo) return null;

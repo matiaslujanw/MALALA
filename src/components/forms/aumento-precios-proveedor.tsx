@@ -12,15 +12,20 @@ interface Props {
   proveedorId: string;
   proveedorNombre: string;
   cantidadInsumos: number;
+  cantidadVendibles: number;
 }
+
+type Target = "costo" | "venta";
 
 export function AumentoPreciosProveedorForm({
   proveedorId,
   proveedorNombre,
   cantidadInsumos,
+  cantidadVendibles,
 }: Props) {
   const router = useRouter();
   const [pct, setPct] = useState("");
+  const [target, setTarget] = useState<Target>("costo");
 
   const [state, formAction, pending] = useActionState<
     AumentoPreciosResult | null,
@@ -34,12 +39,16 @@ export function AumentoPreciosProveedorForm({
     return result;
   }, null);
 
+  const cantidad = target === "venta" ? cantidadVendibles : cantidadInsumos;
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     const n = Number(pct);
     const signo = n > 0 ? "+" : "";
-    const ok = window.confirm(
-      `¿Aplicar ${signo}${pct}% al costo de los ${cantidadInsumos} insumos de ${proveedorNombre}?\n\nActualiza el costo de reposición (no el precio de venta).`,
-    );
+    const detalle =
+      target === "venta"
+        ? `al precio de venta de los ${cantidad} productos vendibles de ${proveedorNombre}?\n\nActualiza el precio de venta (no el costo).`
+        : `al costo de los ${cantidad} insumos de ${proveedorNombre}?\n\nActualiza el costo de reposición (no el precio de venta).`;
+    const ok = window.confirm(`¿Aplicar ${signo}${pct}% ${detalle}`);
     if (!ok) e.preventDefault();
   }
 
@@ -54,9 +63,9 @@ export function AumentoPreciosProveedorForm({
         </h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        Aplica un % al <strong>costo</strong> de todos los insumos de este
-        proveedor de una vez. Usá un valor negativo para una baja. No modifica el
-        precio de venta.
+        Aplica un % a todos los items de este proveedor de una vez. Elegí si
+        afecta el <strong>costo</strong> o el <strong>precio de venta</strong>.
+        Usá un valor negativo para una baja.
       </p>
 
       <form
@@ -65,6 +74,38 @@ export function AumentoPreciosProveedorForm({
         className="flex flex-wrap items-end gap-3"
       >
         <input type="hidden" name="proveedor_id" value={proveedorId} />
+        <input type="hidden" name="target" value={target} />
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Aplicar a
+          </label>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setTarget("costo")}
+              className={`px-3 py-2 text-sm transition-colors ${
+                target === "costo"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:bg-cream/50"
+              }`}
+            >
+              Costo
+            </button>
+            <button
+              type="button"
+              onClick={() => setTarget("venta")}
+              className={`px-3 py-2 text-sm transition-colors border-l border-border ${
+                target === "venta"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:bg-cream/50"
+              }`}
+            >
+              Precio de venta
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Porcentaje
@@ -85,17 +126,24 @@ export function AumentoPreciosProveedorForm({
         </div>
         <button
           type="submit"
-          disabled={pending || cantidadInsumos === 0}
+          disabled={pending || cantidad === 0}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:opacity-50"
         >
           {pending ? "Aplicando…" : "Aplicar aumento"}
         </button>
       </form>
 
+      {target === "venta" && cantidadVendibles === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Este proveedor no tiene productos vendibles con precio de venta
+          cargado.
+        </p>
+      )}
+
       {error && <p className="text-xs text-destructive">{error}</p>}
       {state?.ok && (
         <p className="text-xs text-sage-700">
-          Listo: {state.actualizados} insumo
+          Listo: {state.actualizados} item
           {state.actualizados !== 1 ? "s" : ""} actualizado
           {state.actualizados !== 1 ? "s" : ""}.
         </p>
