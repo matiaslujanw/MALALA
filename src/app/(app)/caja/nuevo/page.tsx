@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
@@ -39,13 +39,6 @@ export default async function NuevoCierrePage({
   return (
     <div className="space-y-8 max-w-3xl">
       <header className="space-y-2">
-        <Link
-          href="/caja"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a caja
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Cerrar caja
         </h1>

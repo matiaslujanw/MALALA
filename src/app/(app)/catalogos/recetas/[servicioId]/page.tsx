@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import {
   getRecetaItems,
@@ -66,13 +65,6 @@ export default async function EditarRecetaPage({
   return (
     <div className="space-y-8 max-w-4xl">
       <header className="space-y-2">
-        <Link
-          href="/catalogos/recetas"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a recetas
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Receta
         </h1>
