@@ -40,6 +40,14 @@ export interface ResumenDelDia {
   costoInsumos: number;
   paraElLocal: number;
   netoNegocio: number;
+  // Fiado del día: ventas cobradas con cuenta corriente (NO entra a caja).
+  fiado: FiadoDelDia;
+}
+
+export interface FiadoDelDia {
+  total: number;
+  cantidad: number;
+  porCliente: { cliente: Cliente | null; monto: number }[];
 }
 
 export interface TicketResumen {
@@ -156,10 +164,16 @@ export async function getResumenDelDia(
   const hasta = isoEndOfDay(fecha);
 
   // El medio "CC" no representa plata cobrada: las ventas fiadas generan deuda,
-  // no entran a caja. Se excluye del resumen para no inflar lo cobrado del día.
-  const mediosPago = (await listMediosPago({ sucursalId })).filter(
-    (m) => m.codigo !== "CC",
+  // no entran a caja. Se excluye de los totales, pero guardamos sus ids para
+  // calcular aparte el "fiado del día".
+  const todosMedios = await listMediosPago({
+    sucursalId,
+    incluirCuentaCorriente: true,
+  });
+  const ccMpIds = new Set(
+    todosMedios.filter((m) => m.codigo === "CC").map((m) => m.id),
   );
+  const mediosPago = todosMedios.filter((m) => m.codigo !== "CC");
   const ingresosDelDia = await listIngresos({
     sucursalId,
     desde,
@@ -175,12 +189,42 @@ export async function getResumenDelDia(
   const acc = new Map<string, { ingresos: number; egresos: number }>();
   for (const mp of mediosPago) acc.set(mp.id, { ingresos: 0, egresos: 0 });
 
+  // Fiado del día: porción de las ventas cobrada con cuenta corriente (CC),
+  // agrupada por cliente. No entra a los totales de caja.
+  let fiadoTotal = 0;
+  let fiadoCantidad = 0;
+  const fiadoPorCliente = new Map<
+    string,
+    { cliente: Cliente | null; monto: number }
+  >();
+
   for (const row of ingresosDelDia) {
     const mp1 = acc.get(row.ingreso.mp1_id);
     if (mp1) mp1.ingresos += row.ingreso.valor1;
     if (row.ingreso.mp2_id && row.ingreso.valor2 != null) {
       const mp2 = acc.get(row.ingreso.mp2_id);
       if (mp2) mp2.ingresos += row.ingreso.valor2;
+    }
+
+    let fiadoRow = 0;
+    if (ccMpIds.has(row.ingreso.mp1_id)) fiadoRow += row.ingreso.valor1;
+    if (
+      row.ingreso.mp2_id &&
+      row.ingreso.valor2 != null &&
+      ccMpIds.has(row.ingreso.mp2_id)
+    ) {
+      fiadoRow += row.ingreso.valor2;
+    }
+    if (fiadoRow > 0) {
+      fiadoTotal += fiadoRow;
+      fiadoCantidad += 1;
+      const key = row.cliente?.id ?? "—";
+      const cur = fiadoPorCliente.get(key) ?? {
+        cliente: row.cliente,
+        monto: 0,
+      };
+      cur.monto += fiadoRow;
+      fiadoPorCliente.set(key, cur);
     }
   }
 
@@ -276,6 +320,13 @@ export async function getResumenDelDia(
     costoInsumos: costoInsumosAll,
     paraElLocal,
     netoNegocio,
+    fiado: {
+      total: fiadoTotal,
+      cantidad: fiadoCantidad,
+      porCliente: Array.from(fiadoPorCliente.values()).sort(
+        (a, b) => b.monto - a.monto,
+      ),
+    },
   };
 }
 

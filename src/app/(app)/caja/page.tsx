@@ -12,6 +12,7 @@ import {
   listCierres,
 } from "@/lib/data/caja";
 import { listSucursales } from "@/lib/data/sucursales";
+import { getDeudoresCc } from "@/lib/data/cuenta-corriente";
 import { formatARS, formatLongDate } from "@/lib/utils";
 
 function formatYMD(ymd: string): string {
@@ -83,6 +84,9 @@ export default async function CajaPage({
   const pendientesDeCierre = puedeCerrar
     ? await getCajasPendientesDeCierre(sucursal.id)
     : [];
+
+  const deudores = await getDeudoresCc();
+  const totalDeuda = deudores.reduce((sum, d) => sum + d.saldo, 0);
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -261,6 +265,98 @@ export default async function CajaPage({
           {resumen.cantEgresos} egreso{resumen.cantEgresos !== 1 ? "s" : ""} hoy.
         </p>
       </section>
+
+      {resumen.fiado.total > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Fiado del día · cuenta corriente
+          </h2>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-display text-2xl tabular-nums text-amber-700">
+                {formatARS(resumen.fiado.total)}
+              </p>
+              <p className="text-xs uppercase tracking-wider text-amber-800">
+                No entró a caja · {resumen.fiado.cantidad} venta
+                {resumen.fiado.cantidad !== 1 ? "s" : ""} fiada
+                {resumen.fiado.cantidad !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <ul className="mt-3 divide-y divide-amber-200 border-t border-amber-200">
+              {resumen.fiado.porCliente.map((row, i) => (
+                <li
+                  key={row.cliente?.id ?? `sin-cliente-${i}`}
+                  className="flex items-center justify-between py-2 text-sm"
+                >
+                  <span className="text-amber-900">
+                    {row.cliente?.nombre ?? "Sin cliente"}
+                  </span>
+                  <span className="tabular-nums text-amber-900">
+                    {formatARS(row.monto)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-amber-700">
+              Queda como deuda del cliente. Se cobra desde su cuenta corriente.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {deudores.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+              Deudas pendientes · cuenta corriente
+            </h2>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {deudores.length} cliente{deudores.length !== 1 ? "s" : ""} · total{" "}
+              <strong className="text-amber-700">{formatARS(totalDeuda)}</strong>
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-md border border-amber-300 bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-xs uppercase tracking-wider text-amber-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Cliente</th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    Último concepto
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">Debe</th>
+                  <th className="w-24 px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {deudores.map((d) => (
+                  <tr key={d.cliente_id} className="hover:bg-amber-50/40">
+                    <td className="px-4 py-3 font-medium">{d.nombre}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {d.ultimo_concepto ?? "—"}
+                      {d.ultima_fecha && (
+                        <span className="ml-1 text-xs tabular-nums">
+                          ({formatYMD(d.ultima_fecha.slice(0, 10))})
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-amber-700">
+                      {formatARS(d.saldo)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/catalogos/clientes/${d.cliente_id}`}
+                        className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                      >
+                        Saldar
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
