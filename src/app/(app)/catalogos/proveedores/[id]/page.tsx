@@ -77,12 +77,6 @@ export default async function EditarProveedorPage({
     <div className="space-y-10 max-w-5xl">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
-          <Link
-            href="/catalogos/proveedores"
-            className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-          >
-            ← Volver a proveedores
-          </Link>
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
             {proveedor.nombre}
           </h1>

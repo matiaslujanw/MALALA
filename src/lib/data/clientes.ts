@@ -173,7 +173,7 @@ export async function createClienteQuick(input: {
       observacion: parsed.data.observacion ?? undefined,
       activo: true,
       saldo_cc: 0,
-      cuenta_corriente_habilitada: false,
+      cuenta_corriente_habilitada: true,
     },
   };
 }

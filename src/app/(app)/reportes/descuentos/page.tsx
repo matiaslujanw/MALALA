@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+
 import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import { listIngresos } from "@/lib/data/ingresos";
@@ -58,17 +57,6 @@ export default async function ReportesDescuentosPage({
   return (
     <div className="space-y-6 max-w-6xl">
       <header className="space-y-2">
-        <Link
-          href={`/reportes?${new URLSearchParams({
-            desde: filtros.desde,
-            hasta: filtros.hasta,
-            ...(filtros.sucursalId ? { sucursal: filtros.sucursalId } : {}),
-          }).toString()}`}
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a reportes
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Descuentos
         </h1>

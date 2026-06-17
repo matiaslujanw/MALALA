@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
@@ -51,13 +51,6 @@ export default async function LiquidacionDetallePage({
   return (
     <div className="space-y-8 max-w-5xl">
       <header className="space-y-2">
-        <Link
-          href="/liquidaciones"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a liquidaciones
-        </Link>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl tracking-[0.2em] uppercase">

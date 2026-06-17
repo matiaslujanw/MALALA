@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { BackButton } from "@/components/back-button";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
 import { AdminChat } from "@/components/admin-chat/admin-chat";
 import { getActiveSucursalForUser, getCurrentUser } from "@/lib/auth/session";
@@ -69,6 +70,7 @@ export default async function AppLayout({
         <header className="h-14 border-b border-border bg-card px-4 md:px-6 flex items-center justify-between gap-2">
           {/* Spacer for hamburger button on mobile */}
           <div className="w-10 lg:w-0 shrink-0" />
+          <BackButton />
           <div className="text-xs uppercase tracking-widest text-muted-foreground hidden sm:block">
             Sistema MALALA
           </div>

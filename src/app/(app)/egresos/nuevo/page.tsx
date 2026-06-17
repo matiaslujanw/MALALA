@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EgresoForm } from "@/components/forms/egreso-form";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
@@ -46,13 +44,6 @@ export default async function NuevoEgresoPage({
   return (
     <div className="space-y-8 max-w-3xl">
       <header className="space-y-2">
-        <Link
-          href="/egresos"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a gastos
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Nuevo gasto
         </h1>

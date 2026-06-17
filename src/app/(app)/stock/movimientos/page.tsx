@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { listMovimientos } from "@/lib/data/stock";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
@@ -32,13 +30,6 @@ export default async function MovimientosPage() {
   return (
     <div className="space-y-8 max-w-6xl">
       <header className="space-y-2">
-        <Link
-          href="/stock"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a stock
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Movimientos
         </h1>

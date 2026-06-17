@@ -143,9 +143,11 @@ export const clientes = pgTable(
     observacion: text("observacion"),
     activo: boolean("activo").notNull().default(true),
     saldoCc: doublePrecision("saldo_cc").notNull().default(0),
+    // Habilitada por defecto para todos: cada cliente puede usar (o no) la
+    // cuenta corriente al cobrar; deshabilitarla es la excepción manual.
     cuentaCorrienteHabilitada: boolean("cuenta_corriente_habilitada")
       .notNull()
-      .default(false),
+      .default(true),
     // Ficha técnica — perfil fijo del cliente (estilo historia clínica).
     tipoCabello: text("tipo_cabello"),
     saludCabello: text("salud_cabello"),

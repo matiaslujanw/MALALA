@@ -1,6 +1,6 @@
 "use server";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
@@ -56,6 +56,78 @@ export async function listMovimientosCc(
     .where(eq(movimientosCcTable.clienteId, clienteId))
     .orderBy(desc(movimientosCcTable.fecha), desc(movimientosCcTable.creadoEn));
   return rows.map(mapMovimiento);
+}
+
+export interface DeudorCc {
+  cliente_id: string;
+  nombre: string;
+  saldo: number;
+  ultimo_concepto?: string;
+  ultima_fecha?: string;
+}
+
+/**
+ * Clientes con deuda pendiente en cuenta corriente (saldo > 0), ordenados de
+ * mayor a menor, con el último concepto fiado de cada uno. El saldo_cc es global
+ * (no por sucursal), así que lista a todos los deudores.
+ */
+export async function getDeudoresCc(): Promise<DeudorCc[]> {
+  requireSupabaseRuntime(
+    "La cuenta corriente requiere Supabase configurado.",
+  );
+  const db = getDb();
+
+  const deudores = await db
+    .select({
+      id: clientesTable.id,
+      nombre: clientesTable.nombre,
+      saldo: clientesTable.saldoCc,
+    })
+    .from(clientesTable)
+    .where(gt(clientesTable.saldoCc, EPS))
+    .orderBy(desc(clientesTable.saldoCc));
+  if (deudores.length === 0) return [];
+
+  const ids = deudores.map((d) => d.id);
+  const cargos = await db
+    .select({
+      clienteId: movimientosCcTable.clienteId,
+      fecha: movimientosCcTable.fecha,
+      descripcion: movimientosCcTable.descripcion,
+    })
+    .from(movimientosCcTable)
+    .where(
+      and(
+        inArray(movimientosCcTable.clienteId, ids),
+        eq(movimientosCcTable.tipo, "cargo"),
+      ),
+    )
+    .orderBy(desc(movimientosCcTable.fecha));
+
+  // El primer cargo por cliente (ya ordenados por fecha desc) es el más reciente.
+  const ultimoPorCliente = new Map<
+    string,
+    { descripcion: string | null; fecha: Date }
+  >();
+  for (const c of cargos) {
+    if (!ultimoPorCliente.has(c.clienteId)) {
+      ultimoPorCliente.set(c.clienteId, {
+        descripcion: c.descripcion,
+        fecha: c.fecha,
+      });
+    }
+  }
+
+  return deudores.map((d) => {
+    const u = ultimoPorCliente.get(d.id);
+    return {
+      cliente_id: d.id,
+      nombre: d.nombre,
+      saldo: d.saldo,
+      ultimo_concepto: u?.descripcion ?? undefined,
+      ultima_fecha: u?.fecha.toISOString(),
+    };
+  });
 }
 
 export async function toggleCuentaCorriente(

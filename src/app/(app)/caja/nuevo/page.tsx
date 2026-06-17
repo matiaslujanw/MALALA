@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
@@ -39,13 +39,6 @@ export default async function NuevoCierrePage({
   return (
     <div className="space-y-8 max-w-3xl">
       <header className="space-y-2">
-        <Link
-          href="/caja"
-          className="inline-flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3 stroke-[1.5]" />
-          Volver a caja
-        </Link>
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Cerrar caja
         </h1>
@@ -58,11 +51,18 @@ export default async function NuevoCierrePage({
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Resumen esperado del día
         </h2>
+        {/* Desglose por medio de pago real del día (mismo origen que la tabla de
+            Caja diaria) para que se vea todo, incluidos medios fuera de
+            EF/TR/TC/TD como Mercado Pago. */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
-          <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
-          <Kpi label="Tarjeta crédito" value={formatARS(resumen.tc.ingresos)} />
-          <Kpi label="Tarjeta débito" value={formatARS(resumen.td.ingresos)} />
+          {resumen.porMp.map((row) => (
+            <Kpi
+              key={row.mp.id}
+              label={row.mp.nombre}
+              value={formatARS(row.neto)}
+            />
+          ))}
+          <Kpi label="Total del día" value={formatARS(resumen.totalNeto)} />
         </div>
         <p className="text-xs text-muted-foreground">
           Al cerrar se guarda esta foto del día. Las comisiones a pagar a empleados

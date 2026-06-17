@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
-import { Plus } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
+  autocerrarDiasSinMovimiento,
+  getCajasPendientesDeCierre,
   getCierreDeFecha,
   getResumenDelDia,
   listCierres,
 } from "@/lib/data/caja";
 import { listSucursales } from "@/lib/data/sucursales";
+import { getDeudoresCc } from "@/lib/data/cuenta-corriente";
 import { formatARS, formatLongDate } from "@/lib/utils";
 
 function formatYMD(ymd: string): string {
@@ -65,14 +68,57 @@ export default async function CajaPage({
   }
 
   const hoy = todayYMD();
+  const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
+
+  // Los días anteriores sin ningún movimiento (domingos, feriados) se cierran
+  // solos en cero antes de leer el estado, así no piden nada ni quedan como
+  // pendientes. Los días con movimiento se respetan para el cierre manual.
+  if (puedeCerrar) {
+    await autocerrarDiasSinMovimiento(sucursal.id);
+  }
+
   const resumen = await getResumenDelDia(sucursal.id, hoy);
   const cierres = await listCierres({ sucursalId: sucursal.id, limit: 30 });
   const cierreHoy = await getCierreDeFecha(sucursal.id, hoy);
 
-  const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
+  const pendientesDeCierre = puedeCerrar
+    ? await getCajasPendientesDeCierre(sucursal.id)
+    : [];
+
+  const deudores = await getDeudoresCc();
+  const totalDeuda = deudores.reduce((sum, d) => sum + d.saldo, 0);
 
   return (
     <div className="space-y-8 max-w-6xl">
+      {pendientesDeCierre.length > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 stroke-[1.5] text-amber-600" />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                {pendientesDeCierre.length === 1
+                  ? "Quedó una caja sin cerrar"
+                  : `Quedaron ${pendientesDeCierre.length} cajas sin cerrar`}
+              </p>
+              <p className="text-xs text-amber-800">
+                Cerrá la caja de cada día antes de seguir operando, así el
+                control de efectivo no se mezcla entre jornadas.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {pendientesDeCierre.map((fecha) => (
+                  <Link
+                    key={fecha}
+                    href={`/caja/nuevo?fecha=${fecha}`}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                  >
+                    Cerrar caja del {formatYMD(fecha)}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
@@ -144,11 +190,17 @@ export default async function CajaPage({
             {formatYMD(hoy)}
           </span>
         </div>
+        {/* Una card por medio de pago real de la sucursal (mismo origen que la
+            tabla de abajo) para que cualquier medio —incluidos los que no son
+            EF/TR/TC/TD, como Mercado Pago o uno nuevo— sume y se actualice. */}
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Kpi label="Efectivo (neto)" value={formatARS(resumen.ef.neto)} />
-          <Kpi label="Transferencia" value={formatARS(resumen.tr.neto)} />
-          <Kpi label="Tarjeta credito" value={formatARS(resumen.tc.ingresos)} />
-          <Kpi label="Tarjeta debito" value={formatARS(resumen.td.ingresos)} />
+          {resumen.porMp.map((row) => (
+            <Kpi
+              key={row.mp.id}
+              label={row.mp.nombre}
+              value={formatARS(row.neto)}
+            />
+          ))}
         </div>
         <div className="overflow-hidden rounded-md border border-border bg-card">
           <table className="w-full text-sm">
@@ -214,6 +266,98 @@ export default async function CajaPage({
         </p>
       </section>
 
+      {resumen.fiado.total > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Fiado del día · cuenta corriente
+          </h2>
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="font-display text-2xl tabular-nums text-amber-700">
+                {formatARS(resumen.fiado.total)}
+              </p>
+              <p className="text-xs uppercase tracking-wider text-amber-800">
+                No entró a caja · {resumen.fiado.cantidad} venta
+                {resumen.fiado.cantidad !== 1 ? "s" : ""} fiada
+                {resumen.fiado.cantidad !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <ul className="mt-3 divide-y divide-amber-200 border-t border-amber-200">
+              {resumen.fiado.porCliente.map((row, i) => (
+                <li
+                  key={row.cliente?.id ?? `sin-cliente-${i}`}
+                  className="flex items-center justify-between py-2 text-sm"
+                >
+                  <span className="text-amber-900">
+                    {row.cliente?.nombre ?? "Sin cliente"}
+                  </span>
+                  <span className="tabular-nums text-amber-900">
+                    {formatARS(row.monto)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-amber-700">
+              Queda como deuda del cliente. Se cobra desde su cuenta corriente.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {deudores.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+              Deudas pendientes · cuenta corriente
+            </h2>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {deudores.length} cliente{deudores.length !== 1 ? "s" : ""} · total{" "}
+              <strong className="text-amber-700">{formatARS(totalDeuda)}</strong>
+            </span>
+          </div>
+          <div className="overflow-hidden rounded-md border border-amber-300 bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-xs uppercase tracking-wider text-amber-800">
+                <tr>
+                  <th className="px-4 py-3 text-left font-medium">Cliente</th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    Último concepto
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium">Debe</th>
+                  <th className="w-24 px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {deudores.map((d) => (
+                  <tr key={d.cliente_id} className="hover:bg-amber-50/40">
+                    <td className="px-4 py-3 font-medium">{d.nombre}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {d.ultimo_concepto ?? "—"}
+                      {d.ultima_fecha && (
+                        <span className="ml-1 text-xs tabular-nums">
+                          ({formatYMD(d.ultima_fecha.slice(0, 10))})
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-amber-700">
+                      {formatARS(d.saldo)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/catalogos/clientes/${d.cliente_id}`}
+                        className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                      >
+                        Saldar
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Cierres anteriores
@@ -229,7 +373,7 @@ export default async function CajaPage({
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Fecha</th>
                   <th className="px-4 py-3 text-left font-medium">Cerrado por</th>
-                  <th className="px-4 py-3 text-right font-medium">EF esperado</th>
+                  <th className="px-4 py-3 text-right font-medium">Total del día</th>
                   <th className="w-20 px-4 py-3"></th>
                 </tr>
               </thead>
@@ -243,7 +387,12 @@ export default async function CajaPage({
                       {item.cerrado_por_nombre}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatARS(item.efectivoEsperado)}
+                      {formatARS(
+                        item.cierre.ingresos_ef +
+                          item.cierre.ingresos_banc +
+                          item.cierre.cobros_tc +
+                          item.cierre.cobros_td,
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <TableActionLink href={`/caja/${item.cierre.id}`} />
