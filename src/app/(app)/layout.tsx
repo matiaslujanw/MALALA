@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { BackButton } from "@/components/back-button";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
 import { AdminChat } from "@/components/admin-chat/admin-chat";
+import { LogoutButton } from "@/components/logout-button";
+import { PushClientBootstrap } from "@/components/pwa/push-client-bootstrap";
 import { getActiveSucursalForUser, getCurrentUser } from "@/lib/auth/session";
 import { logout } from "@/lib/auth/actions";
 import { listSucursales } from "@/lib/data/sucursales";
@@ -93,18 +94,14 @@ export default async function AppLayout({
               </span>
             </div>
             <form action={logout}>
-              <button
-                type="submit"
-                title="Salir"
-                aria-label="Salir"
-                className="flex items-center justify-center rounded-xl p-2 text-muted-foreground hover:bg-cream hover:text-foreground transition-colors"
-              >
-                <LogOut className="h-4 w-4 stroke-[1.5]" />
-              </button>
+              <LogoutButton />
             </form>
           </div>
         </header>
-        <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <PushClientBootstrap />
+          {children}
+        </main>
       </div>
       {user.rol === "admin" && <AdminChat />}
     </div>

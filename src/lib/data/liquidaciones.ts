@@ -39,6 +39,7 @@ import {
   emitMovimientoBancarioTx,
   getCuentaIdForMpTx,
 } from "./movimientos-bancarios-helpers";
+import { notificarLiquidacionEmpleadoPush } from "@/lib/integraciones/push";
 
 function createId() {
   return crypto.randomUUID();
@@ -449,6 +450,7 @@ export async function createLiquidacion(
     }
   });
 
+  await notificarLiquidacionEmpleadoPush({ liquidacionId }).catch(() => {});
   revalidatePath("/liquidaciones");
   return { ok: true, liquidacionId };
 }

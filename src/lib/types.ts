@@ -482,6 +482,31 @@ export interface LiquidacionLinea {
   comision_monto: number;
 }
 
+export interface PushSubscription {
+  id: ID;
+  user_id: ID;
+  empleado_id: ID;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent?: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  last_seen_at?: string;
+}
+
+export interface PushNotificationQueueItem {
+  id: ID;
+  subscription_id: ID;
+  titulo: string;
+  cuerpo: string;
+  url: string;
+  tipo: string;
+  created_at: string;
+  delivered_at?: string;
+}
+
 export interface AccessScope {
   rol: Rol;
   sucursalIdsPermitidas: ID[];

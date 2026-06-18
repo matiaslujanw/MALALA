@@ -23,6 +23,7 @@ import {
 } from "@/lib/validations/turno";
 import { normalizarTelefonoAR, PhoneNormalizationError } from "@/lib/phone";
 import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
+import { notificarTurnoEmpleadoPush } from "@/lib/integraciones/push";
 import {
   getTurnoCatalogRefs,
   mapEmpleado,
@@ -280,6 +281,7 @@ async function createTurnoInternal(
   }
 
   await notificarTurno({ turnoId, tipo: "confirmacion" });
+  await notificarTurnoEmpleadoPush({ turnoId, tipo: "creado" }).catch(() => {});
 
   revalidatePath("/");
   revalidatePath("/turnos");
@@ -362,6 +364,10 @@ export async function updateTurnoEstadoAction(
 
   if (parsed.data.estado === "cancelado") {
     await notificarTurno({ turnoId: parsed.data.turno_id, tipo: "cancelacion" });
+    await notificarTurnoEmpleadoPush({
+      turnoId: parsed.data.turno_id,
+      tipo: "cancelado",
+    }).catch(() => {});
   }
 
   revalidatePath("/turnos");
@@ -524,6 +530,10 @@ export async function reprogramTurnoAction(
   }
 
   await notificarTurno({ turnoId: parsed.data.turno_id, tipo: "reprogramacion" });
+  await notificarTurnoEmpleadoPush({
+    turnoId: parsed.data.turno_id,
+    tipo: "reprogramado",
+  }).catch(() => {});
 
   revalidatePath("/turnos");
   revalidatePath("/");

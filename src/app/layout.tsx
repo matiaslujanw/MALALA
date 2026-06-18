@@ -17,6 +17,7 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "MALALA — Sistema de gestión",
   description: "MALALA Hair and Nails — gestión de ventas, stock y caja",
+  applicationName: "MALALA",
 };
 
 export default function RootLayout({

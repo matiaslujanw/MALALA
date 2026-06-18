@@ -639,6 +639,61 @@ export const whatsappEnvios = pgTable(
   }),
 );
 
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.userId, { onDelete: "cascade" }),
+    empleadoId: text("empleado_id")
+      .notNull()
+      .references(() => empleados.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    activo: boolean("activo").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  },
+  (table) => ({
+    endpointIdx: uniqueIndex("push_subscriptions_endpoint_uq").on(table.endpoint),
+    empleadoActivoIdx: index("push_subscriptions_empleado_activo_idx").on(
+      table.empleadoId,
+      table.activo,
+    ),
+    userActivoIdx: index("push_subscriptions_user_activo_idx").on(
+      table.userId,
+      table.activo,
+    ),
+  }),
+);
+
+export const pushNotificationQueue = pgTable(
+  "push_notification_queue",
+  {
+    id: text("id").primaryKey(),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+    titulo: text("titulo").notNull(),
+    cuerpo: text("cuerpo").notNull(),
+    url: text("url").notNull(),
+    tipo: text("tipo").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  },
+  (table) => ({
+    subscriptionPendienteIdx: index("push_notification_queue_sub_pending_idx").on(
+      table.subscriptionId,
+      table.deliveredAt,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const liquidaciones = pgTable(
   "liquidaciones",
   {
@@ -802,6 +857,8 @@ export const schema = {
   turnoEventos,
   integracionesManychat,
   whatsappEnvios,
+  pushSubscriptions,
+  pushNotificationQueue,
   liquidaciones,
   liquidacionLineas,
   movimientosCc,

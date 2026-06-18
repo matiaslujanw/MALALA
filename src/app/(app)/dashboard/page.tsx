@@ -9,10 +9,12 @@ import {
 } from "lucide-react";
 import { requireUser, getActiveSucursal } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
+import { EmployeePushCard } from "@/components/pwa/employee-push-card";
 import { listIngresos } from "@/lib/data/ingresos";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listSaldos } from "@/lib/data/cuentas-bancarias";
 import { listTurnos } from "@/lib/data/turnos";
+import { getVapidPublicKey, isWebPushConfigured } from "@/lib/db/env";
 import { aggregate, comisionesPorEmpleado } from "@/lib/data/ingresos-helpers";
 import { formatARS } from "@/lib/utils";
 
@@ -58,6 +60,8 @@ export default async function DashboardPage() {
   const desdeIso = `${hoy}T00:00:00.000`;
   const hastaIso = `${hoy}T23:59:59.999`;
   const horaActual = hhmmActual();
+  const pushConfigured = isWebPushConfigured();
+  const vapidPublicKey = pushConfigured ? getVapidPublicKey() : undefined;
 
   const [ingresosHoy, saldos, turnosHoy, sucursalesAll] = await Promise.all([
     listIngresos({
@@ -119,6 +123,13 @@ export default async function DashboardPage() {
           <QuickAction href="/reportes" label="Reportes" Icon={Receipt} />
         )}
       </section>
+
+      {user.empleado_id && (
+        <EmployeePushCard
+          configured={pushConfigured}
+          vapidPublicKey={vapidPublicKey}
+        />
+      )}
 
       {/* Ventas de hoy */}
       <section className="rounded-[1.5rem] border border-border bg-card p-5 shadow-[0_14px_40px_rgba(44,53,37,0.04)]">
