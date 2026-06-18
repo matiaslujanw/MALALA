@@ -270,6 +270,7 @@ export default async function EgresosPage({
                   </td>
                   <td className="px-4 py-3 text-xs uppercase text-muted-foreground">
                     {row.mp?.codigo ?? "—"}
+                    {row.mp2 ? ` + ${row.mp2.codigo}` : ""}
                   </td>
                   <td className="px-4 py-3 text-right font-medium tabular-nums">
                     {formatARS(row.egreso.valor)}

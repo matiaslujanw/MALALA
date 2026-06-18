@@ -17,6 +17,7 @@ export interface EgresoConDetalle {
   insumo: Insumo | null;
   proveedor: Proveedor | null;
   mp: MedioPago | null;
+  mp2: MedioPago | null;
 }
 
 export interface AggregatedEgresos {

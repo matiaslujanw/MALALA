@@ -368,6 +368,10 @@ export interface Egreso {
   cantidad?: number;
   valor: number;
   mp_id: ID;
+  mp1_cuenta_id?: ID;
+  mp2_id?: ID;
+  valor2?: number;
+  mp2_cuenta_id?: ID;
   observacion?: string;
   pagado: boolean;
   usuario_id: ID;
@@ -396,6 +400,23 @@ export interface CierreCaja {
   observacion?: string;
   cerrado_por: ID;
   fecha_cierre: string;
+}
+
+export interface AperturaCaja {
+  id: ID;
+  sucursal_id: ID;
+  fecha: string;
+  abierto_por: ID;
+  fecha_apertura: string;
+  observacion?: string;
+}
+
+export interface AperturaCuentaLinea {
+  id: ID;
+  apertura_id: ID;
+  cuenta_id: ID;
+  saldo_esperado: number;
+  saldo_declarado: number;
 }
 
 export type LiquidacionEstado = "pendiente" | "pagada" | "anulada";

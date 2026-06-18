@@ -1,16 +1,31 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CurrencyField, Field, FormButtons, GlobalError, SelectField } from "./field";
+import { formatARS } from "@/lib/utils";
 import type {
+  CuentaBancaria,
   Insumo,
   MedioPago,
   Proveedor,
   RubroGasto,
-  Sucursal,
 } from "@/lib/types";
 import type { CreateEgresoResult } from "@/lib/data/egresos";
+
+// ¿El medio de pago impacta en una cuenta de banco? (habilita elegir a cuál).
+// Efectivo (EF) y Cuenta corriente (CC) no van a bancos, así que no muestran
+// selector de cuenta; el resto (tarjeta, transferencia, etc.) sí.
+function usaCuentaBanco(mp: MedioPago | undefined): boolean {
+  if (!mp) return false;
+  const cod = mp.codigo.toUpperCase();
+  return cod !== "EF" && cod !== "CC";
+}
+
+// La cuenta corriente es de clientes; no es un medio para pagar gastos.
+function esPagable(mp: MedioPago): boolean {
+  return mp.codigo.toUpperCase() !== "CC";
+}
 
 const UNIDAD_LABEL: Record<string, string> = {
   ud: "ud",
@@ -20,11 +35,11 @@ const UNIDAD_LABEL: Record<string, string> = {
 };
 
 interface Props {
-  sucursales: Sucursal[];
   defaultSucursalId: string;
   rubros: RubroGasto[];
   proveedores: Proveedor[];
   mediosPago: MedioPago[];
+  cuentasBanco: CuentaBancaria[];
   insumos: Insumo[];
   defaultFecha: string; // YYYY-MM-DD
   defaultProveedorId?: string;
@@ -40,11 +55,11 @@ interface Props {
 }
 
 export function EgresoForm({
-  sucursales,
   defaultSucursalId,
   rubros,
   proveedores,
   mediosPago,
+  cuentasBanco,
   insumos,
   defaultFecha,
   defaultProveedorId,
@@ -58,17 +73,47 @@ export function EgresoForm({
   const [esCompraInsumo, setEsCompraInsumo] = useState(
     defaultEsCompraInsumo ?? false,
   );
-  const [sucursalId, setSucursalId] = useState(defaultSucursalId);
+  // La sucursal es siempre la activa (se cambia globalmente, solo superadmin).
+  const sucursalId = defaultSucursalId;
   const [proveedorId, setProveedorId] = useState(defaultProveedorId ?? "");
   const [insumoId, setInsumoId] = useState("");
+
+  // Pago: monto total + hasta dos medios, cada uno con su cuenta (como en ventas).
+  const [valorTotal, setValorTotal] = useState<number>(0);
+  const [mp1Id, setMp1Id] = useState(() => {
+    const visible = mediosPago.filter(
+      (m) => m.sucursal_id === defaultSucursalId && m.activo && esPagable(m),
+    );
+    return visible[0]?.id ?? "";
+  });
+  const [mp1CuentaId, setMp1CuentaId] = useState("");
+  const [mp2Id, setMp2Id] = useState("");
+  const [valor2, setValor2] = useState<number>(0);
+  const [mp2CuentaId, setMp2CuentaId] = useState("");
 
   const mediosVisibles = useMemo(
     () =>
       mediosPago.filter(
-        (m) => m.sucursal_id === sucursalId && m.activo,
+        (m) => m.sucursal_id === sucursalId && m.activo && esPagable(m),
       ),
     [mediosPago, sucursalId],
   );
+
+  // Mantener los medios elegidos válidos al cambiar de sucursal.
+  useEffect(() => {
+    if (mediosVisibles.length === 0) return;
+    if (!mediosVisibles.some((m) => m.id === mp1Id)) {
+      setMp1Id(mediosVisibles[0].id);
+    }
+    if (mp2Id && !mediosVisibles.some((m) => m.id === mp2Id)) {
+      setMp2Id("");
+      setValor2(0);
+    }
+  }, [mediosVisibles, mp1Id, mp2Id]);
+
+  const mp1 = mediosVisibles.find((m) => m.id === mp1Id);
+  const mp2 = mp2Id ? mediosVisibles.find((m) => m.id === mp2Id) : undefined;
+  const valor1 = Math.max(0, valorTotal - (mp2Id ? valor2 : 0));
 
   // Si hay proveedor elegido, priorizamos sus insumos; si no, mostramos todos.
   const insumosVisibles = useMemo(() => {
@@ -115,25 +160,16 @@ export function EgresoForm({
         </span>
       </label>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
-          label="Fecha"
-          name="fecha"
-          type="date"
-          defaultValue={defaultFecha}
-          error={errors.fecha}
-          required
-        />
-        <SelectField
-          label="Sucursal"
-          name="sucursal_id"
-          value={sucursalId}
-          onChange={(e) => setSucursalId(e.currentTarget.value)}
-          error={errors.sucursal_id}
-          options={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
-          required
-        />
-      </div>
+      <input type="hidden" name="sucursal_id" value={sucursalId} />
+
+      <Field
+        label="Fecha"
+        name="fecha"
+        type="date"
+        defaultValue={defaultFecha}
+        error={errors.fecha}
+        required
+      />
 
       {esCompraInsumo ? (
         // El rubro lo asigna automáticamente el backend (rubro "Insumos").
@@ -220,28 +256,98 @@ export function EgresoForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-4 rounded-md border border-border bg-card p-4">
         <CurrencyField
-          label={esCompraInsumo ? "Monto total pagado" : "Monto"}
+          label={esCompraInsumo ? "Monto total pagado" : "Monto total"}
           name="valor"
+          value={valorTotal}
+          onChange={(v) => {
+            setValorTotal(v);
+            if (mp2Id) setValor2((prev) => Math.min(prev, Math.max(0, v)));
+          }}
           error={errors.valor}
           required
         />
-        <SelectField
-          label="Medio de pago"
-          name="mp_id"
-          error={errors.mp_id}
-          options={mediosVisibles.map((m) => ({
-            value: m.id,
-            label: m.nombre,
-          }))}
-          placeholder={
-            mediosVisibles.length === 0
-              ? "Cargá un medio en esta sucursal"
-              : "Seleccioná medio"
-          }
-          required
-        />
+
+        {/* Medio 1 + cuenta */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField
+            label={mp2Id ? "Medio 1" : "Medio de pago"}
+            name="mp_id"
+            value={mp1Id}
+            onChange={(e) => setMp1Id(e.currentTarget.value)}
+            error={errors.mp_id}
+            options={mediosVisibles.map((m) => ({
+              value: m.id,
+              label: m.nombre,
+            }))}
+            placeholder={
+              mediosVisibles.length === 0
+                ? "Cargá un medio en esta sucursal"
+                : undefined
+            }
+            required
+          />
+          {usaCuentaBanco(mp1) && (
+            <BancoSelector
+              name="mp1_cuenta_id"
+              label="Cuenta"
+              cuentas={cuentasBanco}
+              value={mp1CuentaId}
+              onChange={setMp1CuentaId}
+            />
+          )}
+        </div>
+
+        {/* Medio 2 (opcional) + monto + cuenta */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <SelectField
+            label="Medio 2 (opcional)"
+            name="mp2_id"
+            value={mp2Id}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              setMp2Id(v);
+              if (!v) {
+                setValor2(0);
+                setMp2CuentaId("");
+              }
+            }}
+            error={errors.mp2_id}
+            options={mediosVisibles
+              .filter((m) => m.id !== mp1Id)
+              .map((m) => ({ value: m.id, label: m.nombre }))}
+            placeholder="— Ninguno —"
+          />
+          {mp2Id && (
+            <CurrencyField
+              label="Monto del medio 2"
+              name="valor2"
+              value={valor2}
+              onChange={setValor2}
+              error={errors.valor2}
+              required
+            />
+          )}
+        </div>
+
+        {mp2Id && usaCuentaBanco(mp2) && (
+          <BancoSelector
+            name="mp2_cuenta_id"
+            label="Cuenta (Medio 2)"
+            cuentas={cuentasBanco}
+            value={mp2CuentaId}
+            onChange={setMp2CuentaId}
+          />
+        )}
+
+        {mp2Id && (
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {mp1?.nombre ?? "Medio 1"} cubre {formatARS(valor1)} · {mp2?.nombre}{" "}
+            {formatARS(valor2)} ={" "}
+            <strong className="text-foreground">{formatARS(valorTotal)}</strong>
+          </p>
+        )}
       </div>
 
       <label className="flex items-center gap-2 text-sm">
@@ -286,5 +392,47 @@ export function EgresoForm({
         pending={pending}
       />
     </form>
+  );
+}
+
+function BancoSelector({
+  name,
+  label,
+  cuentas,
+  value,
+  onChange,
+}: {
+  name: string;
+  label: string;
+  cuentas: CuentaBancaria[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {cuentas.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No hay cuentas bancarias cargadas. Cargá Macro / Galicia en Catálogos →
+          Cuentas bancarias.
+        </p>
+      ) : (
+        <select
+          name={name}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">— Cuenta por defecto del medio —</option>
+          {cuentas.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nombre}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }

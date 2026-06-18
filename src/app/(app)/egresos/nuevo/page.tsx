@@ -4,8 +4,8 @@ import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { listRubrosGasto } from "@/lib/data/rubros-gasto";
 import { listProveedores } from "@/lib/data/proveedores";
 import { listMediosPago } from "@/lib/data/medios-pago";
-import { listSucursales } from "@/lib/data/sucursales";
 import { listInsumos } from "@/lib/data/insumos";
+import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { createEgreso } from "@/lib/data/egresos";
 import { registrarCompraInsumo } from "@/lib/data/insumos";
 
@@ -32,14 +32,16 @@ export default async function NuevoEgresoPage({
   const defaultProveedorId = sp.proveedor;
   const defaultEsCompra = sp.compra === "1";
 
-  const [sucursales, rubros, proveedores, mediosPago, insumos] = await Promise.all([
-    listSucursales(),
-    listRubrosGasto(),
-    listProveedores(),
-    listMediosPago({ soloActivos: true }),
-    listInsumos(),
-  ]);
+  const [rubros, proveedores, mediosPago, insumos, cuentas] =
+    await Promise.all([
+      listRubrosGasto(),
+      listProveedores(),
+      listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+      listInsumos(),
+      listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
+    ]);
   const mediosActivos = mediosPago;
+  const cuentasBanco = cuentas.filter((c) => c.tipo === "banco");
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -48,18 +50,19 @@ export default async function NuevoEgresoPage({
           Nuevo gasto
         </h1>
         <p className="text-sm text-muted-foreground">
-          Sueldos, alquiler, servicios y demás gastos. Si es una compra de
-          insumos, tildá <strong>&ldquo;Es compra de insumo&rdquo;</strong> y se
-          suma al stock automáticamente.
+          {sucursal.nombre} · Sueldos, alquiler, servicios y demás gastos. Si es
+          una compra de insumos, tildá{" "}
+          <strong>&ldquo;Es compra de insumo&rdquo;</strong> y se suma al stock
+          automáticamente.
         </p>
       </header>
 
       <EgresoForm
-        sucursales={sucursales.filter((s) => s.activo)}
         defaultSucursalId={sucursal.id}
         rubros={rubros}
         proveedores={proveedores}
         mediosPago={mediosActivos}
+        cuentasBanco={cuentasBanco}
         insumos={insumos}
         defaultFecha={todayYMD()}
         defaultProveedorId={defaultProveedorId}

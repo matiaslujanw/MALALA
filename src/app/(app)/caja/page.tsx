@@ -11,6 +11,7 @@ import {
   getResumenDelDia,
   listCierres,
 } from "@/lib/data/caja";
+import { getAperturaDeFecha } from "@/lib/data/apertura-caja";
 import { listSucursales } from "@/lib/data/sucursales";
 import { getDeudoresCc } from "@/lib/data/cuenta-corriente";
 import { formatARS, formatLongDate } from "@/lib/utils";
@@ -80,6 +81,7 @@ export default async function CajaPage({
   const resumen = await getResumenDelDia(sucursal.id, hoy);
   const cierres = await listCierres({ sucursalId: sucursal.id, limit: 30 });
   const cierreHoy = await getCierreDeFecha(sucursal.id, hoy);
+  const aperturaHoy = await getAperturaDeFecha(sucursal.id, hoy);
 
   const pendientesDeCierre = puedeCerrar
     ? await getCajasPendientesDeCierre(sucursal.id)
@@ -116,6 +118,23 @@ export default async function CajaPage({
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {puedeCerrar && !aperturaHoy && !cierreHoy && (
+        <div className="rounded-md border border-sage-300 bg-sage-50 p-4 text-sage-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              <span className="font-medium">Todavía no abriste la caja de hoy.</span>{" "}
+              Cargá con cuánta plata arrancás en cada cuenta para empezar a
+              manejarte con ese saldo.
+            </p>
+            <Link
+              href="/caja/apertura"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-sage-800"
+            >
+              Abrir caja
+            </Link>
           </div>
         </div>
       )}
@@ -158,6 +177,19 @@ export default async function CajaPage({
                 Ver
               </button>
             </form>
+          ) : null}
+
+          {puedeCerrar && !cierreHoy ? (
+            <Link
+              href="/caja/apertura"
+              className={
+                aperturaHoy
+                  ? "rounded-md border border-border px-4 py-2 text-sm font-medium uppercase tracking-wider transition-colors hover:bg-cream"
+                  : "flex items-center gap-2 rounded-md bg-sage-700 px-4 py-2 text-sm font-medium uppercase tracking-wider text-white transition-colors hover:bg-sage-800"
+              }
+            >
+              {aperturaHoy ? "Ver apertura" : "Abrir caja"}
+            </Link>
           ) : null}
 
           {puedeCerrar && !cierreHoy ? (
