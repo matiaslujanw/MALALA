@@ -50,9 +50,7 @@ export function BarChart({ data, height = 180 }: BarChartProps) {
         const isToday = i === data.length - 1;
         return (
           <g key={d.fecha}>
-            <title>
-              {d.fecha} · {formatARS(d.total)} · {d.tickets} tickets
-            </title>
+            <title>{`${d.fecha} · ${formatARS(d.total)} · ${d.tickets} tickets`}</title>
             <rect
               x={x}
               y={y}
