@@ -75,13 +75,10 @@ function mapIngreso(row: typeof ingresosTable.$inferSelect): Ingreso {
     observacion: row.observacion ?? undefined,
     usuario_id: row.usuarioId,
     anulado: row.anulado,
-    revision:
-      row.revision === "ok" || row.revision === "error"
-        ? row.revision
-        : undefined,
-    revision_nota: row.revisionNota ?? undefined,
-    revisado_por: row.revisadoPor ?? undefined,
-    revisado_en: row.revisadoEn ? row.revisadoEn.toISOString() : undefined,
+    // Se reutiliza la columna `revision`: "ok" = satisfecho, "error" = no satisfecho.
+    cliente_satisfecho:
+      row.revision === "ok" ? true : row.revision === "error" ? false : undefined,
+    satisfaccion_nota: row.revisionNota ?? undefined,
   };
 }
 
@@ -491,6 +488,14 @@ export async function createIngreso(
   }
 
   const data = parsed.data;
+
+  // Satisfacción del cliente (la marca quien registra la venta). Por defecto
+  // se asume satisfecho; solo se guarda "no satisfecho" si se desmarca.
+  const satisfechoRaw = formData.get("cliente_satisfecho");
+  const clienteNoSatisfecho =
+    satisfechoRaw === "false" || satisfechoRaw === "no" || satisfechoRaw === "0";
+  const satisfaccionNota = String(formData.get("satisfaccion_nota") ?? "").trim();
+
   const subtotalLinea = (linea: (typeof data.lineas)[number]) =>
     linea.tipo === "producto"
       ? linea.precio_efectivo * linea.cantidad
@@ -632,6 +637,10 @@ export async function createIngreso(
         observacion: data.observacion ?? null,
         usuarioId: user.id,
         anulado: false,
+        // Satisfacción del cliente marcada al registrar (default: satisfecho).
+        revision: clienteNoSatisfecho ? "error" : "ok",
+        revisionNota:
+          clienteNoSatisfecho && satisfaccionNota ? satisfaccionNota : null,
       });
 
       const lineasServicio = data.lineas.filter(

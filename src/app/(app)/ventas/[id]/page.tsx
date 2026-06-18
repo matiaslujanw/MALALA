@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { getIngreso } from "@/lib/data/ingresos";
-import { setRevisionVenta } from "@/lib/data/ingresos-actions";
+import { setSatisfaccionVenta } from "@/lib/data/ingresos-actions";
 import { requireUser } from "@/lib/auth/session";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
 import { listCuentas } from "@/lib/data/cuentas-bancarias";
-import { RevisionVentaForm } from "@/components/forms/revision-venta";
+import { SatisfaccionVentaForm } from "@/components/forms/satisfaccion-venta";
 import { formatARS } from "@/lib/utils";
 
 export default async function VentaDetallePage({
@@ -39,9 +39,9 @@ export default async function VentaDetallePage({
   const recargoCobrado =
     (ingreso.valor1 + (ingreso.valor2 ?? 0)) - ingreso.total;
 
-  async function revisar(_prev: unknown, formData: FormData) {
+  async function marcarSatisfaccion(_prev: unknown, formData: FormData) {
     "use server";
-    return await setRevisionVenta(formData);
+    return await setSatisfaccionVenta(formData);
   }
 
   return (
@@ -121,14 +121,13 @@ export default async function VentaDetallePage({
         </div>
       </div>
 
-      {/* Revisión de la venta */}
-      <RevisionVentaForm
+      {/* Satisfacción del cliente */}
+      <SatisfaccionVentaForm
         ingresoId={ingreso.id}
-        revision={ingreso.revision}
-        nota={ingreso.revision_nota}
-        revisadoEn={ingreso.revisado_en}
+        satisfecho={ingreso.cliente_satisfecho}
+        nota={ingreso.satisfaccion_nota}
         puedeEditar={puedeRevisar}
-        action={revisar}
+        action={marcarSatisfaccion}
       />
 
       {/* Líneas */}

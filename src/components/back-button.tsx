@@ -3,22 +3,9 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
-// Pantallas raíz (destinos del menú lateral): no mostramos "Atrás" porque se
-// llega a ellas desde el sidebar y no tienen un "padre" natural al que volver.
-const ROOT_PATHS = new Set<string>([
-  "/dashboard",
-  "/ventas",
-  "/turnos",
-  "/catalogos",
-  "/catalogos/clientes",
-  "/caja",
-  "/bancos",
-  "/liquidaciones",
-  "/stock",
-  "/egresos",
-  "/reportes",
-  "/configuracion/integraciones-whatsapp",
-]);
+// Único destino sin "Atrás": el dashboard es el inicio del backoffice, así que
+// volver desde ahí no tiene sentido. El resto de las secciones muestran la flecha.
+const ROOT_PATHS = new Set<string>(["/dashboard"]);
 
 export function BackButton() {
   const pathname = usePathname();
