@@ -131,6 +131,10 @@ export function NuevaVentaForm({
   const [clienteId, setClienteId] = useState("");
   const [observacion, setObservacion] = useState("");
 
+  // Satisfacción del cliente (la marca quien registra la venta).
+  const [clienteSatisfecho, setClienteSatisfecho] = useState(true);
+  const [satisfaccionNota, setSatisfaccionNota] = useState("");
+
   // Modal nuevo cliente
   const [showNewCliente, setShowNewCliente] = useState(false);
   const [newClienteNombre, setNewClienteNombre] = useState("");
@@ -524,6 +528,11 @@ export function NuevaVentaForm({
       );
     }
     formData.set("observacion", observacion);
+    formData.set("cliente_satisfecho", clienteSatisfecho ? "true" : "false");
+    formData.set(
+      "satisfaccion_nota",
+      !clienteSatisfecho ? satisfaccionNota : "",
+    );
 
     startTransition(async () => {
       const result = await createIngreso(formData);
@@ -1111,6 +1120,33 @@ export function NuevaVentaForm({
           rows={2}
           className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
+      </section>
+
+      {/* Satisfacción del cliente */}
+      <section className="bg-card border border-border rounded-md p-5 space-y-3">
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={clienteSatisfecho}
+            onChange={(e) => setClienteSatisfecho(e.target.checked)}
+            className="h-4 w-4 rounded border-border accent-sage-500"
+          />
+          <span>El cliente quedó satisfecho</span>
+        </label>
+        {!clienteSatisfecho && (
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Motivo (opcional)
+            </label>
+            <textarea
+              value={satisfaccionNota}
+              onChange={(e) => setSatisfaccionNota(e.target.value)}
+              rows={2}
+              placeholder="Ej. disconforme con el color; hubo que repasar y se usó más insumo…"
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        )}
       </section>
 
       {/* Warnings de stock */}

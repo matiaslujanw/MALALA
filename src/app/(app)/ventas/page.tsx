@@ -372,7 +372,7 @@ export default async function VentasPage({
         </div>
         <div className="space-y-1.5">
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Revisión
+            Satisfacción
           </label>
           <select
             name="revision"
@@ -380,9 +380,9 @@ export default async function VentasPage({
             className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
           >
             <option value="">Todas</option>
-            <option value="error">Con error</option>
-            <option value="ok">Correctas</option>
-            <option value="sin">Sin revisar</option>
+            <option value="error">No satisfecho</option>
+            <option value="ok">Satisfecho</option>
+            <option value="sin">Sin dato</option>
           </select>
         </div>
         <button
@@ -449,7 +449,7 @@ export default async function VentasPage({
                   <th className="text-right font-medium px-4 py-3">Equipo</th>
                   <th className="text-right font-medium px-4 py-3">Insumos</th>
                   <th className="text-right font-medium px-4 py-3">Neto</th>
-                  <th className="text-center font-medium px-4 py-3">Revisión</th>
+                  <th className="text-center font-medium px-4 py-3">Satisfacción</th>
                   <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
@@ -491,7 +491,7 @@ export default async function VentasPage({
                       {formatARS(row.breakdown.neto)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <RevisionTag revision={row.ingreso.revision} />
+                      <SatisfaccionTag satisfecho={row.ingreso.cliente_satisfecho} />
                     </td>
                     <td className="px-4 py-3 text-right">
                       <TableActionLink href={`/ventas/${row.ingreso.id}`} />
@@ -507,21 +507,21 @@ export default async function VentasPage({
   );
 }
 
-function RevisionTag({ revision }: { revision?: "ok" | "error" }) {
-  if (revision === "ok") {
+function SatisfaccionTag({ satisfecho }: { satisfecho?: boolean }) {
+  if (satisfecho === true) {
     return (
       <span className="text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-sage-100 text-sage-800">
-        Correcta
+        Satisfecho
       </span>
     );
   }
-  if (revision === "error") {
+  if (satisfecho === false) {
     return (
       <span
         className="text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded"
         style={{ backgroundColor: "rgb(201 169 97 / 0.18)", color: "var(--danger)" }}
       >
-        Con error
+        No satisfecho
       </span>
     );
   }
