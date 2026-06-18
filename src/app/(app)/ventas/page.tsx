@@ -15,6 +15,7 @@ interface SearchParams {
   rango?: "hoy" | "semana" | "mes" | "todo";
   empleado?: string;
   cliente?: string;
+  revision?: "ok" | "error" | "sin";
 }
 
 const RANGOS: Array<{ value: NonNullable<SearchParams["rango"]>; label: string }> = [
@@ -62,6 +63,7 @@ export default async function VentasPage({
     clienteId: sp.cliente,
     desde,
     hasta,
+    revision: !esEmpleado ? sp.revision : undefined,
   });
   const empleados = await listEmpleados();
   const clientes = await listClientes();
@@ -316,7 +318,7 @@ export default async function VentasPage({
       <form
         action="/ventas"
         method="get"
-        className="bg-card border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end"
+        className="bg-card border border-border rounded-md p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
       >
         <div className="space-y-1.5">
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -366,6 +368,21 @@ export default async function VentasPage({
                 {c.nombre}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Revisión
+          </label>
+          <select
+            name="revision"
+            defaultValue={sp.revision ?? ""}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          >
+            <option value="">Todas</option>
+            <option value="error">Con error</option>
+            <option value="ok">Correctas</option>
+            <option value="sin">Sin revisar</option>
           </select>
         </div>
         <button
@@ -432,6 +449,7 @@ export default async function VentasPage({
                   <th className="text-right font-medium px-4 py-3">Equipo</th>
                   <th className="text-right font-medium px-4 py-3">Insumos</th>
                   <th className="text-right font-medium px-4 py-3">Neto</th>
+                  <th className="text-center font-medium px-4 py-3">Revisión</th>
                   <th className="px-4 py-3 w-20"></th>
                 </tr>
               </thead>
@@ -472,6 +490,9 @@ export default async function VentasPage({
                     >
                       {formatARS(row.breakdown.neto)}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <RevisionTag revision={row.ingreso.revision} />
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <TableActionLink href={`/ventas/${row.ingreso.id}`} />
                     </td>
@@ -484,6 +505,27 @@ export default async function VentasPage({
       </section>
     </div>
   );
+}
+
+function RevisionTag({ revision }: { revision?: "ok" | "error" }) {
+  if (revision === "ok") {
+    return (
+      <span className="text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-sage-100 text-sage-800">
+        Correcta
+      </span>
+    );
+  }
+  if (revision === "error") {
+    return (
+      <span
+        className="text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded"
+        style={{ backgroundColor: "rgb(201 169 97 / 0.18)", color: "var(--danger)" }}
+      >
+        Con error
+      </span>
+    );
+  }
+  return <span className="text-xs text-muted-foreground">—</span>;
 }
 
 function KpiCard({

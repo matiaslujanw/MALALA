@@ -338,7 +338,14 @@ export interface Ingreso {
   observacion?: string;
   usuario_id: ID;
   anulado: boolean;
+  // Revisión: sin revisar (undefined), correcta ("ok") o con error ("error").
+  revision?: RevisionVenta;
+  revision_nota?: string;
+  revisado_por?: ID;
+  revisado_en?: string; // ISO
 }
+
+export type RevisionVenta = "ok" | "error";
 
 export interface IngresoLinea {
   id: ID;

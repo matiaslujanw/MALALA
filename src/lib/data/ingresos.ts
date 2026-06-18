@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
@@ -48,6 +48,7 @@ export interface IngresoFiltros {
   desde?: string; // ISO
   hasta?: string; // ISO
   incluirAnulados?: boolean;
+  revision?: "ok" | "error" | "sin"; // "sin" = sin revisar
 }
 
 function createId() {
@@ -74,6 +75,13 @@ function mapIngreso(row: typeof ingresosTable.$inferSelect): Ingreso {
     observacion: row.observacion ?? undefined,
     usuario_id: row.usuarioId,
     anulado: row.anulado,
+    revision:
+      row.revision === "ok" || row.revision === "error"
+        ? row.revision
+        : undefined,
+    revision_nota: row.revisionNota ?? undefined,
+    revisado_por: row.revisadoPor ?? undefined,
+    revisado_en: row.revisadoEn ? row.revisadoEn.toISOString() : undefined,
   };
 }
 
@@ -339,6 +347,11 @@ export async function listIngresos(
   }
   if (filtros.hasta) {
     filters.push(lte(ingresosTable.fecha, new Date(filtros.hasta)));
+  }
+  if (filtros.revision === "sin") {
+    filters.push(isNull(ingresosTable.revision));
+  } else if (filtros.revision === "ok" || filtros.revision === "error") {
+    filters.push(eq(ingresosTable.revision, filtros.revision));
   }
 
   const db = getDb();
