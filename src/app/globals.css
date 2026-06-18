@@ -114,3 +114,28 @@ body {
   font-family: var(--font-sans);
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
+
+/* Impresión / exportación a PDF (Reportes → Exportar PDF).
+   Oculta el chrome de la app y los controles, e imprime colores fielmente. */
+@media print {
+  [data-app-chrome] {
+    display: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .print-doc {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-break-avoid {
+    break-inside: avoid;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}
