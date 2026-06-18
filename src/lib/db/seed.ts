@@ -15,6 +15,7 @@ import {
   mediosPago,
   movimientosStock,
   profesionalesAgenda,
+  profesionalesHorarios,
   profiles,
   proveedores,
   recetas,
@@ -98,6 +99,7 @@ async function clearAppTables() {
   await db.delete(movimientosStock);
   await db.delete(stockSucursal);
   await db.delete(recetas);
+  await db.delete(profesionalesHorarios);
   await db.delete(profesionalesAgenda);
   await db.delete(horariosSucursal);
   await db.delete(rubrosGasto);
@@ -241,6 +243,17 @@ async function main() {
       bio: item.bio ?? null,
       prioridad: item.prioridad,
       activoPublico: item.activo_publico,
+    })),
+  );
+
+  await db.insert(profesionalesHorarios).values(
+    snapshot.profesionalesHorarios.map((item) => ({
+      id: item.id,
+      empleadoId: item.empleado_id,
+      sucursalId: item.sucursal_id,
+      diaSemana: item.dia_semana,
+      apertura: item.apertura,
+      cierre: item.cierre,
     })),
   );
 

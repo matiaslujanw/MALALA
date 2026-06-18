@@ -16,6 +16,7 @@ import { failure, fieldErrors, requireRole, type ActionResult } from "./_helpers
 import { buildAccessScope } from "@/lib/auth/access";
 import { buildAvailableSlots, type ProfesionalReserva } from "@/lib/turnos-helpers";
 import { listServiciosHorariosAll } from "@/lib/data/servicios-horarios";
+import { listProfesionalesHorariosBySucursal } from "@/lib/data/profesionales-horarios";
 import {
   turnoCreateSchema,
   turnoEstadoSchema,
@@ -28,6 +29,7 @@ import {
   getTurnoCatalogRefs,
   mapEmpleado,
   mapHorario,
+  mapProfesionalAgendaRow,
   mapServicio,
   mapTurno,
   type TurnoActionState,
@@ -140,7 +142,8 @@ async function createTurnoInternal(
         sql`SELECT pg_advisory_xact_lock(hashtext(${parsed.data.sucursal_id}), hashtext(${parsed.data.fecha_turno}))`
       );
 
-      const [horariosRows, profRows, servRows, blockedRows] = await Promise.all([
+      const [horariosRows, profRows, servRows, blockedRows, profesionalesHorarios] =
+        await Promise.all([
         tx
           .select()
           .from(horariosSucursalTable)
@@ -180,6 +183,9 @@ async function createTurnoInternal(
               eq(turnosTable.fechaTurno, parsed.data.fecha_turno),
             ),
           ),
+        access === "publico"
+          ? listProfesionalesHorariosBySucursal(parsed.data.sucursal_id)
+          : Promise.resolve([]),
       ]);
 
       const slots = buildAvailableSlots({
@@ -190,21 +196,14 @@ async function createTurnoInternal(
         horarios: horariosRows.map(mapHorario),
         profesionales: profRows.map(
           (row): ProfesionalReserva => ({
-            id: row.meta.id,
-            empleado_id: row.meta.empleadoId,
-            sucursal_id: row.meta.sucursalId,
-            especialidad: row.meta.especialidad,
-            avatar_url: row.meta.avatarUrl,
-            color: row.meta.color,
-            bio: row.meta.bio ?? undefined,
-            prioridad: row.meta.prioridad,
-            activo_publico: row.meta.activoPublico,
+            ...mapProfesionalAgendaRow(row.meta),
             empleado: mapEmpleado(row.empleado),
           }),
         ),
         servicios: servRows.map(mapServicio),
         turnos: blockedRows.map((row) => mapTurno(row.turno, row.cliente)),
         serviciosHorarios: await listServiciosHorariosAll(),
+        profesionalesHorarios,
       });
 
       const exists = slots.some((slot) => slot.hora === parsed.data.hora);
@@ -471,15 +470,7 @@ export async function reprogramTurnoAction(
         horarios: horariosRows.map(mapHorario),
         profesionales: profRows.map(
           (row): ProfesionalReserva => ({
-            id: row.meta.id,
-            empleado_id: row.meta.empleadoId,
-            sucursal_id: row.meta.sucursalId,
-            especialidad: row.meta.especialidad,
-            avatar_url: row.meta.avatarUrl,
-            color: row.meta.color,
-            bio: row.meta.bio ?? undefined,
-            prioridad: row.meta.prioridad,
-            activo_publico: row.meta.activoPublico,
+            ...mapProfesionalAgendaRow(row.meta),
             empleado: mapEmpleado(row.empleado),
           }),
         ),
