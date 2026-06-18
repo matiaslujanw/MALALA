@@ -86,6 +86,7 @@ export function mapEmpleado(
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
     valor_hora: row.valorHora,
+    viatico_por_dia: row.viaticoPorDia,
     horas_por_dia: row.horasPorDia,
     dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,

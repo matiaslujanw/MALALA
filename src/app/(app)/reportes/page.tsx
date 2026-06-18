@@ -6,6 +6,7 @@ import {
   Coins,
   FileText,
   ListChecks,
+  Rows3,
   Sparkles,
   TicketPercent,
   Users,
@@ -77,6 +78,12 @@ export default async function ReportesHubPage({ searchParams }: PageProps) {
       label: "Rendimiento por empleada",
       desc: "Servicios, facturación, comisiones y neto por empleada",
       Icon: Users,
+    },
+    {
+      href: "/reportes/profesionales",
+      label: "Resumen semanal por profesional",
+      desc: "Facturado y servicios por profesional, con cortes semanales",
+      Icon: Rows3,
     },
     {
       href: "/reportes/flujo-caja",

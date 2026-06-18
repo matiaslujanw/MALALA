@@ -75,6 +75,9 @@ function mapLiquidacion(
     horas_trabajadas: row.horasTrabajadas,
     valor_hora: row.valorHora,
     sueldo_horas: row.sueldoHoras,
+    viatico_por_dia: row.viaticoPorDia,
+    dias_viatico: row.diasViatico,
+    total_viatico: row.totalViatico,
     total_anticipos: row.totalAnticipos,
     total_pagar: row.totalPagar,
     estado: row.estado as LiquidacionEstado,
@@ -131,6 +134,9 @@ export interface LiquidacionPreview {
   dias_trabajados: number;
   valor_hora: number;
   horas_sugeridas: number;
+  viatico_por_dia: number;
+  dias_viatico_sugeridos: number;
+  total_viatico_sugerido: number;
   anticipos: LiquidacionPreviewAnticipo[];
   total_anticipos: number;
 }
@@ -212,6 +218,7 @@ async function fetchValorHoraYAnticipos(args: {
 }): Promise<{
   valorHora: number;
   horasSugeridas: number;
+  viaticoPorDia: number;
   anticipos: { id: string; fecha: string; monto: number; observacion?: string }[];
 }> {
   const db = getDb();
@@ -219,6 +226,7 @@ async function fetchValorHoraYAnticipos(args: {
   const [empleado] = await db
     .select({
       valorHora: empleadosTable.valorHora,
+      viaticoPorDia: empleadosTable.viaticoPorDia,
       horasPorDia: empleadosTable.horasPorDia,
       diasTrabajo: empleadosTable.diasTrabajo,
     })
@@ -248,6 +256,7 @@ async function fetchValorHoraYAnticipos(args: {
   return {
     valorHora: empleado?.valorHora ?? 0,
     horasSugeridas,
+    viaticoPorDia: empleado?.viaticoPorDia ?? 0,
     anticipos: anticipoRows.map((a) => ({
       id: a.id,
       fecha: ymd(a.fecha),
@@ -293,7 +302,7 @@ export async function previewLiquidacion(input: {
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
 
-  const { valorHora, horasSugeridas, anticipos } =
+  const { valorHora, horasSugeridas, viaticoPorDia, anticipos } =
     await fetchValorHoraYAnticipos({
       empleadoId: parsed.data.empleado_id,
       sucursalId: parsed.data.sucursal_id,
@@ -301,6 +310,8 @@ export async function previewLiquidacion(input: {
       hasta: parsed.data.periodo_hasta,
     });
   const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
+  const diasViaticoSugeridos = dias.size;
+  const totalViaticoSugerido = diasViaticoSugeridos * viaticoPorDia;
 
   return {
     ok: true,
@@ -315,6 +326,9 @@ export async function previewLiquidacion(input: {
       dias_trabajados: dias.size,
       valor_hora: valorHora,
       horas_sugeridas: horasSugeridas,
+      viatico_por_dia: viaticoPorDia,
+      dias_viatico_sugeridos: diasViaticoSugeridos,
+      total_viatico_sugerido: totalViaticoSugerido,
       anticipos,
       total_anticipos: totalAnticipos,
     },
@@ -336,6 +350,8 @@ export async function createLiquidacion(
     empleado_id: formData.get("empleado_id"),
     periodo_desde: formData.get("periodo_desde"),
     periodo_hasta: formData.get("periodo_hasta"),
+    horas_trabajadas: formData.get("horas_trabajadas"),
+    dias_viatico: formData.get("dias_viatico"),
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
@@ -344,7 +360,8 @@ export async function createLiquidacion(
     return { ok: false, errors: { sucursal_id: ["Sin acceso a esa sucursal"] } };
   }
 
-  const horasTrabajadas = Math.max(0, Number(formData.get("horas_trabajadas")) || 0);
+  const horasTrabajadas = parsed.data.horas_trabajadas;
+  const diasViatico = parsed.data.dias_viatico;
 
   const lineas = await fetchLineasPendientes({
     sucursalId: parsed.data.sucursal_id,
@@ -353,16 +370,16 @@ export async function createLiquidacion(
     hasta: parsed.data.periodo_hasta,
   });
 
-  if (lineas.length === 0 && horasTrabajadas <= 0) {
+  if (lineas.length === 0 && horasTrabajadas <= 0 && diasViatico <= 0) {
     return {
       ok: false,
       errors: {
-        _: ["No hay servicios ni horas para liquidar en ese período"],
+        _: ["No hay servicios, horas ni viatico para liquidar en ese período"],
       },
     };
   }
 
-  const { valorHora, anticipos } = await fetchValorHoraYAnticipos({
+  const { valorHora, viaticoPorDia, anticipos } = await fetchValorHoraYAnticipos({
     empleadoId: parsed.data.empleado_id,
     sucursalId: parsed.data.sucursal_id,
     desde: parsed.data.periodo_desde,
@@ -372,8 +389,9 @@ export async function createLiquidacion(
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
   const sueldoHoras = horasTrabajadas * valorHora;
+  const totalViatico = diasViatico * viaticoPorDia;
   const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
-  const totalPagar = totalComision + sueldoHoras - totalAnticipos;
+  const totalPagar = totalComision + sueldoHoras + totalViatico - totalAnticipos;
   const liquidacionId = createId();
 
   const db = getDb();
@@ -390,6 +408,9 @@ export async function createLiquidacion(
       horasTrabajadas,
       valorHora,
       sueldoHoras,
+      viaticoPorDia,
+      diasViatico,
+      totalViatico,
       totalAnticipos,
       totalPagar,
       estado: "pendiente",
@@ -502,6 +523,7 @@ function mapEmpleadoRow(row: typeof empleadosTable.$inferSelect): Empleado {
     porcentaje_default: row.porcentajeDefault,
     sueldo_asegurado: row.sueldoAsegurado,
     valor_hora: row.valorHora,
+    viatico_por_dia: row.viaticoPorDia,
     horas_por_dia: row.horasPorDia,
     dias_trabajo: row.diasTrabajo ?? [],
     observacion: row.observacion ?? undefined,

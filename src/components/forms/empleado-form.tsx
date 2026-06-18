@@ -83,7 +83,14 @@ export function EmpleadoForm({
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CurrencyField
+              label="Viático por día"
+              name="viatico_por_dia"
+              defaultValue={empleado?.viatico_por_dia ?? 0}
+              error={errors.viatico_por_dia}
+              hint="Se propone automáticamente al crear la liquidación"
+            />
             <Field
               label="Horas por día"
               name="horas_por_dia"

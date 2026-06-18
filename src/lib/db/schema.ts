@@ -8,7 +8,6 @@ import {
   pgEnum,
   pgSchema,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -106,6 +105,7 @@ export const empleados = pgTable("empleados", {
   // Legacy: monto fijo asegurado, ya no se usa en el cálculo. Reemplazado por valorHora.
   sueldoAsegurado: doublePrecision("sueldo_asegurado").notNull().default(0),
   valorHora: doublePrecision("valor_hora").notNull().default(0),
+  viaticoPorDia: doublePrecision("viatico_por_dia").notNull().default(0),
   // Jornada: horas por día y días de la semana que trabaja (0=domingo … 6=sábado).
   horasPorDia: doublePrecision("horas_por_dia").notNull().default(0),
   diasTrabajo: jsonb("dias_trabajo").$type<number[]>().notNull().default([]),
@@ -657,6 +657,9 @@ export const liquidaciones = pgTable(
     horasTrabajadas: doublePrecision("horas_trabajadas").notNull().default(0),
     valorHora: doublePrecision("valor_hora").notNull().default(0),
     sueldoHoras: doublePrecision("sueldo_horas").notNull().default(0),
+    viaticoPorDia: doublePrecision("viatico_por_dia").notNull().default(0),
+    diasViatico: doublePrecision("dias_viatico").notNull().default(0),
+    totalViatico: doublePrecision("total_viatico").notNull().default(0),
     totalAnticipos: doublePrecision("total_anticipos").notNull().default(0),
     totalPagar: doublePrecision("total_pagar").notNull().default(0),
     estado: liquidacionEstadoEnum("estado").notNull().default("pendiente"),
