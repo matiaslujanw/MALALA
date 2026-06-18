@@ -2,6 +2,7 @@ import type {
   Empleado,
   HorarioSucursal,
   ProfesionalAgenda,
+  ProfesionalHorario,
   Servicio,
   ServicioHorario,
   Sucursal,
@@ -87,6 +88,30 @@ function overlaps(
   return startA < endB && startB < endA;
 }
 
+interface AvailabilityWindow {
+  apertura: string;
+  cierre: string;
+}
+
+function intersectWindows(
+  base: AvailabilityWindow[],
+  overlay: AvailabilityWindow[],
+) {
+  const windows: AvailabilityWindow[] = [];
+  for (const current of base) {
+    const currentStart = timeToMinutes(current.apertura);
+    const currentEnd = timeToMinutes(current.cierre);
+    for (const next of overlay) {
+      const start = Math.max(currentStart, timeToMinutes(next.apertura));
+      const end = Math.min(currentEnd, timeToMinutes(next.cierre));
+      if (end > start) {
+        windows.push({ apertura: minutesToTime(start), cierre: minutesToTime(end) });
+      }
+    }
+  }
+  return windows;
+}
+
 export function buildAvailableSlots(args: {
   fecha: string;
   sucursalId: string;
@@ -97,6 +122,7 @@ export function buildAvailableSlots(args: {
   horarios: HorarioSucursal[];
   profesionales: ProfesionalReserva[];
   serviciosHorarios?: ServicioHorario[];
+  profesionalesHorarios?: ProfesionalHorario[];
 }) {
   const service = args.servicios.find((item) => item.id === args.servicioId);
   if (!service) return [];
@@ -120,23 +146,18 @@ export function buildAvailableSlots(args: {
   );
   if (serviceHasConfig && serviceDayWindows.length === 0) return [];
 
-  const windows: Array<{ apertura: string; cierre: string }> = [];
-  for (const w of sucursalWindows) {
-    if (!serviceHasConfig) {
-      windows.push({ apertura: w.apertura, cierre: w.cierre });
-      continue;
-    }
-    const wStart = timeToMinutes(w.apertura);
-    const wEnd = timeToMinutes(w.cierre);
-    for (const sw of serviceDayWindows) {
-      const start = Math.max(wStart, timeToMinutes(sw.apertura));
-      const end = Math.min(wEnd, timeToMinutes(sw.cierre));
-      if (end > start) {
-        windows.push({ apertura: minutesToTime(start), cierre: minutesToTime(end) });
-      }
-    }
-  }
-  if (windows.length === 0) return [];
+  const sucursalAvailability = sucursalWindows.map((item) => ({
+    apertura: item.apertura,
+    cierre: item.cierre,
+  }));
+  const serviceAvailability = serviceDayWindows.map((item) => ({
+    apertura: item.apertura,
+    cierre: item.cierre,
+  }));
+  const baseWindows = serviceHasConfig
+    ? intersectWindows(sucursalAvailability, serviceAvailability)
+    : sucursalAvailability;
+  if (baseWindows.length === 0) return [];
 
   const profesionales = args.profesionalId
     ? args.profesionales.filter((item) => item.empleado_id === args.profesionalId)
@@ -159,6 +180,24 @@ export function buildAvailableSlots(args: {
 
   const slots: SlotDisponible[] = [];
   for (const prof of profesionales.sort((a, b) => a.prioridad - b.prioridad)) {
+    const profWindowsAll = (args.profesionalesHorarios ?? []).filter(
+      (item) =>
+        item.empleado_id === prof.empleado_id &&
+        item.sucursal_id === args.sucursalId,
+    );
+    const profHasConfig = profWindowsAll.length > 0;
+    const profDayWindows = profWindowsAll
+      .filter((item) => item.dia_semana === day)
+      .map((item) => ({ apertura: item.apertura, cierre: item.cierre }));
+    if (profHasConfig && profDayWindows.length === 0) {
+      continue;
+    }
+
+    const windows = profHasConfig
+      ? intersectWindows(baseWindows, profDayWindows)
+      : baseWindows;
+    if (windows.length === 0) continue;
+
     const profTurnos = blocked.filter(
       (turno) => turno.profesional_id === prof.empleado_id,
     );
@@ -206,6 +245,51 @@ export function buildAvailableSlots(args: {
         );
 
   return deduped.slice(0, 18);
+}
+
+export function listReservableDates(args: {
+  count?: number;
+  start?: Date;
+  sucursalId: string;
+  servicioId: string;
+  profesionalId?: string;
+  horarios: HorarioSucursal[];
+  profesionales: ProfesionalReserva[];
+  servicios: Servicio[];
+  turnos: Turno[];
+  serviciosHorarios?: ServicioHorario[];
+  profesionalesHorarios?: ProfesionalHorario[];
+}) {
+  const count = args.count ?? 6;
+  const dates: string[] = [];
+  const cursor = new Date(args.start ?? new Date());
+  cursor.setHours(0, 0, 0, 0);
+  let scanned = 0;
+
+  while (dates.length < count && scanned < 60) {
+    const fecha = cursor.toISOString().slice(0, 10);
+    const slots = buildAvailableSlots({
+      fecha,
+      sucursalId: args.sucursalId,
+      servicioId: args.servicioId,
+      profesionalId: args.profesionalId,
+      horarios: args.horarios,
+      profesionales: args.profesionales,
+      servicios: args.servicios,
+      turnos: args.turnos.filter(
+        (turno) => turno.sucursal_id === args.sucursalId && turno.fecha_turno === fecha,
+      ),
+      serviciosHorarios: args.serviciosHorarios,
+      profesionalesHorarios: args.profesionalesHorarios,
+    });
+    if (slots.length > 0) {
+      dates.push(fecha);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+    scanned += 1;
+  }
+
+  return dates;
 }
 
 export function buildTurnoDetalle(args: {

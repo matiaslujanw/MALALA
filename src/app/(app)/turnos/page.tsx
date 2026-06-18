@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Clock3, Filter, Plus, UserRound, X } from "lucide-react";
+import { Clock3, Filter, UserRound, X } from "lucide-react";
+import { TableActionLink } from "@/components/table-action-link";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { QuickAddForm } from "@/components/quick-add-form";
 import {
@@ -98,7 +99,7 @@ export default async function TurnosPage({
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     monthFirst = first.toISOString().slice(0, 10);
     // Pad to include full weeks
-    let startOffset = (first.getDay() + 6) % 7;
+    const startOffset = (first.getDay() + 6) % 7;
     const gridStart = new Date(first);
     gridStart.setDate(gridStart.getDate() - startOffset);
     const gridEnd = new Date(last);
@@ -238,6 +239,9 @@ export default async function TurnosPage({
                 servicios={servicios}
                 profesionales={agenda.profesionales}
               />
+            )}
+            {canManage && agenda.profesionales.length > 0 && (
+              <ProfesionalesAgendaPanel profesionales={agenda.profesionales} />
             )}
           </aside>
         </div>
@@ -383,6 +387,9 @@ export default async function TurnosPage({
               servicios={servicios}
               profesionales={agenda.profesionales}
             />
+          )}
+          {canManage && agenda.profesionales.length > 0 && (
+            <ProfesionalesAgendaPanel profesionales={agenda.profesionales} />
           )}
 
           <section className="rounded-[1.75rem] border border-border bg-card p-5">
@@ -582,6 +589,48 @@ function EmptyAgenda() {
   );
 }
 
+function ProfesionalesAgendaPanel({
+  profesionales,
+}: {
+  profesionales: Array<{
+    id: string;
+    especialidad: string;
+    empleado: { nombre: string };
+  }>;
+}) {
+  return (
+    <section className="rounded-[1.75rem] border border-border bg-card p-5">
+      <div className="mb-4">
+        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+          Disponibilidad publica
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Configura los dias y horarios de cada profesional por sucursal.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {profesionales.map((prof) => (
+          <div
+            key={prof.id}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-stone-100 bg-white px-4 py-3"
+          >
+            <div>
+              <p className="font-medium text-ink">{prof.empleado.nombre}</p>
+              <p className="text-xs text-muted-foreground">{prof.especialidad}</p>
+            </div>
+            <TableActionLink
+              href={`/turnos/profesionales/${prof.id}`}
+              variant="edit"
+              label="Franjas"
+            />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function buildHref(
   searchParams: SearchParams,
   overrides: Partial<Record<keyof SearchParams, string | undefined>>,
@@ -593,12 +642,6 @@ function buildHref(
   }
   const query = params.toString();
   return query ? `/turnos?${query}` : "/turnos";
-}
-
-function addDays(isoDate: string, amount: number) {
-  const date = new Date(`${isoDate}T12:00:00`);
-  date.setDate(date.getDate() + amount);
-  return date.toISOString().slice(0, 10);
 }
 
 function initials(value: string) {

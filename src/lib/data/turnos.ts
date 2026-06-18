@@ -5,6 +5,7 @@ import {
   empleados as empleadosTable,
   horariosSucursal as horariosSucursalTable,
   profesionalesAgenda as profesionalesAgendaTable,
+  profesionalesHorarios as profesionalesHorariosTable,
   promocionItems as promocionItemsTable,
   servicios as serviciosTable,
   sucursales as sucursalesTable,
@@ -22,15 +23,22 @@ import {
   listServiciosHorariosAll,
 } from "@/lib/data/servicios-horarios";
 import {
+  listProfesionalesHorariosAll,
+  listProfesionalesHorariosBySucursal,
+} from "@/lib/data/profesionales-horarios";
+import {
   buildAvailableSlots,
   buildTurnoDetalle,
   listOpenDatesForSucursal,
+  listReservableDates,
   type ProfesionalReserva,
   type TurnoDetalle,
 } from "@/lib/turnos-helpers";
 import type {
   Empleado,
   HorarioSucursal,
+  ProfesionalAgenda,
+  ProfesionalHorario,
   Servicio,
   Sucursal,
   Turno,
@@ -102,6 +110,35 @@ export function mapHorario(
     dia_semana: row.diaSemana,
     apertura: row.apertura,
     cierre: row.cierre,
+  };
+}
+
+export function mapProfesionalHorario(
+  row: typeof profesionalesHorariosTable.$inferSelect,
+): ProfesionalHorario {
+  return {
+    id: row.id,
+    empleado_id: row.empleadoId,
+    sucursal_id: row.sucursalId,
+    dia_semana: row.diaSemana,
+    apertura: row.apertura,
+    cierre: row.cierre,
+  };
+}
+
+export function mapProfesionalAgendaRow(
+  row: typeof profesionalesAgendaTable.$inferSelect,
+): ProfesionalAgenda {
+  return {
+    id: row.id,
+    empleado_id: row.empleadoId,
+    sucursal_id: row.sucursalId,
+    especialidad: row.especialidad,
+    avatar_url: row.avatarUrl,
+    color: row.color,
+    bio: row.bio ?? undefined,
+    prioridad: row.prioridad,
+    activo_publico: row.activoPublico,
   };
 }
 
@@ -256,15 +293,7 @@ export async function getProfesionalesReserva(args?: {
 
   return rows.map(
     (row): ProfesionalReserva => ({
-      id: row.meta.id,
-      empleado_id: row.meta.empleadoId,
-      sucursal_id: row.meta.sucursalId,
-      especialidad: row.meta.especialidad,
-      avatar_url: row.meta.avatarUrl,
-      color: row.meta.color,
-      bio: row.meta.bio ?? undefined,
-      prioridad: row.meta.prioridad,
-      activo_publico: row.meta.activoPublico,
+      ...mapProfesionalAgendaRow(row.meta),
       empleado: mapEmpleado(row.empleado),
     }),
   );
@@ -421,15 +450,23 @@ async function buildAgendaTurnos(args: {
 
 export async function getReservaPublicaSnapshot() {
   const today = new Date().toISOString().slice(0, 10);
-  const [sucursales, servicios, horarios, profesionales, turnos, serviciosHorarios] =
-    await Promise.all([
-      getSucursalesActivas(),
-      getServiciosActivos(),
-      getHorarios(),
-      getProfesionalesReserva(),
-      getTurnosRaw({ desdeFechaTurno: today }),
-      listServiciosHorariosAll(),
-    ]);
+  const [
+    sucursales,
+    servicios,
+    horarios,
+    profesionales,
+    turnos,
+    serviciosHorarios,
+    profesionalesHorarios,
+  ] = await Promise.all([
+    getSucursalesActivas(),
+    getServiciosActivos(),
+    getHorarios(),
+    getProfesionalesReserva(),
+    getTurnosRaw({ desdeFechaTurno: today }),
+    listServiciosHorariosAll(),
+    listProfesionalesHorariosAll(),
+  ]);
 
   return {
     sucursales,
@@ -438,6 +475,7 @@ export async function getReservaPublicaSnapshot() {
     profesionales,
     turnos,
     serviciosHorarios,
+    profesionalesHorarios,
   };
 }
 
@@ -641,6 +679,42 @@ export async function getSlotsDisponibles(args: {
 export async function getFechasDisponibles(sucursalId: string) {
   const horarios = await getHorarios(sucursalId);
   return listOpenDatesForSucursal(horarios, sucursalId);
+}
+
+export async function getFechasDisponiblesReservaPublica(args: {
+  sucursalId: string;
+  servicioId: string;
+  profesionalId?: string;
+  count?: number;
+}) {
+  const [
+    horarios,
+    profesionales,
+    servicios,
+    turnos,
+    serviciosHorarios,
+    profesionalesHorarios,
+  ] = await Promise.all([
+    getHorarios(args.sucursalId),
+    getProfesionalesReserva({ soloSucursalId: args.sucursalId }),
+    getServiciosActivos(),
+    getTurnosRaw({ sucursalId: args.sucursalId }),
+    listServicioHorarios(args.servicioId),
+    listProfesionalesHorariosBySucursal(args.sucursalId),
+  ]);
+
+  return listReservableDates({
+    count: args.count,
+    sucursalId: args.sucursalId,
+    servicioId: args.servicioId,
+    profesionalId: args.profesionalId,
+    horarios,
+    profesionales,
+    servicios,
+    turnos,
+    serviciosHorarios,
+    profesionalesHorarios,
+  });
 }
 
 export type TurnoActionState =

@@ -21,11 +21,19 @@ import { createPublicTurnoAction } from "@/lib/data/turnos-actions";
 import {
   buildAvailableSlots,
   listOpenDatesForSucursal,
+  listReservableDates,
   type ProfesionalReserva,
 } from "@/lib/turnos-helpers";
 import { HeroVideoShowcase } from "@/components/booking/hero-video-showcase";
 import { cn, formatARS } from "@/lib/utils";
-import type { HorarioSucursal, Servicio, ServicioHorario, Sucursal, Turno } from "@/lib/types";
+import type {
+  HorarioSucursal,
+  ProfesionalHorario,
+  Servicio,
+  ServicioHorario,
+  Sucursal,
+  Turno,
+} from "@/lib/types";
 
 interface Props {
   snapshot: {
@@ -35,6 +43,7 @@ interface Props {
     profesionales: ProfesionalReserva[];
     turnos: Turno[];
     serviciosHorarios: ServicioHorario[];
+    profesionalesHorarios: ProfesionalHorario[];
   };
   loggedInLabel?: string;
 }
@@ -128,14 +137,38 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   const fechasDisponibles = useMemo(
     () => {
       if (!bookingSucursalId) return [];
-      const fechas = listOpenDatesForSucursal(snapshot.horarios, bookingSucursalId, 6);
+      const fechas =
+        servicioSeleccionado && profesionalId
+          ? listReservableDates({
+              count: 6,
+              sucursalId: bookingSucursalId,
+              servicioId: servicioSeleccionado.id,
+              profesionalId: profesionalId === "any" ? undefined : profesionalId,
+              horarios: snapshot.horarios,
+              profesionales: snapshot.profesionales,
+              servicios: snapshot.servicios,
+              turnos: snapshot.turnos,
+              serviciosHorarios: snapshot.serviciosHorarios,
+              profesionalesHorarios: snapshot.profesionalesHorarios,
+            })
+          : listOpenDatesForSucursal(snapshot.horarios, bookingSucursalId, 6);
       // Una promo no se puede reservar para una fecha posterior a su vencimiento.
       const vence = servicioSeleccionado?.es_promo
         ? servicioSeleccionado.vence_el
         : undefined;
       return vence ? fechas.filter((f) => f <= vence) : fechas;
     },
-    [bookingSucursalId, snapshot.horarios, servicioSeleccionado],
+    [
+      bookingSucursalId,
+      profesionalId,
+      servicioSeleccionado,
+      snapshot.horarios,
+      snapshot.profesionales,
+      snapshot.profesionalesHorarios,
+      snapshot.servicios,
+      snapshot.serviciosHorarios,
+      snapshot.turnos,
+    ],
   );
 
   const slots = useMemo(() => {
@@ -153,6 +186,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
       servicios: snapshot.servicios,
       turnos: snapshot.turnos,
       serviciosHorarios: snapshot.serviciosHorarios,
+      profesionalesHorarios: snapshot.profesionalesHorarios,
     });
   }, [
     bookingSucursalId,
@@ -160,6 +194,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     profesionalId,
     servicioSeleccionado,
     snapshot.horarios,
+    snapshot.profesionalesHorarios,
     snapshot.serviciosHorarios,
     snapshot.profesionales,
     snapshot.servicios,

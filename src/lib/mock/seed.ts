@@ -251,6 +251,19 @@ export function seed(): Store {
     },
   ];
 
+  const profesionalesHorarios = [
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, dia_semana: 2, apertura: "09:00", cierre: "17:00" },
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, dia_semana: 3, apertura: "09:00", cierre: "17:00" },
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, dia_semana: 4, apertura: "09:00", cierre: "17:00" },
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, dia_semana: 5, apertura: "11:00", cierre: "19:00" },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, dia_semana: 1, apertura: "10:00", cierre: "18:00" },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, dia_semana: 2, apertura: "10:00", cierre: "18:00" },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, dia_semana: 4, apertura: "10:00", cierre: "18:00" },
+    { id: uid(), empleado_id: empEliana.id, sucursal_id: sucBarrioNorte.id, dia_semana: 3, apertura: "10:00", cierre: "14:00" },
+    { id: uid(), empleado_id: empEliana.id, sucursal_id: sucBarrioNorte.id, dia_semana: 3, apertura: "15:00", cierre: "19:00" },
+    { id: uid(), empleado_id: empEliana.id, sucursal_id: sucBarrioNorte.id, dia_semana: 5, apertura: "10:00", cierre: "19:00" },
+  ];
+
   // Clientes
   const cliMaria = { id: uid(), nombre: "Maria Perez", telefono: "+5493815552001", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: true };
   const cliLucia = { id: uid(), nombre: "Lucia Gomez", telefono: "+5493815552002", activo: true, saldo_cc: 0, cuenta_corriente_habilitada: true };
@@ -896,6 +909,7 @@ export function seed(): Store {
     ],
     empleados: [empAnita, empCamila, empEliana, empCarolina],
     profesionalesAgenda,
+    profesionalesHorarios,
     clientes: clientesCatalogo,
     proveedores: [provVlinda, provKeraplus, provDistrilook],
     servicios: [

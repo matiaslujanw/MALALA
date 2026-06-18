@@ -258,6 +258,19 @@ export const profesionalesAgenda = pgTable("profesionales_agenda", {
   activoPublico: boolean("activo_publico").notNull().default(true),
 });
 
+export const profesionalesHorarios = pgTable("profesionales_horarios", {
+  id: text("id").primaryKey(),
+  empleadoId: text("empleado_id")
+    .notNull()
+    .references(() => empleados.id, { onDelete: "cascade" }),
+  sucursalId: text("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id, { onDelete: "cascade" }),
+  diaSemana: integer("dia_semana").notNull(),
+  apertura: text("apertura").notNull(),
+  cierre: text("cierre").notNull(),
+});
+
 export const insumos = pgTable("insumos", {
   id: text("id").primaryKey(),
   nombre: text("nombre").notNull(),
@@ -840,6 +853,7 @@ export const schema = {
   horariosSucursal,
   serviciosHorarios,
   profesionalesAgenda,
+  profesionalesHorarios,
   insumos,
   recetas,
   mediosPago,
