@@ -410,6 +410,11 @@ export const ingresos = pgTable("ingresos", {
     .notNull()
     .references(() => profiles.userId),
   anulado: boolean("anulado").notNull().default(false),
+  // Revisión de la venta: null = sin revisar, "ok" = correcta, "error" = con error.
+  revision: text("revision"),
+  revisionNota: text("revision_nota"),
+  revisadoPor: uuid("revisado_por").references(() => profiles.userId),
+  revisadoEn: timestamp("revisado_en", { withTimezone: true }),
 });
 
 export const ingresoLineas = pgTable("ingreso_lineas", {

@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { getIngreso } from "@/lib/data/ingresos";
+import { setRevisionVenta } from "@/lib/data/ingresos-actions";
 import { requireUser } from "@/lib/auth/session";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listMotivosDescuento } from "@/lib/data/motivos-descuento";
 import { listCuentas } from "@/lib/data/cuentas-bancarias";
+import { RevisionVentaForm } from "@/components/forms/revision-venta";
 import { formatARS } from "@/lib/utils";
 
 export default async function VentaDetallePage({
@@ -11,7 +13,8 @@ export default async function VentaDetallePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
+  const puedeRevisar = user.rol === "admin" || user.rol === "encargada";
   const { id } = await params;
   const [row, sucursales, motivos, cuentas] = await Promise.all([
     getIngreso(id),
@@ -35,6 +38,11 @@ export default async function VentaDetallePage({
     : null;
   const recargoCobrado =
     (ingreso.valor1 + (ingreso.valor2 ?? 0)) - ingreso.total;
+
+  async function revisar(_prev: unknown, formData: FormData) {
+    "use server";
+    return await setRevisionVenta(formData);
+  }
 
   return (
     <div className="space-y-8 max-w-4xl">
@@ -112,6 +120,16 @@ export default async function VentaDetallePage({
           </p>
         </div>
       </div>
+
+      {/* Revisión de la venta */}
+      <RevisionVentaForm
+        ingresoId={ingreso.id}
+        revision={ingreso.revision}
+        nota={ingreso.revision_nota}
+        revisadoEn={ingreso.revisado_en}
+        puedeEditar={puedeRevisar}
+        action={revisar}
+      />
 
       {/* Líneas */}
       <section className="space-y-3">
