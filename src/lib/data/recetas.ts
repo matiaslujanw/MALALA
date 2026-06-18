@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
@@ -145,6 +145,53 @@ export async function listRecetasByServicio(
 ): Promise<Receta[]> {
   const items = await getRecetaItems(servicioId);
   return items.map((item) => item.receta);
+}
+
+export interface ServicioDeInsumo {
+  servicio: Servicio;
+  receta_id: string;
+  cantidad: number;
+  costo: number;
+}
+
+/**
+ * Vista inversa de la receta: dado un insumo, en qué servicios se usa y con qué
+ * cantidad/costo. Solo servicios (no promociones).
+ */
+export async function listServiciosByInsumo(
+  insumoId: string,
+): Promise<ServicioDeInsumo[]> {
+  requireSupabaseRuntime(
+    "Las recetas del sistema solo se cargan desde Supabase.",
+  );
+
+  const db = getDb();
+  const [insumoRow] = await db
+    .select()
+    .from(insumosTable)
+    .where(eq(insumosTable.id, insumoId))
+    .limit(1);
+  if (!insumoRow) return [];
+  const precioUnitario = insumoRow.precioUnitario;
+
+  const rows = await db
+    .select({ receta: recetasTable, servicio: serviciosTable })
+    .from(recetasTable)
+    .innerJoin(serviciosTable, eq(recetasTable.servicioId, serviciosTable.id))
+    .where(
+      and(
+        eq(recetasTable.insumoId, insumoId),
+        eq(serviciosTable.esPromo, false),
+      ),
+    )
+    .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
+
+  return rows.map((row) => ({
+    servicio: mapServicio(row.servicio),
+    receta_id: row.receta.id,
+    cantidad: row.receta.cantidad,
+    costo: precioUnitario != null ? row.receta.cantidad * precioUnitario : 0,
+  }));
 }
 
 export async function upsertRecetaItem(

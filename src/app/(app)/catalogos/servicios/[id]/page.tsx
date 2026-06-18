@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
 import { ServicioForm } from "@/components/forms/servicio-form";
 import {
   getServicio,
+  listRubrosServicios,
   toggleServicioActivo,
   updateServicio,
 } from "@/lib/data/servicios";
@@ -40,9 +42,10 @@ export default async function EditarServicioPage({
   const puedeEditar = user.rol === "admin";
 
   const { id } = await params;
-  const [servicio, horarios] = await Promise.all([
+  const [servicio, horarios, rubros] = await Promise.all([
     getServicio(id),
     listServicioHorarios(id),
+    listRubrosServicios(),
   ]);
   if (!servicio) notFound();
 
@@ -75,8 +78,32 @@ export default async function EditarServicioPage({
         <p className="text-sm text-muted-foreground">{servicio.nombre}</p>
       </header>
 
+      {puedeEditar && (
+        <Link
+          href={`/catalogos/recetas/${id}`}
+          className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4 transition-colors hover:bg-cream/40"
+        >
+          <div>
+            <p className="text-sm font-medium">Receta de este servicio</p>
+            <p className="text-xs text-muted-foreground">
+              Definí qué insumos consume y cuánto, para costo, margen y descuento
+              de stock al vender.
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-sage-700">
+            Editar receta
+            <ArrowRight className="h-4 w-4 stroke-[1.5]" />
+          </span>
+        </Link>
+      )}
+
       {puedeEditar ? (
-        <ServicioForm servicio={servicio} action={update} submitLabel="Guardar" />
+        <ServicioForm
+          servicio={servicio}
+          rubros={rubros}
+          action={update}
+          submitLabel="Guardar"
+        />
       ) : (
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border border-border bg-card p-5">
           <Dato label="Rubro" value={servicio.rubro} />

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AjusteForm } from "@/components/forms/ajuste-form";
 import { listInsumos } from "@/lib/data/insumos";
 import { listSucursales } from "@/lib/data/sucursales";
-import { createAjusteManual } from "@/lib/data/stock";
+import { createAjusteManual, listStockBySucursal } from "@/lib/data/stock";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function AjustePage() {
@@ -15,6 +15,18 @@ export default async function AjustePage() {
     listInsumos(),
     listSucursales(),
   ]);
+
+  // Stock actual por sucursal/insumo, para mostrar el saldo y un preview del
+  // ajuste en el form. Mapa: sucursalId -> insumoId -> cantidad.
+  const stockPorSucursal = await Promise.all(
+    sucursales.map((s) => listStockBySucursal(s.id)),
+  );
+  const stockMap: Record<string, Record<string, number>> = {};
+  sucursales.forEach((s, i) => {
+    stockMap[s.id] = Object.fromEntries(
+      stockPorSucursal[i].map((row) => [row.insumo.id, row.cantidad]),
+    );
+  });
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";
@@ -35,6 +47,7 @@ export default async function AjustePage() {
       <AjusteForm
         insumos={insumos}
         sucursales={sucursales}
+        stockMap={stockMap}
         defaultSucursalId={sucursal.id}
         action={action}
       />

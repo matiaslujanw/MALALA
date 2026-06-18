@@ -110,6 +110,7 @@ export function InsumoForm({
               name="precio_envase"
               defaultValue={insumo?.precio_envase}
               error={errors.precio_envase}
+              hint="Mayor a 0"
               required
             />
           </div>

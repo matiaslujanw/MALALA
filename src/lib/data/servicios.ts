@@ -50,6 +50,17 @@ export async function listServicios(opts?: {
   return rows.map(mapServicio);
 }
 
+/** Rubros ya usados por servicios (no promos), para elegir en el alta/edición. */
+export async function listRubrosServicios(): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .selectDistinct({ rubro: serviciosTable.rubro })
+    .from(serviciosTable)
+    .where(eq(serviciosTable.esPromo, false))
+    .orderBy(asc(serviciosTable.rubro));
+  return rows.map((r) => r.rubro).filter((r): r is string => Boolean(r));
+}
+
 export async function getServicio(servicioId: string): Promise<Servicio | null> {
   const db = getDb();
   const [row] = await db

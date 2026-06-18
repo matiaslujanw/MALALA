@@ -390,11 +390,21 @@ export async function createEgreso(
       });
 
       if (data.insumo_id && data.cantidad && data.cantidad > 0) {
+        // `cantidad` viene en ENVASES. El stock se lleva en la unidad base del
+        // insumo (ml/g/ud), igual que el consumo por receta y la valuación, así
+        // que convertimos a unidad base con el tamaño del envase.
+        const [insumoRow] = await tx
+          .select({ tamanoEnvase: insumosTable.tamanoEnvase })
+          .from(insumosTable)
+          .where(eq(insumosTable.id, data.insumo_id))
+          .limit(1);
+        const tamanoEnvase = insumoRow?.tamanoEnvase ?? 1;
         await applyMovementTx(tx, {
           insumo_id: data.insumo_id,
           sucursal_id: data.sucursal_id,
-          delta: data.cantidad,
+          delta: data.cantidad * tamanoEnvase,
           tipo: "compra",
+          motivo: `${data.cantidad} envase(s)`,
           ref_tipo: "egreso",
           ref_id: egresoId,
           usuario_id: user.id,
