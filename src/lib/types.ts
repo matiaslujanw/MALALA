@@ -419,6 +419,14 @@ export interface AperturaCuentaLinea {
   saldo_declarado: number;
 }
 
+export interface CierreCuentaLinea {
+  id: ID;
+  cierre_id: ID;
+  cuenta_id: ID;
+  saldo_esperado: number;
+  saldo_contado: number;
+}
+
 export type LiquidacionEstado = "pendiente" | "pagada" | "anulada";
 
 export interface Liquidacion {
