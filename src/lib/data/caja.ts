@@ -5,15 +5,28 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
-import { cierresCaja as cierresCajaTable, cuentasBancarias as cuentasBancariasTable, profiles as profilesTable, sucursales as sucursalesTable } from "@/lib/db/schema";
+import {
+  cierresCaja as cierresCajaTable,
+  cierreCajaCuentas as cierreCajaCuentasTable,
+  cuentasBancarias as cuentasBancariasTable,
+  profiles as profilesTable,
+  sucursales as sucursalesTable,
+} from "@/lib/db/schema";
 import { fieldErrors, requireRole } from "./_helpers";
 import { cierreCajaSchema, DENOMINACIONES_ARS } from "@/lib/validations/caja";
-import type { CierreCaja, Cliente, Empleado, MedioPago } from "@/lib/types";
+import type {
+  CierreCaja,
+  CierreCuentaLinea,
+  Cliente,
+  CuentaBancaria,
+  Empleado,
+  MedioPago,
+} from "@/lib/types";
 import { listEgresos } from "./egresos";
 import { computeBreakdown } from "./ingresos-helpers";
 import { listIngresos } from "./ingresos";
 import { listMediosPago } from "./medios-pago";
-import { getAperturaDeFecha } from "./apertura-caja";
+import { getAperturaDeFecha, getSugerenciasApertura } from "./apertura-caja";
 
 export interface ResumenMpRow {
   mp: MedioPago;
@@ -578,6 +591,64 @@ export async function getCierre(cierreId: string): Promise<CierreConDetalle | nu
   });
 }
 
+export interface CierreCuentaConDetalle {
+  linea: CierreCuentaLinea;
+  cuenta: CuentaBancaria | null;
+}
+
+/**
+ * Arqueo por cuenta de un cierre: esperado vs contado (con la diferencia). Vacío
+ * para cierres viejos (anteriores a la fase 2) que no guardaron arqueo.
+ */
+export async function getCierreCuentas(
+  cierreId: string,
+): Promise<CierreCuentaConDetalle[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja) return [];
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      linea: cierreCajaCuentasTable,
+      cuenta: cuentasBancariasTable,
+    })
+    .from(cierreCajaCuentasTable)
+    .leftJoin(
+      cuentasBancariasTable,
+      eq(cierreCajaCuentasTable.cuentaId, cuentasBancariasTable.id),
+    )
+    .where(eq(cierreCajaCuentasTable.cierreId, cierreId));
+
+  const detalle = rows.map((r) => ({
+    linea: {
+      id: r.linea.id,
+      cierre_id: r.linea.cierreId,
+      cuenta_id: r.linea.cuentaId,
+      saldo_esperado: r.linea.saldoEsperado,
+      saldo_contado: r.linea.saldoContado,
+    } satisfies CierreCuentaLinea,
+    cuenta: r.cuenta
+      ? ({
+          id: r.cuenta.id,
+          sucursal_id: r.cuenta.sucursalId,
+          nombre: r.cuenta.nombre,
+          tipo: r.cuenta.tipo,
+          activo: r.cuenta.activo,
+          observacion: r.cuenta.observacion ?? undefined,
+        } satisfies CuentaBancaria)
+      : null,
+  }));
+
+  // Efectivo primero, después bancos por nombre.
+  return detalle.sort((a, b) => {
+    const ae = a.cuenta?.tipo === "efectivo" ? 0 : 1;
+    const be = b.cuenta?.tipo === "efectivo" ? 0 : 1;
+    if (ae !== be) return ae - be;
+    return (a.cuenta?.nombre ?? "").localeCompare(b.cuenta?.nombre ?? "");
+  });
+}
+
 export async function getCierreDeFecha(
   sucursalId: string,
   fecha: string,
@@ -807,29 +878,50 @@ export async function createCierre(
 
   const cierreId = createId();
 
-  await db.insert(cierresCajaTable).values({
-    id: cierreId,
-    sucursalId: data.sucursal_id,
-    fecha: data.fecha,
-    saldoInicialEf,
-    saldoBanco,
-    billetes: data.billetes,
-    ingresosEf,
-    egresosEf,
-    ingresosBanc: ingresosResto,
-    egresosBanc: egresosResto,
-    cobrosTc: 0,
-    cobrosTd: 0,
-    vouchers: data.vouchers,
-    giftcards: data.giftcards,
-    autoconsumos: data.autoconsumos,
-    cheques: data.cheques,
-    aportes: data.aportes,
-    ingresosCc: data.ingresos_cc,
-    anticipos: data.anticipos,
-    observacion: data.observacion ?? null,
-    cerradoPor: user.id,
-    fechaCierre: new Date(),
+  // Arqueo por cuenta: lo esperado es el saldo actual de cada cuenta; lo contado
+  // lo carga el usuario (form: contado_<cuentaId>). Si no lo carga, se asume que
+  // coincide con lo esperado. La diferencia se guarda como dato; no toca saldos.
+  const saldosCuentas = await getSugerenciasApertura(data.sucursal_id);
+
+  await db.transaction(async (tx) => {
+    await tx.insert(cierresCajaTable).values({
+      id: cierreId,
+      sucursalId: data.sucursal_id,
+      fecha: data.fecha,
+      saldoInicialEf,
+      saldoBanco,
+      billetes: data.billetes,
+      ingresosEf,
+      egresosEf,
+      ingresosBanc: ingresosResto,
+      egresosBanc: egresosResto,
+      cobrosTc: 0,
+      cobrosTd: 0,
+      vouchers: data.vouchers,
+      giftcards: data.giftcards,
+      autoconsumos: data.autoconsumos,
+      cheques: data.cheques,
+      aportes: data.aportes,
+      ingresosCc: data.ingresos_cc,
+      anticipos: data.anticipos,
+      observacion: data.observacion ?? null,
+      cerradoPor: user.id,
+      fechaCierre: new Date(),
+    });
+
+    for (const sug of saldosCuentas) {
+      const raw = formData.get(`contado_${sug.cuenta.id}`);
+      const contado =
+        typeof raw === "string" && raw !== "" ? Number(raw) : sug.esperado;
+      if (!Number.isFinite(contado)) continue;
+      await tx.insert(cierreCajaCuentasTable).values({
+        id: createId(),
+        cierreId,
+        cuentaId: sug.cuenta.id,
+        saldoEsperado: sug.esperado,
+        saldoContado: contado,
+      });
+    }
   });
 
   revalidatePath("/caja");

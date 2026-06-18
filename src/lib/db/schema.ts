@@ -532,6 +532,24 @@ export const aperturaCajaCuentas = pgTable(
   }),
 );
 
+export const cierreCajaCuentas = pgTable(
+  "cierre_caja_cuentas",
+  {
+    id: text("id").primaryKey(),
+    cierreId: text("cierre_id")
+      .notNull()
+      .references(() => cierresCaja.id, { onDelete: "cascade" }),
+    cuentaId: text("cuenta_id")
+      .notNull()
+      .references(() => cuentasBancarias.id),
+    saldoEsperado: doublePrecision("saldo_esperado").notNull(),
+    saldoContado: doublePrecision("saldo_contado").notNull(),
+  },
+  (table) => ({
+    cierreIdx: index("cierre_caja_cuentas_cierre_idx").on(table.cierreId),
+  }),
+);
+
 export const turnos = pgTable(
   "turnos",
   {

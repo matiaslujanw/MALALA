@@ -6,6 +6,7 @@ import {
   getCierreDeFecha,
   getResumenDelDia,
 } from "@/lib/data/caja";
+import { getSugerenciasApertura } from "@/lib/data/apertura-caja";
 import { formatARS } from "@/lib/utils";
 import { CierreCajaSimpleForm } from "@/components/forms/cierre-caja-simple-form";
 
@@ -35,6 +36,7 @@ export default async function NuevoCierrePage({
   if (existente) redirect(`/caja/${existente.id}`);
 
   const resumen = await getResumenDelDia(sucursal.id, fecha);
+  const cuentas = await getSugerenciasApertura(sucursal.id);
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -74,7 +76,11 @@ export default async function NuevoCierrePage({
         </p>
       </section>
 
-      <CierreCajaSimpleForm sucursalId={sucursal.id} fecha={fecha} />
+      <CierreCajaSimpleForm
+        sucursalId={sucursal.id}
+        fecha={fecha}
+        cuentas={cuentas}
+      />
     </div>
   );
 }
