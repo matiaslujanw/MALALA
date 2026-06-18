@@ -222,3 +222,278 @@ export function comisionesPorEmpleado(
 
   return Array.from(acc.values()).sort((a, b) => b.total - a.total);
 }
+
+export interface RendimientoEmpleadoRow {
+  empleadoId: string;
+  nombre: string;
+  servicios: number;
+  facturado: number;
+  comisiones: number;
+  costoInsumos: number;
+  netoNegocio: number;
+}
+
+export interface RendimientoEmpleadoTotals {
+  servicios: number;
+  facturado: number;
+  comisiones: number;
+  costoInsumos: number;
+  netoNegocio: number;
+}
+
+export interface SemanaProfesionalRow {
+  empleadoId: string;
+  nombre: string;
+  servicios: number;
+  facturado: number;
+  promedioServicio: number;
+}
+
+export interface SemanaProfesionalGroup {
+  key: string;
+  desde: string;
+  hasta: string;
+  rows: SemanaProfesionalRow[];
+  totals: {
+    servicios: number;
+    facturado: number;
+    promedioServicio: number;
+  };
+}
+
+function parseYmdUtc(ymd: string): Date {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1, 12, 0, 0));
+}
+
+function formatYmdUtc(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekRangeFromYmd(ymd: string) {
+  const base = parseYmdUtc(ymd);
+  const day = base.getUTCDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const start = new Date(base);
+  start.setUTCDate(start.getUTCDate() + diffToMonday);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  return {
+    key: formatYmdUtc(start),
+    desde: formatYmdUtc(start),
+    hasta: formatYmdUtc(end),
+  };
+}
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+export function buildFacturadoPorLineaMap(
+  row: IngresoConDetalle,
+  promoPriceById?: Map<string, number>,
+): Map<string, number> {
+  const amounts = new Map<string, number>();
+
+  for (const linea of row.lineas) {
+    amounts.set(linea.id, linea.subtotal);
+  }
+
+  if (!promoPriceById || promoPriceById.size === 0) {
+    return amounts;
+  }
+
+  const groupedByPromo = new Map<string, IngresoLineaConDetalle[]>();
+  for (const linea of row.lineas) {
+    if (!linea.promo_servicio_id) continue;
+    const current = groupedByPromo.get(linea.promo_servicio_id) ?? [];
+    current.push(linea);
+    groupedByPromo.set(linea.promo_servicio_id, current);
+  }
+
+  for (const [promoId, promoLineas] of groupedByPromo.entries()) {
+    const promoTotal = promoPriceById.get(promoId);
+    if (promoTotal == null) continue;
+
+    const totalWeight = promoLineas.reduce(
+      (sum, linea) => sum + (linea.servicio?.precio_lista ?? linea.subtotal),
+      0,
+    );
+    if (totalWeight <= 0) continue;
+
+    let allocated = 0;
+    promoLineas.forEach((linea, index) => {
+      const weight = linea.servicio?.precio_lista ?? linea.subtotal;
+      const isLast = index === promoLineas.length - 1;
+      const amount = isLast
+        ? roundMoney(promoTotal - allocated)
+        : roundMoney((promoTotal * weight) / totalWeight);
+      amounts.set(linea.id, amount);
+      allocated += amount;
+    });
+  }
+
+  return amounts;
+}
+
+export function rendimientoPorEmpleado(
+  rows: IngresoConDetalle[],
+  opts?: {
+    empleadoIds?: string[];
+    promoPriceById?: Map<string, number>;
+  },
+): RendimientoEmpleadoRow[] {
+  const allowedIds = opts?.empleadoIds ? new Set(opts.empleadoIds) : null;
+  const acc = new Map<string, RendimientoEmpleadoRow>();
+
+  for (const row of rows) {
+    const facturadoPorLinea = buildFacturadoPorLineaMap(
+      row,
+      opts?.promoPriceById,
+    );
+    for (const linea of row.lineas) {
+      if (!linea.empleado) continue;
+      if (allowedIds && !allowedIds.has(linea.empleado.id)) continue;
+      const facturadoLinea =
+        facturadoPorLinea.get(linea.id) ?? linea.subtotal;
+      const entry = acc.get(linea.empleado.id) ?? {
+        empleadoId: linea.empleado.id,
+        nombre: linea.empleado.nombre,
+        servicios: 0,
+        facturado: 0,
+        comisiones: 0,
+        costoInsumos: 0,
+        netoNegocio: 0,
+      };
+      entry.servicios += linea.cantidad;
+      entry.facturado += facturadoLinea;
+      entry.comisiones += linea.comision_monto;
+      entry.costoInsumos += linea.costoInsumos;
+      entry.netoNegocio =
+        entry.facturado - entry.comisiones - entry.costoInsumos;
+      acc.set(linea.empleado.id, entry);
+    }
+  }
+
+  return Array.from(acc.values()).sort((a, b) => b.facturado - a.facturado);
+}
+
+export function totalesRendimientoPorEmpleado(
+  rows: RendimientoEmpleadoRow[],
+): RendimientoEmpleadoTotals {
+  return rows.reduce(
+    (acc, row) => ({
+      servicios: acc.servicios + row.servicios,
+      facturado: acc.facturado + row.facturado,
+      comisiones: acc.comisiones + row.comisiones,
+      costoInsumos: acc.costoInsumos + row.costoInsumos,
+      netoNegocio: acc.netoNegocio + row.netoNegocio,
+    }),
+    {
+      servicios: 0,
+      facturado: 0,
+      comisiones: 0,
+      costoInsumos: 0,
+      netoNegocio: 0,
+    },
+  );
+}
+
+export function resumenSemanalPorProfesional(
+  rows: IngresoConDetalle[],
+  opts?: {
+    empleadoIds?: string[];
+    desde?: string;
+    hasta?: string;
+    promoPriceById?: Map<string, number>;
+  },
+): SemanaProfesionalGroup[] {
+  const allowedIds = opts?.empleadoIds ? new Set(opts.empleadoIds) : null;
+  const weekly = new Map<
+    string,
+    {
+      desde: string;
+      hasta: string;
+      empleados: Map<string, SemanaProfesionalRow>;
+    }
+  >();
+
+  const ensureWeek = (ymd: string) => {
+    const week = getWeekRangeFromYmd(ymd);
+    if (!weekly.has(week.key)) {
+      weekly.set(week.key, {
+        desde: week.desde,
+        hasta: week.hasta,
+        empleados: new Map<string, SemanaProfesionalRow>(),
+      });
+    }
+    return week;
+  };
+
+  for (const row of rows) {
+    const fecha = row.ingreso.fecha.slice(0, 10);
+    const week = ensureWeek(fecha);
+    const weekEntry = weekly.get(week.key)!;
+    const facturadoPorLinea = buildFacturadoPorLineaMap(
+      row,
+      opts?.promoPriceById,
+    );
+
+    for (const linea of row.lineas) {
+      if (!linea.empleado) continue;
+      if (allowedIds && !allowedIds.has(linea.empleado.id)) continue;
+      const facturadoLinea =
+        facturadoPorLinea.get(linea.id) ?? linea.subtotal;
+      const employeeEntry = weekEntry.empleados.get(linea.empleado.id) ?? {
+        empleadoId: linea.empleado.id,
+        nombre: linea.empleado.nombre,
+        servicios: 0,
+        facturado: 0,
+        promedioServicio: 0,
+      };
+      employeeEntry.servicios += linea.cantidad;
+      employeeEntry.facturado += facturadoLinea;
+      employeeEntry.promedioServicio =
+        employeeEntry.servicios > 0
+          ? employeeEntry.facturado / employeeEntry.servicios
+          : 0;
+      weekEntry.empleados.set(linea.empleado.id, employeeEntry);
+    }
+
+    weekly.set(week.key, weekEntry);
+  }
+
+  if (opts?.desde && opts?.hasta) {
+    const cursor = parseYmdUtc(getWeekRangeFromYmd(opts.desde).desde);
+    const end = parseYmdUtc(getWeekRangeFromYmd(opts.hasta).desde);
+    while (cursor <= end) {
+      ensureWeek(formatYmdUtc(cursor));
+      cursor.setUTCDate(cursor.getUTCDate() + 7);
+    }
+  }
+
+  return Array.from(weekly.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([key, group]) => {
+      const sortedRows = Array.from(group.empleados.values()).sort(
+        (a, b) => b.facturado - a.facturado,
+      );
+      const totalServicios = sortedRows.reduce((sum, row) => sum + row.servicios, 0);
+      const totalFacturado = sortedRows.reduce((sum, row) => sum + row.facturado, 0);
+      return {
+        key,
+        desde: group.desde,
+        hasta: group.hasta,
+        rows: sortedRows,
+        totals: {
+          servicios: totalServicios,
+          facturado: totalFacturado,
+          promedioServicio:
+            totalServicios > 0 ? totalFacturado / totalServicios : 0,
+        },
+      };
+    });
+}

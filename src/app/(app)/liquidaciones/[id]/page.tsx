@@ -150,6 +150,12 @@ export default async function LiquidacionDetallePage({
                 value={formatARS(liquidacion.sueldo_horas)}
               />
             )}
+            {liquidacion.total_viatico > 0 && (
+              <KV
+                label={`Viatico (${liquidacion.dias_viatico} dias × ${formatARS(liquidacion.viatico_por_dia)})`}
+                value={formatARS(liquidacion.total_viatico)}
+              />
+            )}
             {liquidacion.total_anticipos > 0 && (
               <KV
                 label="Anticipos"

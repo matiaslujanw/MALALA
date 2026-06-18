@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createLiquidacion,
@@ -87,8 +87,17 @@ export function NuevaLiquidacionForm({
   const [saving, startSaving] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [horas, setHoras] = useState(0);
+  const [diasViatico, setDiasViatico] = useState(0);
+
+  function clearPreviewState() {
+    setPreview(null);
+    setPreviewError(null);
+    setHoras(0);
+    setDiasViatico(0);
+  }
 
   function applyRange(r: { desde: string; hasta: string }) {
+    clearPreviewState();
     setDesde(r.desde);
     setHasta(r.hasta);
   }
@@ -117,6 +126,7 @@ export function NuevaLiquidacionForm({
       setPreview(res.preview);
       // Proponer las horas según la jornada del empleado (editable).
       setHoras(res.preview.horas_sugeridas);
+      setDiasViatico(res.preview.dias_viatico_sugeridos);
     });
   }
 
@@ -126,8 +136,8 @@ export function NuevaLiquidacionForm({
       setErrors({ _: ["Primero calculá el período"] });
       return;
     }
-    if (preview.lineas.length === 0 && horas <= 0) {
-      setErrors({ _: ["No hay servicios ni horas para liquidar"] });
+    if (preview.lineas.length === 0 && horas <= 0 && diasViatico <= 0) {
+      setErrors({ _: ["No hay servicios, horas ni viatico para liquidar"] });
       return;
     }
     const fd = new FormData();
@@ -136,6 +146,7 @@ export function NuevaLiquidacionForm({
     fd.set("periodo_desde", desde);
     fd.set("periodo_hasta", hasta);
     fd.set("horas_trabajadas", String(horas));
+    fd.set("dias_viatico", String(diasViatico));
     startSaving(async () => {
       const res = await createLiquidacion(fd);
       if (!res.ok) {
@@ -146,13 +157,6 @@ export function NuevaLiquidacionForm({
     });
   }
 
-  // Refrescar preview cuando cambian inputs significativos
-  useEffect(() => {
-    setPreview(null);
-    setPreviewError(null);
-    setHoras(0);
-  }, [sucursalId, empleadoId, desde, hasta]);
-
   const empleadosActivos = useMemo(
     () => empleados.filter((e) => e.activo),
     [empleados],
@@ -160,11 +164,12 @@ export function NuevaLiquidacionForm({
 
   // Desglose en vivo (depende de las horas que carga el usuario).
   const sueldoHoras = horas * (preview?.valor_hora ?? 0);
+  const totalViatico = diasViatico * (preview?.viatico_por_dia ?? 0);
   const totalPagar = preview
-    ? preview.total_comision + sueldoHoras - preview.total_anticipos
+    ? preview.total_comision + sueldoHoras + totalViatico - preview.total_anticipos
     : 0;
   const puedeGuardar =
-    !!preview && (preview.lineas.length > 0 || horas > 0);
+    !!preview && (preview.lineas.length > 0 || horas > 0 || diasViatico > 0);
 
   return (
     <div className="space-y-6">
@@ -180,7 +185,10 @@ export function NuevaLiquidacionForm({
             </label>
             <select
               value={sucursalId}
-              onChange={(e) => setSucursalId(e.target.value)}
+              onChange={(e) => {
+                clearPreviewState();
+                setSucursalId(e.target.value);
+              }}
               disabled={!permiteCambiarSucursal}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm disabled:opacity-60"
             >
@@ -197,7 +205,10 @@ export function NuevaLiquidacionForm({
             </label>
             <select
               value={empleadoId}
-              onChange={(e) => setEmpleadoId(e.target.value)}
+              onChange={(e) => {
+                clearPreviewState();
+                setEmpleadoId(e.target.value);
+              }}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
               required
             >
@@ -220,7 +231,10 @@ export function NuevaLiquidacionForm({
               type="date"
               value={desde}
               max={hasta}
-              onChange={(e) => setDesde(e.target.value)}
+              onChange={(e) => {
+                clearPreviewState();
+                setDesde(e.target.value);
+              }}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
             />
           </div>
@@ -233,7 +247,10 @@ export function NuevaLiquidacionForm({
               value={hasta}
               min={desde}
               max={todayYMD()}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={(e) => {
+                clearPreviewState();
+                setHasta(e.target.value);
+              }}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
             />
           </div>
@@ -303,7 +320,7 @@ export function NuevaLiquidacionForm({
           {preview.lineas.length === 0 ? (
             <p className="text-sm text-muted-foreground italic">
               No hay servicios con comisión para este empleado en el período. Podés
-              liquidar solo el sueldo por horas.
+              liquidar solo horas, viatico o ambos.
             </p>
           ) : (
             <div className="overflow-hidden rounded-md border border-border">
@@ -377,6 +394,60 @@ export function NuevaLiquidacionForm({
             </div>
           </div>
 
+          <div className="border-t border-border pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-2xl">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Viatico por dia
+                </label>
+                <input
+                  type="text"
+                  value={formatARS(preview.viatico_por_dia)}
+                  readOnly
+                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-cream/40 text-sm text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Sale de la ficha del empleado y queda congelado en esta liquidacion.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Dias de viatico
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={diasViatico || ""}
+                  onChange={(e) =>
+                    setDiasViatico(Math.max(0, Number(e.target.value) || 0))
+                  }
+                  placeholder="0"
+                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {diasViatico > 0
+                    ? `${diasViatico} dias × ${formatARS(preview.viatico_por_dia)} = ${formatARS(totalViatico)}`
+                    : "Ajustalo manualmente para descontar feriados o dias no trabajados"}
+                </p>
+                {preview.dias_viatico_sugeridos > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Sugerido por dias con servicios: {preview.dias_viatico_sugeridos}.
+                    {diasViatico !== preview.dias_viatico_sugeridos && (
+                      <button
+                        type="button"
+                        onClick={() => setDiasViatico(preview.dias_viatico_sugeridos)}
+                        className="ml-1 underline hover:text-foreground"
+                      >
+                        Usar sugerido
+                      </button>
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Anticipos del período */}
           {preview.anticipos.length > 0 && (
             <div className="space-y-1.5">
@@ -412,6 +483,12 @@ export function NuevaLiquidacionForm({
               label="Sueldo por horas"
               value={formatARS(sueldoHoras)}
             />
+            {totalViatico > 0 && (
+              <DesgloseRow
+                label="Viatico"
+                value={formatARS(totalViatico)}
+              />
+            )}
             {preview.total_anticipos > 0 && (
               <DesgloseRow
                 label="Anticipos"

@@ -16,7 +16,10 @@ export const liquidacionPreviewSchema = z
     path: ["periodo_hasta"],
   });
 
-export const liquidacionCreateSchema = liquidacionPreviewSchema;
+export const liquidacionCreateSchema = liquidacionPreviewSchema.extend({
+  horas_trabajadas: z.coerce.number().nonnegative().default(0),
+  dias_viatico: z.coerce.number().nonnegative().default(0),
+});
 
 export const liquidacionPagoSchema = z.object({
   mp_id: z.string().min(1, "Medio de pago requerido"),
@@ -27,4 +30,5 @@ export const liquidacionPagoSchema = z.object({
 });
 
 export type LiquidacionPreviewInput = z.infer<typeof liquidacionPreviewSchema>;
+export type LiquidacionCreateInput = z.infer<typeof liquidacionCreateSchema>;
 export type LiquidacionPagoInput = z.infer<typeof liquidacionPagoSchema>;

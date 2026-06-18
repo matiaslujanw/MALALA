@@ -66,6 +66,7 @@ export interface Empleado {
   porcentaje_default: number; // 0-100
   sueldo_asegurado: number; // legacy, ya no se usa en el cálculo
   valor_hora: number;
+  viatico_por_dia: number;
   horas_por_dia: number;
   dias_trabajo: number[]; // 0=domingo … 6=sábado
   observacion?: string;
@@ -441,8 +442,11 @@ export interface Liquidacion {
   horas_trabajadas: number;
   valor_hora: number; // snapshot del valor hora al liquidar
   sueldo_horas: number; // horas_trabajadas * valor_hora
+  viatico_por_dia: number; // snapshot del viatico diario al liquidar
+  dias_viatico: number;
+  total_viatico: number;
   total_anticipos: number; // anticipos descontados
-  total_pagar: number; // total_comision + sueldo_horas - total_anticipos
+  total_pagar: number; // total_comision + sueldo_horas + total_viatico - total_anticipos
   estado: LiquidacionEstado;
   mp_id?: ID;
   fecha_pago?: string; // ISO

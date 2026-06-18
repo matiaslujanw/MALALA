@@ -159,6 +159,7 @@ async function main() {
       porcentajeDefault: item.porcentaje_default,
       sueldoAsegurado: item.sueldo_asegurado,
       valorHora: item.valor_hora,
+      viaticoPorDia: item.viatico_por_dia ?? 0,
       horasPorDia: item.horas_por_dia,
       diasTrabajo: item.dias_trabajo,
       observacion: item.observacion ?? null,
