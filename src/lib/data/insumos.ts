@@ -136,6 +136,10 @@ export async function registrarCompraInsumo(
   fd.set("cantidad", String(formData.get("cantidad") ?? ""));
   fd.set("valor", String(formData.get("valor") ?? ""));
   fd.set("mp_id", String(formData.get("mp_id") ?? ""));
+  fd.set("mp1_cuenta_id", String(formData.get("mp1_cuenta_id") ?? ""));
+  fd.set("mp2_id", String(formData.get("mp2_id") ?? ""));
+  fd.set("valor2", String(formData.get("valor2") ?? ""));
+  fd.set("mp2_cuenta_id", String(formData.get("mp2_cuenta_id") ?? ""));
   fd.set("observacion", String(formData.get("observacion") ?? ""));
   if (formData.get("pagado")) fd.set("pagado", "true");
 

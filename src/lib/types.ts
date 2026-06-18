@@ -364,6 +364,10 @@ export interface Egreso {
   cantidad?: number;
   valor: number;
   mp_id: ID;
+  mp1_cuenta_id?: ID;
+  mp2_id?: ID;
+  valor2?: number;
+  mp2_cuenta_id?: ID;
   observacion?: string;
   pagado: boolean;
   usuario_id: ID;

@@ -59,6 +59,10 @@ function mapEgreso(row: typeof egresosTable.$inferSelect): Egreso {
     cantidad: row.cantidad ?? undefined,
     valor: row.valor,
     mp_id: row.mpId,
+    mp1_cuenta_id: row.mp1CuentaId ?? undefined,
+    mp2_id: row.mp2Id ?? undefined,
+    valor2: row.valor2 ?? undefined,
+    mp2_cuenta_id: row.mp2CuentaId ?? undefined,
     observacion: row.observacion ?? undefined,
     pagado: row.pagado,
     usuario_id: row.usuarioId,
@@ -139,7 +143,13 @@ async function loadEgresoLookups(egresos: Egreso[]) {
   const proveedorIds = Array.from(
     new Set(egresos.map((item) => item.proveedor_id).filter(Boolean)),
   ) as string[];
-  const medioPagoIds = Array.from(new Set(egresos.map((item) => item.mp_id)));
+  const medioPagoIds = Array.from(
+    new Set(
+      egresos
+        .flatMap((item) => [item.mp_id, item.mp2_id])
+        .filter(Boolean) as string[],
+    ),
+  );
 
   const [rubrosRows, sucursalesRows, insumosRows, proveedoresRows, mediosPagoRows] =
     await Promise.all([
@@ -205,6 +215,9 @@ function detallar(
       ? (lookups.proveedoresById.get(egreso.proveedor_id) ?? null)
       : null,
     mp: lookups.mediosPagoById.get(egreso.mp_id) ?? null,
+    mp2: egreso.mp2_id
+      ? (lookups.mediosPagoById.get(egreso.mp2_id) ?? null)
+      : null,
   }));
 }
 
@@ -297,6 +310,10 @@ export async function createEgreso(
     cantidad: formData.get("cantidad"),
     valor: formData.get("valor"),
     mp_id: formData.get("mp_id"),
+    mp1_cuenta_id: formData.get("mp1_cuenta_id"),
+    mp2_id: formData.get("mp2_id"),
+    valor2: formData.get("valor2"),
+    mp2_cuenta_id: formData.get("mp2_cuenta_id"),
     observacion: formData.get("observacion"),
     pagado: formData.get("pagado") ?? false,
   });
@@ -349,6 +366,10 @@ export async function createEgreso(
         );
       }
 
+      // El medio 1 cubre lo que no paga el medio 2 (si lo hay).
+      const valor2 = data.mp2_id ? (data.valor2 ?? 0) : 0;
+      const valor1 = data.valor - valor2;
+
       await tx.insert(egresosTable).values({
         id: egresoId,
         fecha: new Date(fechaIso),
@@ -359,6 +380,10 @@ export async function createEgreso(
         cantidad: data.cantidad ?? null,
         valor: data.valor,
         mpId: data.mp_id,
+        mp1CuentaId: data.mp1_cuenta_id ?? null,
+        mp2Id: data.mp2_id ?? null,
+        valor2: data.mp2_id ? valor2 : null,
+        mp2CuentaId: data.mp2_cuenta_id ?? null,
         observacion: data.observacion ?? null,
         pagado: data.pagado,
         usuarioId: user.id,
@@ -377,19 +402,39 @@ export async function createEgreso(
       }
 
       if (data.pagado) {
-        const cuentaId = await getCuentaIdForMpTx(tx, data.mp_id);
-        if (cuentaId) {
-          await emitMovimientoBancarioTx(tx, {
-            cuentaId,
-            fecha: new Date(fechaIso),
-            monto: -Math.abs(data.valor),
-            tipo: "egreso",
-            sucursalId: data.sucursal_id,
-            refTipo: "egreso",
-            refId: egresoId,
-            descripcion: data.observacion ?? "Egreso",
-            usuarioId: user.id,
+        // Un movimiento bancario por cada medio usado. La cuenta es la elegida
+        // (override) o, si no se eligió, la cuenta por defecto del medio.
+        const pagos: Array<{
+          mpId: string;
+          cuentaOverride?: string;
+          monto: number;
+        }> = [
+          { mpId: data.mp_id, cuentaOverride: data.mp1_cuenta_id, monto: valor1 },
+        ];
+        if (data.mp2_id) {
+          pagos.push({
+            mpId: data.mp2_id,
+            cuentaOverride: data.mp2_cuenta_id,
+            monto: valor2,
           });
+        }
+        for (const pago of pagos) {
+          if (pago.monto <= 0) continue;
+          const cuentaId =
+            pago.cuentaOverride ?? (await getCuentaIdForMpTx(tx, pago.mpId));
+          if (cuentaId) {
+            await emitMovimientoBancarioTx(tx, {
+              cuentaId,
+              fecha: new Date(fechaIso),
+              monto: -Math.abs(pago.monto),
+              tipo: "egreso",
+              sucursalId: data.sucursal_id,
+              refTipo: "egreso",
+              refId: egresoId,
+              descripcion: data.observacion ?? "Egreso",
+              usuarioId: user.id,
+            });
+          }
         }
       }
 
@@ -450,19 +495,40 @@ export async function togglePagadoEgreso(
       .where(eq(egresosTable.id, egresoId));
 
     if (nuevoPagado) {
-      const cuentaId = await getCuentaIdForMpTx(tx, egreso.mpId);
-      if (cuentaId) {
-        await emitMovimientoBancarioTx(tx, {
-          cuentaId,
-          fecha: new Date(),
-          monto: -Math.abs(egreso.valor),
-          tipo: "egreso",
-          sucursalId: egreso.sucursalId,
-          refTipo: "egreso",
-          refId: egreso.id,
-          descripcion: egreso.observacion ?? "Pago a proveedor",
-          usuarioId: user.id,
+      // Un movimiento por cada medio usado, igual que al crear el egreso.
+      const valor2 = egreso.mp2Id ? (egreso.valor2 ?? 0) : 0;
+      const valor1 = egreso.valor - valor2;
+      const pagos: Array<{
+        mpId: string;
+        cuentaOverride: string | null;
+        monto: number;
+      }> = [
+        { mpId: egreso.mpId, cuentaOverride: egreso.mp1CuentaId, monto: valor1 },
+      ];
+      if (egreso.mp2Id) {
+        pagos.push({
+          mpId: egreso.mp2Id,
+          cuentaOverride: egreso.mp2CuentaId,
+          monto: valor2,
         });
+      }
+      for (const pago of pagos) {
+        if (pago.monto <= 0) continue;
+        const cuentaId =
+          pago.cuentaOverride ?? (await getCuentaIdForMpTx(tx, pago.mpId));
+        if (cuentaId) {
+          await emitMovimientoBancarioTx(tx, {
+            cuentaId,
+            fecha: new Date(),
+            monto: -Math.abs(pago.monto),
+            tipo: "egreso",
+            sucursalId: egreso.sucursalId,
+            refTipo: "egreso",
+            refId: egreso.id,
+            descripcion: egreso.observacion ?? "Pago a proveedor",
+            usuarioId: user.id,
+          });
+        }
       }
     } else {
       await deleteMovimientosByRefTx(tx, "egreso", egreso.id);

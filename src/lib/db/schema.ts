@@ -445,6 +445,10 @@ export const egresos = pgTable("egresos", {
   mpId: text("mp_id")
     .notNull()
     .references(() => mediosPago.id),
+  mp1CuentaId: text("mp1_cuenta_id").references(() => cuentasBancarias.id),
+  mp2Id: text("mp2_id").references(() => mediosPago.id),
+  valor2: doublePrecision("valor2"),
+  mp2CuentaId: text("mp2_cuenta_id").references(() => cuentasBancarias.id),
   observacion: text("observacion"),
   pagado: boolean("pagado").notNull().default(false),
   usuarioId: uuid("usuario_id")
