@@ -398,6 +398,23 @@ export interface CierreCaja {
   fecha_cierre: string;
 }
 
+export interface AperturaCaja {
+  id: ID;
+  sucursal_id: ID;
+  fecha: string;
+  abierto_por: ID;
+  fecha_apertura: string;
+  observacion?: string;
+}
+
+export interface AperturaCuentaLinea {
+  id: ID;
+  apertura_id: ID;
+  cuenta_id: ID;
+  saldo_esperado: number;
+  saldo_declarado: number;
+}
+
 export type LiquidacionEstado = "pendiente" | "pagada" | "anulada";
 
 export interface Liquidacion {

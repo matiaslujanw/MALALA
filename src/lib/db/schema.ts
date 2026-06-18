@@ -485,6 +485,48 @@ export const cierresCaja = pgTable("cierres_caja", {
   fechaCierre: timestamp("fecha_cierre", { withTimezone: true }).notNull(),
 });
 
+export const aperturasCaja = pgTable(
+  "aperturas_caja",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    fecha: text("fecha").notNull(),
+    abiertoPor: uuid("abierto_por")
+      .notNull()
+      .references(() => profiles.userId),
+    fechaApertura: timestamp("fecha_apertura", { withTimezone: true }).notNull(),
+    observacion: text("observacion"),
+  },
+  (table) => ({
+    sucursalFechaIdx: uniqueIndex("aperturas_caja_sucursal_fecha_idx").on(
+      table.sucursalId,
+      table.fecha,
+    ),
+  }),
+);
+
+export const aperturaCajaCuentas = pgTable(
+  "apertura_caja_cuentas",
+  {
+    id: text("id").primaryKey(),
+    aperturaId: text("apertura_id")
+      .notNull()
+      .references(() => aperturasCaja.id, { onDelete: "cascade" }),
+    cuentaId: text("cuenta_id")
+      .notNull()
+      .references(() => cuentasBancarias.id),
+    saldoEsperado: doublePrecision("saldo_esperado").notNull(),
+    saldoDeclarado: doublePrecision("saldo_declarado").notNull(),
+  },
+  (table) => ({
+    aperturaIdx: index("apertura_caja_cuentas_apertura_idx").on(
+      table.aperturaId,
+    ),
+  }),
+);
+
 export const turnos = pgTable(
   "turnos",
   {

@@ -13,6 +13,7 @@ import { listEgresos } from "./egresos";
 import { computeBreakdown } from "./ingresos-helpers";
 import { listIngresos } from "./ingresos";
 import { listMediosPago } from "./medios-pago";
+import { getAperturaDeFecha } from "./apertura-caja";
 
 export interface ResumenMpRow {
   mp: MedioPago;
@@ -785,14 +786,33 @@ export async function createCierre(
     }
   }
 
+  // Si la caja se abrió ese día, el saldo inicial del cierre toma lo declarado
+  // en la apertura (efectivo y bancos por separado). Si no, queda en lo enviado.
+  let saldoInicialEf = data.saldo_inicial_ef;
+  let saldoBanco = data.saldo_banco;
+  const apertura = await getAperturaDeFecha(data.sucursal_id, data.fecha);
+  if (apertura) {
+    let efApertura = 0;
+    let bancoApertura = 0;
+    for (const linea of apertura.cuentas) {
+      if (efectivoCuentaIds.has(linea.cuenta_id)) {
+        efApertura += linea.saldo_declarado;
+      } else {
+        bancoApertura += linea.saldo_declarado;
+      }
+    }
+    saldoInicialEf = efApertura;
+    saldoBanco = bancoApertura;
+  }
+
   const cierreId = createId();
 
   await db.insert(cierresCajaTable).values({
     id: cierreId,
     sucursalId: data.sucursal_id,
     fecha: data.fecha,
-    saldoInicialEf: data.saldo_inicial_ef,
-    saldoBanco: data.saldo_banco,
+    saldoInicialEf,
+    saldoBanco,
     billetes: data.billetes,
     ingresosEf,
     egresosEf,

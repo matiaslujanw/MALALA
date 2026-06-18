@@ -1,0 +1,278 @@
+"use server";
+
+import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { getDb } from "@/lib/db/client/postgres";
+import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
+import { requireUser } from "@/lib/auth/session";
+import {
+  aperturasCaja as aperturasCajaTable,
+  aperturaCajaCuentas as aperturaCajaCuentasTable,
+} from "@/lib/db/schema";
+import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
+import { aperturaCajaSchema } from "@/lib/validations/caja";
+import { listSaldos } from "./cuentas-bancarias";
+import {
+  deleteMovimientosByRefTx,
+  emitMovimientoBancarioTx,
+} from "./movimientos-bancarios-helpers";
+import type {
+  AperturaCaja,
+  AperturaCuentaLinea,
+  CuentaBancaria,
+} from "@/lib/types";
+
+function createId() {
+  return crypto.randomUUID();
+}
+
+// Diferencias menores a un centavo se consideran iguales (ruido de float).
+const EPSILON = 0.005;
+
+function mapApertura(row: typeof aperturasCajaTable.$inferSelect): AperturaCaja {
+  return {
+    id: row.id,
+    sucursal_id: row.sucursalId,
+    fecha: row.fecha,
+    abierto_por: row.abiertoPor,
+    fecha_apertura: row.fechaApertura.toISOString(),
+    observacion: row.observacion ?? undefined,
+  };
+}
+
+function mapLinea(
+  row: typeof aperturaCajaCuentasTable.$inferSelect,
+): AperturaCuentaLinea {
+  return {
+    id: row.id,
+    apertura_id: row.aperturaId,
+    cuenta_id: row.cuentaId,
+    saldo_esperado: row.saldoEsperado,
+    saldo_declarado: row.saldoDeclarado,
+  };
+}
+
+export interface AperturaCuentaSugerida {
+  cuenta: CuentaBancaria;
+  esperado: number;
+}
+
+/**
+ * Saldos actuales por cuenta activa de la sucursal: lo que la app calcula hoy
+ * (suma de movimientos). Es el "esperado" que se prellena al abrir la caja.
+ * Efectivo primero, después los bancos.
+ */
+export async function getSugerenciasApertura(
+  sucursalId: string,
+): Promise<AperturaCuentaSugerida[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return [];
+
+  const saldos = await listSaldos({ sucursalId });
+  return saldos
+    .filter((s) => s.cuenta.activo)
+    .map((s) => ({ cuenta: s.cuenta, esperado: s.saldo }))
+    .sort((a, b) => {
+      // efectivo primero, luego alfabético por nombre
+      const ae = a.cuenta.tipo === "efectivo" ? 0 : 1;
+      const be = b.cuenta.tipo === "efectivo" ? 0 : 1;
+      if (ae !== be) return ae - be;
+      return a.cuenta.nombre.localeCompare(b.cuenta.nombre);
+    });
+}
+
+export interface AperturaConDetalle {
+  apertura: AperturaCaja;
+  cuentas: AperturaCuentaLinea[];
+}
+
+export async function getAperturaDeFecha(
+  sucursalId: string,
+  fecha: string,
+): Promise<AperturaConDetalle | null> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) return null;
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(aperturasCajaTable)
+    .where(
+      and(
+        eq(aperturasCajaTable.sucursalId, sucursalId),
+        eq(aperturasCajaTable.fecha, fecha),
+      ),
+    )
+    .limit(1);
+
+  if (!row) return null;
+
+  const lineas = await db
+    .select()
+    .from(aperturaCajaCuentasTable)
+    .where(eq(aperturaCajaCuentasTable.aperturaId, row.id));
+
+  return {
+    apertura: mapApertura(row),
+    cuentas: lineas.map(mapLinea),
+  };
+}
+
+export type CrearAperturaResult =
+  | { ok: true; aperturaId: string }
+  | { ok: false; errors: Record<string, string[]> };
+
+/**
+ * Abre la caja del día: guarda lo declarado por cuenta y, si difiere del saldo
+ * esperado, registra un movimiento de ajuste para que el saldo de la cuenta pase
+ * a ser exactamente lo declarado. El form envía declarado_<cuentaId> por cuenta.
+ */
+export async function crearApertura(
+  _prev: CrearAperturaResult | null,
+  formData: FormData,
+): Promise<CrearAperturaResult> {
+  const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
+
+  const parsed = aperturaCajaSchema.safeParse({
+    sucursal_id: formData.get("sucursal_id"),
+    fecha: formData.get("fecha"),
+    observacion: formData.get("observacion"),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, errors: fieldErrors(parsed.error) };
+  }
+  const data = parsed.data;
+
+  if (!isSucursalAllowed(scope, data.sucursal_id)) {
+    return {
+      ok: false,
+      errors: { sucursal_id: ["No tienes acceso a esa sucursal"] },
+    };
+  }
+
+  const db = getDb();
+  const [dup] = await db
+    .select({ id: aperturasCajaTable.id })
+    .from(aperturasCajaTable)
+    .where(
+      and(
+        eq(aperturasCajaTable.sucursalId, data.sucursal_id),
+        eq(aperturasCajaTable.fecha, data.fecha),
+      ),
+    )
+    .limit(1);
+
+  if (dup) {
+    return {
+      ok: false,
+      errors: { _: ["La caja de este día ya está abierta"] },
+    };
+  }
+
+  const sugerencias = await getSugerenciasApertura(data.sucursal_id);
+  if (sugerencias.length === 0) {
+    return {
+      ok: false,
+      errors: { _: ["No hay cuentas cargadas en esta sucursal"] },
+    };
+  }
+
+  const aperturaId = createId();
+  const fechaApertura = new Date();
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(aperturasCajaTable).values({
+        id: aperturaId,
+        sucursalId: data.sucursal_id,
+        fecha: data.fecha,
+        abiertoPor: user.id,
+        fechaApertura,
+        observacion: data.observacion ?? null,
+      });
+
+      for (const sug of sugerencias) {
+        const raw = formData.get(`declarado_${sug.cuenta.id}`);
+        const declarado =
+          typeof raw === "string" && raw !== "" ? Number(raw) : sug.esperado;
+        if (!Number.isFinite(declarado)) continue;
+
+        await tx.insert(aperturaCajaCuentasTable).values({
+          id: createId(),
+          aperturaId,
+          cuentaId: sug.cuenta.id,
+          saldoEsperado: sug.esperado,
+          saldoDeclarado: declarado,
+        });
+
+        const diff = declarado - sug.esperado;
+        if (Math.abs(diff) > EPSILON) {
+          await emitMovimientoBancarioTx(tx, {
+            cuentaId: sug.cuenta.id,
+            fecha: fechaApertura,
+            monto: diff,
+            tipo: "ajuste",
+            sucursalId: data.sucursal_id,
+            refTipo: "apertura",
+            refId: aperturaId,
+            descripcion: "Ajuste de apertura de caja",
+            usuarioId: user.id,
+          });
+        }
+      }
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      errors: {
+        _: [error instanceof Error ? error.message : "No se pudo abrir la caja"],
+      },
+    };
+  }
+
+  revalidatePath("/caja");
+  revalidatePath("/bancos");
+  revalidatePath("/dashboard");
+  return { ok: true, aperturaId };
+}
+
+/**
+ * Reabre (deshace) la apertura del día: borra la apertura, sus líneas y los
+ * ajustes de saldo que generó, dejando los saldos como estaban antes de abrir.
+ * Solo admin.
+ */
+export async function reabrirApertura(aperturaId: string): Promise<ActionResult> {
+  const user = await requireRole(["admin"]);
+  const scope = buildAccessScope(user);
+
+  const db = getDb();
+  const [apertura] = await db
+    .select()
+    .from(aperturasCajaTable)
+    .where(eq(aperturasCajaTable.id, aperturaId))
+    .limit(1);
+
+  if (!apertura) {
+    return { ok: false, errors: { _: ["Apertura no encontrada"] } };
+  }
+  if (!scope.sucursalIdsPermitidas.includes(apertura.sucursalId)) {
+    return { ok: false, errors: { _: ["No tienes acceso a esa apertura"] } };
+  }
+
+  await db.transaction(async (tx) => {
+    await deleteMovimientosByRefTx(tx, "apertura", aperturaId);
+    await tx
+      .delete(aperturaCajaCuentasTable)
+      .where(eq(aperturaCajaCuentasTable.aperturaId, aperturaId));
+    await tx.delete(aperturasCajaTable).where(eq(aperturasCajaTable.id, aperturaId));
+  });
+
+  revalidatePath("/caja");
+  revalidatePath("/bancos");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}

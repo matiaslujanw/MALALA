@@ -37,3 +37,14 @@ export const cierreCajaSchema = z.object({
 });
 
 export type CierreCajaInput = z.infer<typeof cierreCajaSchema>;
+
+export const aperturaCajaSchema = z.object({
+  sucursal_id: z.string().min(1),
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)"),
+  observacion: z
+    .string()
+    .optional()
+    .transform((s) => (s ?? "").trim() || undefined),
+});
+
+export type AperturaCajaInput = z.infer<typeof aperturaCajaSchema>;
