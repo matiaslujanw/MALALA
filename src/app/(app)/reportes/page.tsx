@@ -4,6 +4,7 @@ import {
   BarChart3,
   ClipboardList,
   Coins,
+  FileText,
   ListChecks,
   Sparkles,
   TicketPercent,
@@ -106,21 +107,30 @@ export default async function ReportesHubPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-8 max-w-6xl">
-      <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-          Control de gestión
-        </p>
-        <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
-          Reportes
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Período {filtros.desde} → {filtros.hasta}
-          {filtros.sucursalId
-            ? ` · ${sucursales.find((s) => s.id === filtros.sucursalId)?.nombre ?? ""}`
-            : sucursales.length > 1
-              ? " · todas las sucursales"
-              : ""}
-        </p>
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+            Control de gestión
+          </p>
+          <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
+            Reportes
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Período {filtros.desde} → {filtros.hasta}
+            {filtros.sucursalId
+              ? ` · ${sucursales.find((s) => s.id === filtros.sucursalId)?.nombre ?? ""}`
+              : sucursales.length > 1
+                ? " · todas las sucursales"
+                : ""}
+          </p>
+        </div>
+        <Link
+          href={`/reportes/exportar${qsStr}`}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+        >
+          <FileText className="h-4 w-4 stroke-[1.5]" />
+          Exportar PDF
+        </Link>
       </header>
 
       <ReporteFiltroForm

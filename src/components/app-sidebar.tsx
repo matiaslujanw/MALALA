@@ -47,6 +47,7 @@ export function AppSidebar({ navItems }: SidebarProps) {
       {/* Mobile hamburger */}
       <button
         type="button"
+        data-app-chrome
         onClick={() => setOpen(true)}
         className="fixed top-3 left-3 z-50 lg:hidden rounded-xl bg-card border border-border p-2 text-muted-foreground shadow-sm hover:bg-cream transition"
         aria-label="Abrir menú"
@@ -64,6 +65,7 @@ export function AppSidebar({ navItems }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
+        data-app-chrome
         className={`
           fixed top-0 left-0 z-50 h-screen w-64 shrink-0 border-r border-border bg-card flex flex-col
           transition-transform duration-200 ease-out
