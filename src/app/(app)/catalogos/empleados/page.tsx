@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
+import { TableActionLink } from "@/components/table-action-link";
+import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
+import { requireUser } from "@/lib/auth/session";
 import { listEmpleados } from "@/lib/data/empleados";
 import { listSucursales } from "@/lib/data/sucursales";
-import { requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 const TIPO_LABEL: Record<string, string> = {
@@ -12,24 +13,47 @@ const TIPO_LABEL: Record<string, string> = {
   sueldo_fijo: "Sueldo fijo",
 };
 
-export default async function EmpleadosPage() {
+interface SearchParams {
+  sucursal?: string;
+}
+
+export default async function EmpleadosPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const user = await requireUser();
-  const empleados = await listEmpleados({ incluirInactivos: true });
-  const sucursales = await listSucursales();
+  const scope = buildAccessScope(user);
+  const sp = await searchParams;
+
+  const sucursalesAll = await listSucursales();
+  const sucursales = sucursalesAll.filter((s) =>
+    scope.sucursalIdsPermitidas.includes(s.id),
+  );
+  const sucursalId =
+    sucursales.length > 1
+      ? clampSucursalId(scope, sp.sucursal)
+      : sucursales[0]?.id ?? null;
+  const empleados = await listEmpleados({
+    incluirInactivos: true,
+    sucursalId: sucursalId ?? undefined,
+  });
   const sucMap = new Map(sucursales.map((s) => [s.id, s.nombre]));
+  const puedeGestionar = user.rol === "admin" || user.rol === "superadmin";
 
   return (
     <div className="space-y-8 max-w-5xl">
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
             Empleados
           </h1>
           <p className="text-sm text-muted-foreground">
             {empleados.length} empleados
+            {sucursalId ? ` · ${sucMap.get(sucursalId) ?? "Sucursal"}` : ""}
           </p>
         </div>
-        {user.rol === "admin" && (
+        {puedeGestionar && (
           <Link
             href="/catalogos/empleados/nuevo"
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
@@ -39,6 +63,37 @@ export default async function EmpleadosPage() {
           </Link>
         )}
       </header>
+
+      {sucursales.length > 1 && (
+        <form
+          action="/catalogos/empleados"
+          method="get"
+          className="bg-card border border-border rounded-md p-4 flex flex-wrap items-end gap-3"
+        >
+          <label className="space-y-1.5 text-sm min-w-56">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Sucursal
+            </span>
+            <select
+              name="sucursal"
+              defaultValue={sucursalId ?? ""}
+              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+            >
+              {sucursales.map((sucursal) => (
+                <option key={sucursal.id} value={sucursal.id}>
+                  {sucursal.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+          >
+            Aplicar
+          </button>
+        </form>
+      )}
 
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -50,46 +105,57 @@ export default async function EmpleadosPage() {
               <th className="text-right font-medium px-4 py-3">% default</th>
               <th className="text-right font-medium px-4 py-3">Valor/hora</th>
               <th className="text-center font-medium px-4 py-3">Estado</th>
-              {user.rol === "admin" && <th className="px-4 py-3 w-20"></th>}
+              {puedeGestionar && <th className="px-4 py-3 w-20"></th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {empleados.map((e) => (
-              <tr key={e.id} className="hover:bg-cream/30">
-                <td className="px-4 py-3 font-medium">{e.nombre}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {sucMap.get(e.sucursal_principal_id) ?? "—"}
+            {empleados.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={puedeGestionar ? 7 : 6}
+                  className="px-4 py-8 text-center text-sm text-muted-foreground"
+                >
+                  No hay empleadas visibles para la sucursal seleccionada.
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {TIPO_LABEL[e.tipo_comision]}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {e.porcentaje_default}%
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(e.valor_hora)}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {e.activo ? (
-                    <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
-                      Activo
-                    </span>
-                  ) : (
-                    <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
-                      Inactivo
-                    </span>
-                  )}
-                </td>
-                {user.rol === "admin" && (
-                  <td className="px-4 py-3 text-right">
-                    <TableActionLink
-                      href={`/catalogos/empleados/${e.id}`}
-                      variant="edit"
-                    />
-                  </td>
-                )}
               </tr>
-            ))}
+            ) : (
+              empleados.map((e) => (
+                <tr key={e.id} className="hover:bg-cream/30">
+                  <td className="px-4 py-3 font-medium">{e.nombre}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {sucMap.get(e.sucursal_principal_id) ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {TIPO_LABEL[e.tipo_comision]}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {e.porcentaje_default}%
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {formatARS(e.valor_hora)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {e.activo ? (
+                      <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
+                        Activo
+                      </span>
+                    ) : (
+                      <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
+                        Inactivo
+                      </span>
+                    )}
+                  </td>
+                  {puedeGestionar && (
+                    <td className="px-4 py-3 text-right">
+                      <TableActionLink
+                        href={`/catalogos/empleados/${e.id}`}
+                        variant="edit"
+                      />
+                    </td>
+                  )}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

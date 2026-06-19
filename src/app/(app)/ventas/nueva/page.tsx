@@ -30,7 +30,7 @@ export default async function NuevaVentaPage() {
   ] = await Promise.all([
     listClientes(),
     listServicios(),
-    listEmpleados(),
+    listEmpleados({ sucursalId: sucursal.id }),
     listMediosPago({
       sucursalId: sucursal.id,
       soloActivos: true,

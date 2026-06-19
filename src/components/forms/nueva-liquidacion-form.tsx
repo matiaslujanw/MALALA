@@ -158,8 +158,11 @@ export function NuevaLiquidacionForm({
   }
 
   const empleadosActivos = useMemo(
-    () => empleados.filter((e) => e.activo),
-    [empleados],
+    () =>
+      empleados.filter(
+        (e) => e.activo && e.sucursal_principal_id === sucursalId,
+      ),
+    [empleados, sucursalId],
   );
 
   // Desglose en vivo (depende de las horas que carga el usuario).
@@ -188,6 +191,7 @@ export function NuevaLiquidacionForm({
               onChange={(e) => {
                 clearPreviewState();
                 setSucursalId(e.target.value);
+                setEmpleadoId("");
               }}
               disabled={!permiteCambiarSucursal}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm disabled:opacity-60"

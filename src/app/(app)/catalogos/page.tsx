@@ -13,6 +13,7 @@ import {
   Tags,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import {
   listClientes,
   listEmpleados,
@@ -97,7 +98,8 @@ const items = [
 ];
 
 export default async function CatalogosPage() {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
 
   const servicios = await listServicios();
   const promociones = await listPromociones({ incluirInactivas: true });
@@ -134,7 +136,9 @@ export default async function CatalogosPage() {
           Catálogos
         </h1>
         <p className="text-sm text-muted-foreground">
-          Datos compartidos entre sucursales
+          {scope.puedeVerGlobal
+            ? "Datos compartidos entre sucursales"
+            : "Datos de la sucursal activa"}
         </p>
       </header>
 

@@ -58,7 +58,7 @@ export default async function EditarClientePage({
   const [historial, fichaRegistros, empleados, servicios] = await Promise.all([
     listIngresos({ clienteId: id }),
     listFichaRegistros(id),
-    listEmpleados(),
+    sucursal ? listEmpleados({ sucursalId: sucursal.id }) : Promise.resolve([]),
     listServicios(),
   ]);
   const totalServicios = historial.reduce(

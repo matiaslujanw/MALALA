@@ -267,6 +267,20 @@ async function fetchValorHoraYAnticipos(args: {
   };
 }
 
+async function empleadoPerteneceASucursal(
+  empleadoId: string,
+  sucursalId: string,
+): Promise<boolean> {
+  const db = getDb();
+  const [empleado] = await db
+    .select({ sucursalId: empleadosTable.sucursalPrincipalId })
+    .from(empleadosTable)
+    .where(eq(empleadosTable.id, empleadoId))
+    .limit(1);
+
+  return empleado?.sucursalId === sucursalId;
+}
+
 export async function previewLiquidacion(input: {
   sucursalId: string;
   empleadoId: string;
@@ -291,6 +305,19 @@ export async function previewLiquidacion(input: {
   const scope = buildAccessScope(user);
   if (!isSucursalAllowed(scope, parsed.data.sucursal_id)) {
     return { ok: false, errors: { sucursal_id: ["Sin acceso a esa sucursal"] } };
+  }
+  if (
+    !(await empleadoPerteneceASucursal(
+      parsed.data.empleado_id,
+      parsed.data.sucursal_id,
+    ))
+  ) {
+    return {
+      ok: false,
+      errors: {
+        empleado_id: ["La empleada no pertenece a la sucursal seleccionada"],
+      },
+    };
   }
 
   const lineas = await fetchLineasPendientes({
@@ -359,6 +386,19 @@ export async function createLiquidacion(
   const scope = buildAccessScope(user);
   if (!isSucursalAllowed(scope, parsed.data.sucursal_id)) {
     return { ok: false, errors: { sucursal_id: ["Sin acceso a esa sucursal"] } };
+  }
+  if (
+    !(await empleadoPerteneceASucursal(
+      parsed.data.empleado_id,
+      parsed.data.sucursal_id,
+    ))
+  ) {
+    return {
+      ok: false,
+      errors: {
+        empleado_id: ["La empleada no pertenece a la sucursal seleccionada"],
+      },
+    };
   }
 
   const horasTrabajadas = parsed.data.horas_trabajadas;

@@ -30,20 +30,25 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
 
   const [sucursalesAll, empleadosAll, motivosAll] = await Promise.all([
     listSucursales({ soloActivas: true }),
-    listEmpleados(),
+    listEmpleados({
+      sucursalIds: filtros.sucursalId
+        ? [filtros.sucursalId]
+        : scope.sucursalIdsPermitidas,
+    }),
     listMotivosDescuento(),
   ]);
   const motivosById = new Map(motivosAll.map((m) => [m.id, m]));
   const sucursales = sucursalesAll.filter((s) =>
     scope.sucursalIdsPermitidas.includes(s.id),
   );
-  const empleados = empleadosAll.filter(
-    (e) => scope.sucursalIdsPermitidas.includes(e.sucursal_principal_id),
-  );
+  const empleados = empleadosAll;
+  const empleadoIdFiltrado = empleados.some((e) => e.id === filtros.empleadoId)
+    ? filtros.empleadoId
+    : undefined;
 
   const ingresos = await listIngresos({
     sucursalId: filtros.sucursalId,
-    empleadoId: filtros.empleadoId,
+    empleadoId: empleadoIdFiltrado,
     desde: filtros.desdeIso,
     hasta: filtros.hastaIso,
   });

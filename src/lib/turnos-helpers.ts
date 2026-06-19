@@ -3,6 +3,7 @@ import type {
   HorarioSucursal,
   ProfesionalAgenda,
   ProfesionalHorario,
+  ProfesionalServicio,
   Servicio,
   ServicioHorario,
   Sucursal,
@@ -26,6 +27,43 @@ export interface SlotDisponible {
   profesional_id: string;
   profesional_nombre: string;
   profesional_color: string;
+}
+
+function getEffectiveEligibilityServiceId(service: Servicio) {
+  if (service.es_promo) {
+    return service.promo_primer_servicio_id ?? null;
+  }
+  return service.id;
+}
+
+export function filterProfesionalesByServicio(args: {
+  sucursalId: string;
+  servicioId: string;
+  profesionales: ProfesionalReserva[];
+  servicios: Servicio[];
+  profesionalesServicios?: ProfesionalServicio[];
+}) {
+  const service = args.servicios.find((item) => item.id === args.servicioId);
+  if (!service) return [];
+
+  const eligibilityServiceId = getEffectiveEligibilityServiceId(service);
+  if (!eligibilityServiceId) return [];
+
+  return args.profesionales.filter((profesional) => {
+    if (profesional.sucursal_id !== args.sucursalId) return false;
+
+    const serviciosAsignados = (args.profesionalesServicios ?? []).filter(
+      (item) =>
+        item.empleado_id === profesional.empleado_id &&
+        item.sucursal_id === args.sucursalId,
+    );
+
+    if (serviciosAsignados.length === 0) return true;
+
+    return serviciosAsignados.some(
+      (item) => item.servicio_id === eligibilityServiceId,
+    );
+  });
 }
 
 export function timeToMinutes(value: string) {
@@ -123,6 +161,7 @@ export function buildAvailableSlots(args: {
   profesionales: ProfesionalReserva[];
   serviciosHorarios?: ServicioHorario[];
   profesionalesHorarios?: ProfesionalHorario[];
+  profesionalesServicios?: ProfesionalServicio[];
 }) {
   const service = args.servicios.find((item) => item.id === args.servicioId);
   if (!service) return [];
@@ -159,9 +198,18 @@ export function buildAvailableSlots(args: {
     : sucursalAvailability;
   if (baseWindows.length === 0) return [];
 
+  const profesionalesElegibles = filterProfesionalesByServicio({
+    sucursalId: args.sucursalId,
+    servicioId: args.servicioId,
+    profesionales: args.profesionales,
+    servicios: args.servicios,
+    profesionalesServicios: args.profesionalesServicios,
+  });
   const profesionales = args.profesionalId
-    ? args.profesionales.filter((item) => item.empleado_id === args.profesionalId)
-    : args.profesionales.filter((item) => item.sucursal_id === args.sucursalId);
+    ? profesionalesElegibles.filter(
+        (item) => item.empleado_id === args.profesionalId,
+      )
+    : profesionalesElegibles;
 
   const duration = service.duracion_min ?? 60;
   const blocked = args.turnos.filter(
@@ -259,6 +307,7 @@ export function listReservableDates(args: {
   turnos: Turno[];
   serviciosHorarios?: ServicioHorario[];
   profesionalesHorarios?: ProfesionalHorario[];
+  profesionalesServicios?: ProfesionalServicio[];
 }) {
   const count = args.count ?? 6;
   const dates: string[] = [];
@@ -281,6 +330,7 @@ export function listReservableDates(args: {
       ),
       serviciosHorarios: args.serviciosHorarios,
       profesionalesHorarios: args.profesionalesHorarios,
+      profesionalesServicios: args.profesionalesServicios,
     });
     if (slots.length > 0) {
       dates.push(fecha);

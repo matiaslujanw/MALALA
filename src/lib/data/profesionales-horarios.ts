@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -104,6 +104,71 @@ export interface ProfesionalAgendaConfig extends ProfesionalAgenda {
   sucursal_nombre: string;
 }
 
+function mapAgendaConfigRow(row: {
+  agenda: typeof profesionalesAgendaTable.$inferSelect;
+  empleadoNombre: string;
+  sucursalNombre: string;
+}): ProfesionalAgendaConfig {
+  return {
+    id: row.agenda.id,
+    empleado_id: row.agenda.empleadoId,
+    sucursal_id: row.agenda.sucursalId,
+    especialidad: row.agenda.especialidad,
+    avatar_url: row.agenda.avatarUrl,
+    color: row.agenda.color,
+    bio: row.agenda.bio ?? undefined,
+    prioridad: row.agenda.prioridad,
+    activo_publico: row.agenda.activoPublico,
+    empleado_nombre: row.empleadoNombre,
+    sucursal_nombre: row.sucursalNombre,
+  };
+}
+
+export async function listProfesionalAgendaConfigsByEmpleado(
+  empleadoId: string,
+  opts?: { sucursalIds?: string[] },
+): Promise<ProfesionalAgendaConfig[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  const sucursalIds = opts?.sucursalIds?.length
+    ? opts.sucursalIds.filter((id) => scope.sucursalIdsPermitidas.includes(id))
+    : scope.sucursalIdsPermitidas;
+
+  if (!scope.puedeVerGlobal && sucursalIds.length === 0) return [];
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      agenda: profesionalesAgendaTable,
+      empleadoNombre: empleadosTable.nombre,
+      sucursalNombre: sucursalesTable.nombre,
+    })
+    .from(profesionalesAgendaTable)
+    .innerJoin(
+      empleadosTable,
+      eq(profesionalesAgendaTable.empleadoId, empleadosTable.id),
+    )
+    .innerJoin(
+      sucursalesTable,
+      eq(profesionalesAgendaTable.sucursalId, sucursalesTable.id),
+    )
+    .where(
+      and(
+        eq(profesionalesAgendaTable.empleadoId, empleadoId),
+        !scope.puedeVerGlobal || sucursalIds.length > 0
+          ? inArray(profesionalesAgendaTable.sucursalId, sucursalIds)
+          : undefined,
+      ),
+    )
+    .orderBy(
+      asc(sucursalesTable.nombre),
+      asc(profesionalesAgendaTable.prioridad),
+      asc(profesionalesAgendaTable.especialidad),
+    );
+
+  return rows.map(mapAgendaConfigRow);
+}
+
 export async function getProfesionalAgendaConfig(
   agendaId: string,
 ): Promise<ProfesionalAgendaConfig | null> {
@@ -128,19 +193,7 @@ export async function getProfesionalAgendaConfig(
 
   if (!row) return null;
 
-  return {
-    id: row.agenda.id,
-    empleado_id: row.agenda.empleadoId,
-    sucursal_id: row.agenda.sucursalId,
-    especialidad: row.agenda.especialidad,
-    avatar_url: row.agenda.avatarUrl,
-    color: row.agenda.color,
-    bio: row.agenda.bio ?? undefined,
-    prioridad: row.agenda.prioridad,
-    activo_publico: row.agenda.activoPublico,
-    empleado_nombre: row.empleadoNombre,
-    sucursal_nombre: row.sucursalNombre,
-  };
+  return mapAgendaConfigRow(row);
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
