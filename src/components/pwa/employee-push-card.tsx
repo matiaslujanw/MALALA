@@ -2,6 +2,8 @@
 
 import { Bell, BellOff, Smartphone } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { LoadingButton } from "@/components/forms/field";
+import { useToast } from "@/components/feedback/toast-provider";
 import {
   disableCurrentPushSubscription,
   getCurrentPushSubscription,
@@ -24,6 +26,7 @@ export function EmployeePushCard({
   vapidPublicKey?: string;
   configured: boolean;
 }) {
+  const { notifySuccess, notifyError } = useToast();
   const [status, setStatus] = useState<PushStatus>("loading");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -69,10 +72,12 @@ export function EmployeePushCard({
       try {
         await requestPushSubscription(vapidPublicKey);
         setStatus("activo");
+        notifySuccess("Notificaciones activadas en este dispositivo");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "No se pudo activar";
         setError(message);
+        notifyError(message);
         setStatus(
           Notification.permission === "denied" ? "bloqueado" : "pendiente",
         );
@@ -83,8 +88,16 @@ export function EmployeePushCard({
   function disable() {
     setError(null);
     startTransition(async () => {
-      await disableCurrentPushSubscription();
-      setStatus("pendiente");
+      try {
+        await disableCurrentPushSubscription();
+        setStatus("pendiente");
+        notifySuccess("Notificaciones desactivadas en este dispositivo");
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "No se pudo desactivar";
+        setError(message);
+        notifyError(message);
+      }
     });
   }
 
@@ -124,24 +137,27 @@ export function EmployeePushCard({
 
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {status !== "activo" ? (
-              <button
+              <LoadingButton
                 type="button"
                 onClick={enable}
-                disabled={pending || status === "no-soportado"}
-                className="inline-flex items-center gap-2 rounded-xl bg-sage-700 px-4 py-2 text-sm font-medium text-white hover:bg-sage-800 disabled:opacity-50"
+                pending={pending}
+                pendingLabel="Activando..."
+                disabled={status === "no-soportado"}
+                className="inline-flex items-center gap-2 rounded-xl bg-sage-700 px-4 py-2 text-sm font-medium text-white hover:bg-sage-800"
               >
                 <Smartphone className="h-4 w-4" />
-                {pending ? "Activando..." : "Activar notificaciones"}
-              </button>
+                Activar notificaciones
+              </LoadingButton>
             ) : (
-              <button
+              <LoadingButton
                 type="button"
                 onClick={disable}
-                disabled={pending}
-                className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-white/70 disabled:opacity-50"
+                pending={pending}
+                pendingLabel="Desactivando..."
+                className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-white/70"
               >
-                {pending ? "Desactivando..." : "Desactivar en este dispositivo"}
-              </button>
+                Desactivar en este dispositivo
+              </LoadingButton>
             )}
           </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
 import { CurrencyField, FormButtons, GlobalError } from "./field";
 import { DENOMINACIONES_ARS } from "@/lib/validations/caja";
 import { formatARS } from "@/lib/utils";
@@ -41,23 +41,18 @@ export function CierreCajaForm({
   arrastre,
   action,
 }: Props) {
-  const router = useRouter();
   const [billetes, setBilletes] = useState<Record<number, number>>({});
   const [saldoInicial, setSaldoInicial] = useState<number>(
     arrastre.saldoInicialEf,
   );
 
-  const [state, formAction, pending] = useActionState<
-    CreateCierreResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = await action(prev, fd);
-    if (result.ok) {
-      router.push(`/caja/${result.cierreId}`);
-      router.refresh();
-    }
-    return result;
-  }, null);
+  const [state, formAction, pending] = useActionStateFeedback<
+    CreateCierreResult
+  >(action, {
+    successMessage: "Caja cerrada",
+    redirectTo: (result) =>
+      `/caja/${(result as Extract<CreateCierreResult, { ok: true }>).cierreId}`,
+  });
 
   const errors = state && !state.ok ? state.errors : {};
 

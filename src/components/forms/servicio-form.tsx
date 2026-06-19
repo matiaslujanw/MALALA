@@ -1,38 +1,37 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CurrencyField } from "./field";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { CurrencyField, LoadingButton } from "./field";
 import type { Servicio } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/servicios";
 
 interface Props {
   servicio?: Servicio;
-  /** Rubros ya existentes, para elegir en vez de tipear suelto. */
   rubros?: string[];
-  action: (state: ActionResult | null, formData: FormData) => Promise<ActionResult>;
+  action: (
+    state: ActionResult | null,
+    formData: FormData,
+  ) => Promise<ActionResult>;
   submitLabel: string;
 }
 
 const NUEVO = "__nuevo__";
 
-export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Props) {
+export function ServicioForm({
+  servicio,
+  rubros = [],
+  action,
+  submitLabel,
+}: Props) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
-    async (prev, fd) => {
-      const result = await action(prev, fd);
-      if (result.ok) {
-        router.push("/catalogos/servicios");
-      }
-      return result;
-    },
-    null,
-  );
+  const [state, formAction, pending] = useActionStateFeedback(action, {
+    redirectTo: "/catalogos/servicios",
+    successMessage: servicio ? "Servicio actualizado" : "Servicio creado",
+  });
 
   const errors = state && !state.ok ? state.errors : {};
-
-  // El rubro actual del servicio puede no estar en la lista (datos viejos): lo
-  // sumamos para que quede seleccionable.
   const opciones = Array.from(
     new Set([...rubros, ...(servicio?.rubro ? [servicio.rubro] : [])]),
   ).sort((a, b) => a.localeCompare(b));
@@ -46,7 +45,7 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
   const rubroFinal = esNuevo ? nuevoRubro : seleccion;
 
   return (
-    <form action={formAction} className="space-y-6 max-w-xl">
+    <form action={formAction} className="max-w-xl space-y-6">
       <div className="space-y-1.5">
         <label
           htmlFor="rubro_select"
@@ -59,17 +58,17 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
             id="rubro_select"
             value={seleccion}
             onChange={(e) => setSeleccion(e.currentTarget.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="" disabled>
-              Seleccioná un rubro
+              Selecciona un rubro
             </option>
-            {opciones.map((r) => (
-              <option key={r} value={r}>
-                {r}
+            {opciones.map((rubro) => (
+              <option key={rubro} value={rubro}>
+                {rubro}
               </option>
             ))}
-            <option value={NUEVO}>+ Nuevo rubro…</option>
+            <option value={NUEVO}>+ Nuevo rubro...</option>
           </select>
         )}
         {esNuevo && (
@@ -79,15 +78,15 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
             onChange={(e) => setNuevoRubro(e.currentTarget.value)}
             placeholder="Nombre del nuevo rubro"
             autoFocus={!sinRubros}
-            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
         )}
-        {/* Valor real enviado al servidor. */}
         <input type="hidden" name="rubro" value={rubroFinal} />
         {errors.rubro && (
           <p className="text-xs text-destructive">{errors.rubro.join(", ")}</p>
         )}
       </div>
+
       <Field
         label="Nombre"
         name="nombre"
@@ -95,6 +94,7 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
         error={errors.nombre}
         required
       />
+
       <div className="grid grid-cols-2 gap-4">
         <CurrencyField
           label="Precio lista"
@@ -111,8 +111,9 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
           required
         />
       </div>
+
       <Field
-        label="Comisión default %"
+        label="Comision default %"
         name="comision_default_pct"
         type="number"
         step="0.01"
@@ -131,22 +132,21 @@ export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Pro
         <span>Activo</span>
       </label>
 
-      {errors._ && (
-        <p className="text-sm text-destructive">{errors._.join(", ")}</p>
-      )}
+      {errors._ && <p className="text-sm text-destructive">{errors._.join(", ")}</p>}
 
       <div className="flex items-center gap-3 pt-4">
-        <button
+        <LoadingButton
           type="submit"
-          disabled={pending}
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+          pending={pending}
+          pendingLabel="Guardando..."
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
         >
-          {pending ? "Guardando…" : submitLabel}
-        </button>
+          {submitLabel}
+        </LoadingButton>
         <button
           type="button"
           onClick={() => router.push("/catalogos/servicios")}
-          className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
+          className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-cream"
         >
           Cancelar
         </button>
@@ -173,11 +173,9 @@ function Field({ label, error, name, ...rest }: FieldProps) {
         id={name}
         name={name}
         {...rest}
-        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
       />
-      {error && (
-        <p className="text-xs text-destructive">{error.join(", ")}</p>
-      )}
+      {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
 import { FormButtons, GlobalError } from "./field";
 import type { ActionResult } from "@/lib/data/_helpers";
 
@@ -23,18 +22,9 @@ export function CrudForm({
   cancelHref,
   children,
 }: Props) {
-  const router = useRouter();
-  const [state, formAction, pending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = await action(prev, fd);
-    if (result.ok) {
-      router.push(redirectTo);
-      router.refresh();
-    }
-    return result;
-  }, null);
+  const [state, formAction, pending] = useActionStateFeedback(action, {
+    redirectTo,
+  });
 
   const errors = state && !state.ok ? state.errors : {};
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Wallet, Plus, AlertTriangle } from "lucide-react";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
 import { CurrencyInput } from "@/components/forms/currency-input";
+import { LoadingButton } from "@/components/forms/field";
 import { formatARS } from "@/lib/utils";
 import { registrarAnticipo } from "@/lib/data/anticipos";
 import type { Anticipo, MedioPago } from "@/lib/types";
@@ -23,17 +24,18 @@ function fmtFecha(iso: string): string {
 }
 
 export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useTransitionFeedback();
   const [error, setError] = useState<string | null>(null);
-
   const [abierto, setAbierto] = useState(false);
   const [monto, setMonto] = useState(0);
   const [mpId, setMpId] = useState(mediosPago[0]?.id ?? "");
   const [observacion, setObservacion] = useState("");
 
-  const pendientes = anticipos.filter((a) => !a.liquidacion_id);
-  const totalPendiente = pendientes.reduce((s, a) => s + a.monto, 0);
+  const pendientes = anticipos.filter((anticipo) => !anticipo.liquidacion_id);
+  const totalPendiente = pendientes.reduce(
+    (sum, anticipo) => sum + anticipo.monto,
+    0,
+  );
 
   function reset() {
     setAbierto(false);
@@ -49,23 +51,30 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
       return;
     }
     if (!mpId) {
-      setError("Elegí un medio de pago");
+      setError("Elegi un medio de pago");
       return;
     }
+
     const fd = new FormData();
     fd.set("empleado_id", empleadoId);
     fd.set("monto", String(monto));
     fd.set("mp_id", mpId);
     fd.set("observacion", observacion);
-    startTransition(async () => {
-      const res = await registrarAnticipo(fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", "));
-        return;
-      }
-      reset();
-      router.refresh();
-    });
+
+    run(
+      async () => {
+        const res = await registrarAnticipo(fd);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", "));
+        }
+        return res;
+      },
+      {
+        refreshOnSuccess: true,
+        successMessage: "Anticipo registrado",
+        onSuccess: () => reset(),
+      },
+    );
   }
 
   return (
@@ -84,7 +93,7 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
               reset();
               setAbierto(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white hover:bg-sage-900 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-sage-900"
           >
             <Plus className="h-3.5 w-3.5 stroke-[1.5]" />
             Registrar anticipo
@@ -92,26 +101,24 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
         )}
       </div>
 
-      {/* Pendiente de descontar */}
       <div className="rounded-md border border-border bg-card p-5">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Pendiente de descontar
         </p>
-        <p className="font-display text-2xl tabular-nums mt-1">
+        <p className="mt-1 font-display text-2xl tabular-nums">
           {formatARS(totalPendiente)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Se descuenta automáticamente en la próxima liquidación del período.
+          Se descuenta automaticamente en la proxima liquidacion del periodo.
         </p>
       </div>
 
-      {/* Form registrar */}
       {abierto && (
-        <div className="rounded-md border border-border bg-cream/40 p-4 space-y-3">
+        <div className="space-y-3 rounded-md border border-border bg-cream/40 p-4">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
             Nuevo anticipo (sale de caja)
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Monto
@@ -120,7 +127,7 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
                 value={monto}
                 onChange={setMonto}
                 min={0}
-                className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-1.5">
@@ -130,11 +137,11 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
               <select
                 value={mpId}
                 onChange={(e) => setMpId(e.target.value)}
-                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
               >
-                {mediosPago.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.codigo} — {m.nombre}
+                {mediosPago.map((medio) => (
+                  <option key={medio.id} value={medio.id}>
+                    {medio.codigo} - {medio.nombre}
                   </option>
                 ))}
               </select>
@@ -142,13 +149,13 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
           </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Observación (opcional)
+              Observacion (opcional)
             </label>
             <input
               type="text"
               value={observacion}
               onChange={(e) => setObservacion(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="Ej. Adelanto quincena"
             />
           </div>
@@ -159,18 +166,19 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
             </p>
           )}
           <div className="flex items-center gap-2 pt-1">
-            <button
+            <LoadingButton
               type="button"
               onClick={handleRegistrar}
-              disabled={pending}
-              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground hover:bg-sage-700 disabled:opacity-50 transition-colors"
+              pending={pending}
+              pendingLabel="Guardando..."
+              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
             >
-              {pending ? "Guardando…" : "Registrar anticipo"}
-            </button>
+              Registrar anticipo
+            </LoadingButton>
             <button
               type="button"
               onClick={reset}
-              className="rounded-md border border-border px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream transition-colors"
+              className="rounded-md border border-border px-4 py-2 text-xs font-medium uppercase tracking-wider transition-colors hover:bg-cream"
             >
               Cancelar
             </button>
@@ -185,22 +193,21 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
         </p>
       )}
 
-      {/* Historial */}
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           Historial
         </p>
         {anticipos.length === 0 ? (
           <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Todavía no hay anticipos registrados.
+            Todavia no hay anticipos registrados.
           </div>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border bg-card">
-            {anticipos.map((a) => {
-              const descontado = !!a.liquidacion_id;
+            {anticipos.map((anticipo) => {
+              const descontado = !!anticipo.liquidacion_id;
               return (
                 <li
-                  key={a.id}
+                  key={anticipo.id}
                   className="flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="min-w-0">
@@ -214,16 +221,16 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
                       >
                         {descontado ? "Descontado" : "Pendiente"}
                       </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {fmtFecha(a.fecha)}
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {fmtFecha(anticipo.fecha)}
                       </span>
                     </div>
-                    {a.observacion && (
-                      <p className="mt-0.5 truncate text-sm">{a.observacion}</p>
+                    {anticipo.observacion && (
+                      <p className="mt-0.5 truncate text-sm">{anticipo.observacion}</p>
                     )}
                   </div>
                   <span className="shrink-0 font-medium tabular-nums">
-                    {formatARS(a.monto)}
+                    {formatARS(anticipo.monto)}
                   </span>
                 </li>
               );

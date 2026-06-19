@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { TrendingUp } from "lucide-react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import {
   aumentarPreciosProveedor,
   type AumentoPreciosResult,
@@ -23,21 +24,16 @@ export function AumentoPreciosProveedorForm({
   cantidadInsumos,
   cantidadVendibles,
 }: Props) {
-  const router = useRouter();
   const [pct, setPct] = useState("");
   const [target, setTarget] = useState<Target>("costo");
 
-  const [state, formAction, pending] = useActionState<
-    AumentoPreciosResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = await aumentarPreciosProveedor(prev, fd);
-    if (result.ok) {
-      router.refresh();
-      setPct("");
-    }
-    return result;
-  }, null);
+  const [state, formAction, pending] = useActionStateFeedback<
+    AumentoPreciosResult
+  >(aumentarPreciosProveedor, {
+    successMessage: "Precios actualizados",
+    refreshOnSuccess: true,
+    onSuccess: () => setPct(""),
+  });
 
   const cantidad = target === "venta" ? cantidadVendibles : cantidadInsumos;
 
@@ -47,25 +43,26 @@ export function AumentoPreciosProveedorForm({
     const detalle =
       target === "venta"
         ? `al precio de venta de los ${cantidad} productos vendibles de ${proveedorNombre}?\n\nActualiza el precio de venta (no el costo).`
-        : `al costo de los ${cantidad} insumos de ${proveedorNombre}?\n\nActualiza el costo de reposición (no el precio de venta).`;
+        : `al costo de los ${cantidad} insumos de ${proveedorNombre}?\n\nActualiza el costo de reposicion (no el precio de venta).`;
     const ok = window.confirm(`¿Aplicar ${signo}${pct}% ${detalle}`);
     if (!ok) e.preventDefault();
   }
 
-  const error = state && !state.ok ? (state.errors.pct?.[0] ?? state.errors._?.[0]) : null;
+  const error =
+    state && !state.ok ? (state.errors.pct?.[0] ?? state.errors._?.[0]) : null;
 
   return (
     <section className="space-y-3 rounded-md border border-border bg-card p-4">
       <div className="flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-sage-700 stroke-[1.5]" />
+        <TrendingUp className="h-4 w-4 stroke-[1.5] text-sage-700" />
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Aumento masivo de precios
         </h2>
       </div>
       <p className="text-xs text-muted-foreground">
-        Aplica un % a todos los items de este proveedor de una vez. Elegí si
+        Aplica un % a todos los items de este proveedor de una vez. Elige si
         afecta el <strong>costo</strong> o el <strong>precio de venta</strong>.
-        Usá un valor negativo para una baja.
+        Usa un valor negativo para una baja.
       </p>
 
       <form
@@ -80,7 +77,7 @@ export function AumentoPreciosProveedorForm({
           <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Aplicar a
           </label>
-          <div className="flex rounded-md border border-border overflow-hidden">
+          <div className="flex overflow-hidden rounded-md border border-border">
             <button
               type="button"
               onClick={() => setTarget("costo")}
@@ -95,7 +92,7 @@ export function AumentoPreciosProveedorForm({
             <button
               type="button"
               onClick={() => setTarget("venta")}
-              className={`px-3 py-2 text-sm transition-colors border-l border-border ${
+              className={`border-l border-border px-3 py-2 text-sm transition-colors ${
                 target === "venta"
                   ? "bg-primary text-primary-foreground"
                   : "bg-card text-muted-foreground hover:bg-cream/50"
@@ -119,33 +116,34 @@ export function AumentoPreciosProveedorForm({
               onChange={(e) => setPct(e.target.value)}
               placeholder="15"
               required
-              className="w-28 rounded-md border border-border bg-card px-3 py-2 text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-28 rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <span className="text-sm text-muted-foreground">%</span>
           </div>
         </div>
-        <button
+
+        <LoadingButton
           type="submit"
-          disabled={pending || cantidad === 0}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:opacity-50"
+          disabled={cantidad === 0}
+          pending={pending}
+          pendingLabel="Aplicando..."
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
         >
-          {pending ? "Aplicando…" : "Aplicar aumento"}
-        </button>
+          Aplicar aumento
+        </LoadingButton>
       </form>
 
       {target === "venta" && cantidadVendibles === 0 && (
         <p className="text-xs text-muted-foreground">
-          Este proveedor no tiene productos vendibles con precio de venta
-          cargado.
+          Este proveedor no tiene productos vendibles con precio de venta cargado.
         </p>
       )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
       {state?.ok && (
         <p className="text-xs text-sage-700">
-          Listo: {state.actualizados} item
-          {state.actualizados !== 1 ? "s" : ""} actualizado
-          {state.actualizados !== 1 ? "s" : ""}.
+          Listo: {state.actualizados} item{state.actualizados !== 1 ? "s" : ""}{" "}
+          actualizado{state.actualizados !== 1 ? "s" : ""}.
         </p>
       )}
     </section>

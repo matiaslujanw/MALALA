@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { CreditCard, Plus, Minus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
 import { CurrencyInput } from "@/components/forms/currency-input";
+import { LoadingButton } from "@/components/forms/field";
 import { formatARS } from "@/lib/utils";
 import {
   registrarCargoCc,
@@ -27,8 +28,6 @@ interface Props {
 
 type Modo = null | "cargo" | "pago";
 
-// ¿El medio de pago impacta en una cuenta de banco? (habilita elegir a cuál).
-// Efectivo (EF) y Cuenta corriente (CC) no van a bancos.
 function usaCuentaBanco(mp: MedioPago | undefined): boolean {
   if (!mp) return false;
   const cod = mp.codigo.toUpperCase();
@@ -53,8 +52,7 @@ export function CuentaCorrientePanel({
   cuentasBanco,
   puedeGestionar,
 }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useTransitionFeedback();
   const [error, setError] = useState<string | null>(null);
 
   const [modo, setModo] = useState<Modo>(null);
@@ -65,7 +63,6 @@ export function CuentaCorrientePanel({
 
   const mpSel = mediosPago.find((m) => m.id === mpId);
   const mostrarSelectorCuenta = usaCuentaBanco(mpSel);
-  // Cuenta a enviar: solo aplica si el medio impacta en bancos.
   const cuentaIdEnvio = mostrarSelectorCuenta ? cuentaId : "";
 
   const saldo = cliente.saldo_cc;
@@ -80,14 +77,21 @@ export function CuentaCorrientePanel({
 
   function handleToggle() {
     setError(null);
-    startTransition(async () => {
-      const res = await toggleCuentaCorriente(cliente.id);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", "));
-        return;
-      }
-      router.refresh();
-    });
+    run(
+      async () => {
+        const res = await toggleCuentaCorriente(cliente.id);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", "));
+        }
+        return res;
+      },
+      {
+        refreshOnSuccess: true,
+        successMessage: cliente.cuenta_corriente_habilitada
+          ? "Cuenta corriente deshabilitada"
+          : "Cuenta corriente habilitada",
+      },
+    );
   }
 
   function handleCargo() {
@@ -100,15 +104,20 @@ export function CuentaCorrientePanel({
     fd.set("cliente_id", cliente.id);
     fd.set("monto", String(monto));
     fd.set("descripcion", descripcion);
-    startTransition(async () => {
-      const res = await registrarCargoCc(fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", "));
-        return;
-      }
-      resetForm();
-      router.refresh();
-    });
+    run(
+      async () => {
+        const res = await registrarCargoCc(fd);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", "));
+        }
+        return res;
+      },
+      {
+        refreshOnSuccess: true,
+        successMessage: "Cargo registrado",
+        onSuccess: () => resetForm(),
+      },
+    );
   }
 
   function handlePago() {
@@ -122,7 +131,7 @@ export function CuentaCorrientePanel({
       return;
     }
     if (!mpId) {
-      setError("Elegí un medio de pago");
+      setError("Elegi un medio de pago");
       return;
     }
     const fd = new FormData();
@@ -131,18 +140,22 @@ export function CuentaCorrientePanel({
     fd.set("mp_id", mpId);
     fd.set("cuenta_id", cuentaIdEnvio);
     fd.set("descripcion", descripcion);
-    startTransition(async () => {
-      const res = await registrarPagoCc(fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", "));
-        return;
-      }
-      resetForm();
-      router.refresh();
-    });
+    run(
+      async () => {
+        const res = await registrarPagoCc(fd);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", "));
+        }
+        return res;
+      },
+      {
+        refreshOnSuccess: true,
+        successMessage: "Pago registrado",
+        onSuccess: () => resetForm(),
+      },
+    );
   }
 
-  // ----- Cliente sin CC habilitada -----
   if (!cliente.cuenta_corriente_habilitada) {
     return (
       <section className="space-y-3 border-t border-border pt-6">
@@ -158,15 +171,16 @@ export function CuentaCorrientePanel({
             vas a poder registrar cargos (fiado) y pagos.
           </p>
           {puedeGestionar && (
-            <button
+            <LoadingButton
               type="button"
               onClick={handleToggle}
-              disabled={pending}
-              className="mt-4 inline-flex items-center gap-2 rounded-md bg-sage-700 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white hover:bg-sage-900 disabled:opacity-50 transition-colors"
+              pending={pending}
+              pendingLabel="Guardando..."
+              className="mt-4 inline-flex items-center gap-2 rounded-md bg-sage-700 px-4 py-2 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-sage-900"
             >
               <CreditCard className="h-4 w-4 stroke-[1.5]" />
               Habilitar cuenta corriente
-            </button>
+            </LoadingButton>
           )}
           {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
         </div>
@@ -174,7 +188,6 @@ export function CuentaCorrientePanel({
     );
   }
 
-  // ----- Cliente con CC habilitada -----
   return (
     <section className="space-y-4 border-t border-border pt-6">
       <div className="flex items-center justify-between gap-2">
@@ -185,24 +198,24 @@ export function CuentaCorrientePanel({
           </h2>
         </div>
         {puedeGestionar && !tieneDeuda && (
-          <button
+          <LoadingButton
             type="button"
             onClick={handleToggle}
-            disabled={pending}
-            className="text-xs uppercase tracking-wider text-muted-foreground hover:text-destructive disabled:opacity-50"
+            pending={pending}
+            pendingLabel="Guardando..."
+            className="text-xs uppercase tracking-wider text-muted-foreground hover:text-destructive"
           >
             Deshabilitar
-          </button>
+          </LoadingButton>
         )}
       </div>
 
-      {/* Saldo */}
       <div className="rounded-md border border-border bg-card p-5">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Deuda actual
         </p>
         <p
-          className="font-display text-3xl tabular-nums mt-1"
+          className="mt-1 font-display text-3xl tabular-nums"
           style={{ color: tieneDeuda ? "var(--danger)" : "var(--ink)" }}
         >
           {formatARS(saldo)}
@@ -215,7 +228,6 @@ export function CuentaCorrientePanel({
         )}
       </div>
 
-      {/* Acciones */}
       {puedeGestionar && (
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -224,7 +236,7 @@ export function CuentaCorrientePanel({
               resetForm();
               setModo("cargo");
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-amber-700 hover:bg-amber-50 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-amber-700 transition-colors hover:bg-amber-50"
           >
             <Plus className="h-3.5 w-3.5 stroke-[1.5]" />
             Registrar cargo
@@ -237,7 +249,7 @@ export function CuentaCorrientePanel({
               setModo("pago");
             }}
             disabled={!tieneDeuda}
-            className="inline-flex items-center gap-1.5 rounded-md border border-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-sage-700 hover:bg-sage-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-sage-700 transition-colors hover:bg-sage-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Minus className="h-3.5 w-3.5 stroke-[1.5]" />
             Registrar pago
@@ -245,13 +257,12 @@ export function CuentaCorrientePanel({
         </div>
       )}
 
-      {/* Form inline cargo/pago */}
       {modo && (
-        <div className="rounded-md border border-border bg-cream/40 p-4 space-y-3">
+        <div className="space-y-3 rounded-md border border-border bg-cream/40 p-4">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
             {modo === "cargo" ? "Nuevo cargo (suma deuda)" : "Registrar pago (baja deuda)"}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Monto
@@ -261,7 +272,7 @@ export function CuentaCorrientePanel({
                 onChange={setMonto}
                 min={0}
                 max={modo === "pago" ? saldo : undefined}
-                className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             {modo === "pago" && (
@@ -272,11 +283,11 @@ export function CuentaCorrientePanel({
                 <select
                   value={mpId}
                   onChange={(e) => setMpId(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                 >
-                  {mediosPago.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.codigo} — {m.nombre}
+                  {mediosPago.map((medio) => (
+                    <option key={medio.id} value={medio.id}>
+                      {medio.codigo} - {medio.nombre}
                     </option>
                   ))}
                 </select>
@@ -289,19 +300,18 @@ export function CuentaCorrientePanel({
                 </label>
                 {cuentasBanco.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No hay cuentas bancarias cargadas. Cargalas en Catálogos →
-                    Cuentas bancarias.
+                    No hay cuentas bancarias cargadas. Cárgalas en Catálogos → Cuentas bancarias.
                   </p>
                 ) : (
                   <select
                     value={cuentaId}
                     onChange={(e) => setCuentaId(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                   >
-                    <option value="">— Cuenta por defecto del medio —</option>
-                    {cuentasBanco.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
+                    <option value="">- Cuenta por defecto del medio -</option>
+                    {cuentasBanco.map((cuenta) => (
+                      <option key={cuenta.id} value={cuenta.id}>
+                        {cuenta.nombre}
                       </option>
                     ))}
                   </select>
@@ -311,13 +321,13 @@ export function CuentaCorrientePanel({
           </div>
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Descripción (opcional)
+              Descripcion (opcional)
             </label>
             <input
               type="text"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder={modo === "cargo" ? "Ej. Producto fiado" : "Ej. Pago parcial"}
             />
           </div>
@@ -328,18 +338,19 @@ export function CuentaCorrientePanel({
             </p>
           )}
           <div className="flex items-center gap-2 pt-1">
-            <button
+            <LoadingButton
               type="button"
               onClick={modo === "cargo" ? handleCargo : handlePago}
-              disabled={pending}
-              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground hover:bg-sage-700 disabled:opacity-50 transition-colors"
+              pending={pending}
+              pendingLabel="Guardando..."
+              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
             >
-              {pending ? "Guardando…" : modo === "cargo" ? "Registrar cargo" : "Registrar pago"}
-            </button>
+              {modo === "cargo" ? "Registrar cargo" : "Registrar pago"}
+            </LoadingButton>
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-md border border-border px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream transition-colors"
+              className="rounded-md border border-border px-4 py-2 text-xs font-medium uppercase tracking-wider transition-colors hover:bg-cream"
             >
               Cancelar
             </button>
@@ -347,7 +358,6 @@ export function CuentaCorrientePanel({
         </div>
       )}
 
-      {/* Error fuera del form (toggle / saldar) */}
       {error && !modo && (
         <p className="inline-flex items-center gap-1 text-xs text-destructive">
           <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5]" />
@@ -355,22 +365,21 @@ export function CuentaCorrientePanel({
         </p>
       )}
 
-      {/* Historial */}
       <div className="space-y-2">
         <p className="text-xs uppercase tracking-widest text-muted-foreground">
           Movimientos
         </p>
         {movimientos.length === 0 ? (
           <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Todavía no hay movimientos en la cuenta corriente.
+            Todavia no hay movimientos en la cuenta corriente.
           </div>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border bg-card">
-            {movimientos.map((m) => {
-              const esCargo = m.tipo === "cargo";
+            {movimientos.map((movimiento) => {
+              const esCargo = movimiento.tipo === "cargo";
               return (
                 <li
-                  key={m.id}
+                  key={movimiento.id}
                   className="flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <div className="min-w-0">
@@ -384,19 +393,19 @@ export function CuentaCorrientePanel({
                       >
                         {esCargo ? "Cargo" : "Pago"}
                       </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {fmtFechaHora(m.fecha)}
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {fmtFechaHora(movimiento.fecha)}
                       </span>
                     </div>
-                    {m.descripcion && (
-                      <p className="mt-0.5 truncate text-sm">{m.descripcion}</p>
+                    {movimiento.descripcion && (
+                      <p className="mt-0.5 truncate text-sm">{movimiento.descripcion}</p>
                     )}
                   </div>
                   <span
                     className="shrink-0 font-medium tabular-nums"
                     style={{ color: esCargo ? "var(--danger)" : "var(--sage-700)" }}
                   >
-                    {esCargo ? "+" : "−"} {formatARS(m.monto)}
+                    {esCargo ? "+" : "−"} {formatARS(movimiento.monto)}
                   </span>
                 </li>
               );

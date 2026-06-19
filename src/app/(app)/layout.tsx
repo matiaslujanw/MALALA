@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { BackButton } from "@/components/back-button";
+import { ToastProvider } from "@/components/feedback/toast-provider";
 import { SucursalSwitcher } from "@/components/sucursal-switcher";
 import { AdminChat } from "@/components/admin-chat/admin-chat";
 import { LogoutButton } from "@/components/logout-button";
@@ -99,8 +100,10 @@ export default async function AppLayout({
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6 lg:p-8">
-          <PushClientBootstrap />
-          {children}
+          <ToastProvider>
+            <PushClientBootstrap />
+            {children}
+          </ToastProvider>
         </main>
       </div>
       {user.rol === "admin" && <AdminChat />}

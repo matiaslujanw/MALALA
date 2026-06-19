@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CurrencyInput } from "./currency-input";
 
@@ -10,7 +11,14 @@ interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
 }
 
-export function Field({ label, error, hint, name, className, ...rest }: FieldProps) {
+export function Field({
+  label,
+  error,
+  hint,
+  name,
+  className,
+  ...rest
+}: FieldProps) {
   return (
     <div className="space-y-1.5">
       <label
@@ -24,14 +32,12 @@ export function Field({ label, error, hint, name, className, ...rest }: FieldPro
         name={name}
         {...rest}
         className={cn(
-          "w-full px-3 py-2 border border-border rounded-md bg-card text-sm",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+          "w-full rounded-md border border-border bg-card px-3 py-2 text-sm",
+          "focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring",
           className,
         )}
       />
-      {hint && !error && (
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      )}
+      {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
       {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
     </div>
   );
@@ -40,9 +46,7 @@ export function Field({ label, error, hint, name, className, ...rest }: FieldPro
 interface CurrencyFieldProps {
   label: string;
   name: string;
-  /** Valor inicial (modo no controlado). */
   defaultValue?: number;
-  /** Modo controlado: pasar value + onChange. */
   value?: number;
   onChange?: (n: number) => void;
   error?: string[];
@@ -51,11 +55,6 @@ interface CurrencyFieldProps {
   min?: number;
 }
 
-/**
- * Campo de moneda con formato de pesos automático (separador de miles).
- * Muestra "$ 1.234" mientras no se edita y envía el número crudo vía un
- * input oculto, para que el server action lo reciba como número.
- */
 export function CurrencyField({
   label,
   name,
@@ -74,6 +73,7 @@ export function CurrencyField({
     if (controlled) onChange(n);
     else setInternal(n);
   };
+
   return (
     <div className="space-y-1.5">
       <label
@@ -88,7 +88,7 @@ export function CurrencyField({
         onChange={set}
         min={min}
         required={required}
-        className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
       />
       <input type="hidden" name={name} value={current} />
       {hint && !error && <p className="text-xs text-muted-foreground">{hint}</p>}
@@ -127,15 +127,15 @@ export function SelectField({
         name={name}
         {...rest}
         className={cn(
-          "w-full px-3 py-2 border border-border rounded-md bg-card text-sm",
-          "focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+          "w-full rounded-md border border-border bg-card px-3 py-2 text-sm",
+          "focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring",
           className,
         )}
       >
         {placeholder && <option value="">{placeholder}</option>}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -175,25 +175,28 @@ interface FormButtonsProps {
   cancelHref: string;
   submitLabel: string;
   pending?: boolean;
+  pendingLabel?: string;
 }
 
 export function FormButtons({
   cancelHref,
   submitLabel,
   pending,
+  pendingLabel,
 }: FormButtonsProps) {
   return (
     <div className="flex items-center gap-3 pt-4">
-      <button
+      <LoadingButton
         type="submit"
-        disabled={pending}
-        className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+        pending={pending}
+        pendingLabel={pendingLabel ?? "Guardando..."}
+        className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:opacity-50"
       >
-        {pending ? "Guardando…" : submitLabel}
-      </button>
+        {submitLabel}
+      </LoadingButton>
       <a
         href={cancelHref}
-        className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
+        className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-cream"
       >
         Cancelar
       </a>
@@ -204,4 +207,39 @@ export function FormButtons({
 export function GlobalError({ error }: { error?: string[] }) {
   if (!error || error.length === 0) return null;
   return <p className="text-sm text-destructive">{error.join(", ")}</p>;
+}
+
+interface LoadingButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  pending?: boolean;
+  pendingLabel?: string;
+}
+
+export function LoadingButton({
+  pending,
+  pendingLabel,
+  children,
+  className,
+  disabled,
+  ...rest
+}: LoadingButtonProps) {
+  return (
+    <button
+      {...rest}
+      disabled={disabled || pending}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 disabled:opacity-50",
+        className,
+      )}
+    >
+      {pending ? (
+        <>
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          <span>{pendingLabel ?? children}</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  );
 }

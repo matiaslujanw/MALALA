@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import { createCierre } from "@/lib/data/caja";
 import { formatARS } from "@/lib/utils";
 import { CurrencyInput } from "./currency-input";
@@ -19,12 +20,9 @@ interface Props {
 }
 
 export function CierreCajaSimpleForm({ sucursalId, fecha, cuentas }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useTransitionFeedback();
   const [observacion, setObservacion] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  // Contado por cuenta, arranca en lo esperado de cada una.
   const [contado, setContado] = useState<Record<string, number>>(() =>
     Object.fromEntries(cuentas.map((c) => [c.cuenta.id, c.esperado])),
   );
@@ -32,9 +30,9 @@ export function CierreCajaSimpleForm({ sucursalId, fecha, cuentas }: Props) {
   const totales = useMemo(() => {
     let esperado = 0;
     let cont = 0;
-    for (const c of cuentas) {
-      esperado += c.esperado;
-      cont += contado[c.cuenta.id] ?? c.esperado;
+    for (const cuenta of cuentas) {
+      esperado += cuenta.esperado;
+      cont += contado[cuenta.cuenta.id] ?? cuenta.esperado;
     }
     return { esperado, contado: cont, diferencia: cont - esperado };
   }, [cuentas, contado]);
@@ -46,36 +44,42 @@ export function CierreCajaSimpleForm({ sucursalId, fecha, cuentas }: Props) {
     fd.set("sucursal_id", sucursalId);
     fd.set("fecha", fecha);
     fd.set("observacion", observacion);
-    for (const c of cuentas) {
+    for (const cuenta of cuentas) {
       fd.set(
-        `contado_${c.cuenta.id}`,
-        String(contado[c.cuenta.id] ?? c.esperado),
+        `contado_${cuenta.cuenta.id}`,
+        String(contado[cuenta.cuenta.id] ?? cuenta.esperado),
       );
     }
-    startTransition(async () => {
-      const res = await createCierre(null, fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", ") || "Error");
-        return;
-      }
-      router.push(`/caja/${res.cierreId}`);
-    });
+    run(
+      async () => {
+        const res = await createCierre(null, fd);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", ") || "Error");
+        }
+        return res;
+      },
+      {
+        redirectTo: (res) =>
+          `/caja/${(res as unknown as { cierreId: string }).cierreId}`,
+        successMessage: "Caja cerrada",
+      },
+    );
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card border border-border rounded-md p-5 space-y-5"
+      className="space-y-5 rounded-md border border-border bg-card p-5"
     >
       <div className="space-y-2">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
           Arqueo por cuenta
         </h2>
         <p className="text-xs text-muted-foreground">
-          <strong>Esperado</strong> es lo que la app calcula que debería haber.
-          Cargá en <strong>&ldquo;Contado&rdquo;</strong> lo que realmente hay; si
-          no lo tocás, se cierra con lo esperado. La diferencia queda registrada
-          como faltante/sobrante (no modifica el saldo).
+          <strong>Esperado</strong> es lo que la app calcula que deberia haber.
+          Carga en <strong>&ldquo;Contado&rdquo;</strong> lo que realmente hay; si
+          no lo tocas, se cierra con lo esperado. La diferencia queda registrada
+          como faltante o sobrante.
         </p>
       </div>
 
@@ -91,28 +95,31 @@ export function CierreCajaSimpleForm({ sucursalId, fecha, cuentas }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {cuentas.map((c) => {
-                const cont = contado[c.cuenta.id] ?? c.esperado;
-                const diff = cont - c.esperado;
+              {cuentas.map((cuenta) => {
+                const cont = contado[cuenta.cuenta.id] ?? cuenta.esperado;
+                const diff = cont - cuenta.esperado;
                 return (
-                  <tr key={c.cuenta.id}>
+                  <tr key={cuenta.cuenta.id}>
                     <td className="px-4 py-3 font-medium">
-                      {c.cuenta.nombre}
+                      {cuenta.cuenta.nombre}
                       <span className="ml-1 text-xs uppercase text-muted-foreground">
-                        ({c.cuenta.tipo})
+                        ({cuenta.cuenta.tipo})
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {formatARS(c.esperado)}
+                      {formatARS(cuenta.esperado)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <CurrencyInput
                         value={cont}
                         min={0}
-                        onChange={(v) =>
-                          setContado((prev) => ({ ...prev, [c.cuenta.id]: v }))
+                        onChange={(value) =>
+                          setContado((prev) => ({
+                            ...prev,
+                            [cuenta.cuenta.id]: value,
+                          }))
                         }
-                        className="w-32 px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-32 rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     </td>
                     <td
@@ -162,26 +169,27 @@ export function CierreCajaSimpleForm({ sucursalId, fecha, cuentas }: Props) {
 
       <div className="space-y-1.5">
         <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Observación (opcional)
+          Observacion (opcional)
         </label>
         <textarea
           value={observacion}
           onChange={(e) => setObservacion(e.target.value)}
           rows={3}
-          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="Notas del día…"
+          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="Notas del dia..."
         />
       </div>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
-      <button
+      <LoadingButton
         type="submit"
-        disabled={pending}
-        className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+        pending={pending}
+        pendingLabel="Cerrando..."
+        className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
       >
-        {pending ? "Cerrando…" : "Cerrar caja"}
-      </button>
+        Cerrar caja
+      </LoadingButton>
     </form>
   );
 }

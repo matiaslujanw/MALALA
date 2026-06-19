@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
 import { CurrencyField, Field, FormButtons, GlobalError, SelectField } from "./field";
 import { formatARS } from "@/lib/utils";
 import type {
@@ -67,8 +67,6 @@ export function EgresoForm({
   action,
   compraAction,
 }: Props) {
-  const router = useRouter();
-
   const [pagado, setPagado] = useState(true);
   const [esCompraInsumo, setEsCompraInsumo] = useState(
     defaultEsCompraInsumo ?? false,
@@ -103,11 +101,13 @@ export function EgresoForm({
   useEffect(() => {
     if (mediosVisibles.length === 0) return;
     if (!mediosVisibles.some((m) => m.id === mp1Id)) {
-      setMp1Id(mediosVisibles[0].id);
+      queueMicrotask(() => setMp1Id(mediosVisibles[0].id));
     }
     if (mp2Id && !mediosVisibles.some((m) => m.id === mp2Id)) {
-      setMp2Id("");
-      setValor2(0);
+      queueMicrotask(() => {
+        setMp2Id("");
+        setValor2(0);
+      });
     }
   }, [mediosVisibles, mp1Id, mp2Id]);
 
@@ -128,19 +128,18 @@ export function EgresoForm({
     [insumos, insumoId],
   );
 
-  const [state, formAction, pending] = useActionState<
-    CreateEgresoResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = esCompraInsumo
-      ? await compraAction(prev, fd)
-      : await action(prev, fd);
-    if (result.ok) {
-      router.push("/egresos");
-      router.refresh();
-    }
-    return result;
-  }, null);
+  const [state, formAction, pending] = useActionStateFeedback<
+    CreateEgresoResult
+  >(
+    async (prev, fd) =>
+      esCompraInsumo ? compraAction(prev, fd) : action(prev, fd),
+    {
+      redirectTo: "/egresos",
+      successMessage: esCompraInsumo
+        ? "Compra de insumo registrada"
+        : "Gasto registrado",
+    },
+  );
 
   const errors = state && !state.ok ? state.errors : {};
 

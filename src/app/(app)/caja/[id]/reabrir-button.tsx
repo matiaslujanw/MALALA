@@ -1,40 +1,37 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "@/components/forms/field";
 import { reabrirCierre } from "@/lib/data/caja-actions";
 
 export function ReabrirCierreButton({ cierreId }: { cierreId: string }) {
-  const [pending, start] = useTransition();
-  const router = useRouter();
+  const { pending, run } = useTransitionFeedback();
+
   return (
-    <button
+    <LoadingButton
       type="button"
-      disabled={pending}
+      pending={pending}
+      pendingLabel="Reabriendo..."
       onClick={() => {
         if (
           !confirm(
-            "¿Reabrir este cierre? Se va a borrar y vas a poder cargar más movimientos en ese día.",
+            "¿Reabrir este cierre? Se va a borrar y vas a poder cargar mas movimientos en ese dia.",
           )
-        )
+        ) {
           return;
-        start(async () => {
-          const res = await reabrirCierre(cierreId);
-          if (res.ok) {
-            router.push("/caja");
-            router.refresh();
-          } else {
-            alert(res.errors._?.[0] ?? "No se pudo reabrir");
-          }
+        }
+        run(() => reabrirCierre(cierreId), {
+          redirectTo: "/caja",
+          successMessage: "Cierre reabierto",
         });
       }}
-      className="px-3 py-1.5 rounded-md text-xs font-medium uppercase tracking-wider border transition-colors disabled:opacity-50"
+      className="rounded-md border px-3 py-1.5 text-xs font-medium uppercase tracking-wider transition-colors disabled:opacity-50"
       style={{
         borderColor: "var(--danger)",
         color: "var(--danger)",
       }}
     >
-      {pending ? "Reabriendo…" : "Reabrir cierre"}
-    </button>
+      Reabrir cierre
+    </LoadingButton>
   );
 }
