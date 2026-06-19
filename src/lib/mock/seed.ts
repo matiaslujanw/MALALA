@@ -399,6 +399,19 @@ export function seed(): Store {
     destacado_pct: 10,
   };
 
+  const profesionalesServicios = [
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, servicio_id: servCorteMujer.id },
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, servicio_id: servBrushing.id },
+    { id: uid(), empleado_id: empAnita.id, sucursal_id: sucCentro.id, servicio_id: servColorRaiz.id },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, servicio_id: servManosEsmaltado.id },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, servicio_id: servManosSemi.id },
+    { id: uid(), empleado_id: empCamila.id, sucursal_id: sucCentro.id, servicio_id: servEsculpidas.id },
+    { id: uid(), empleado_id: empEliana.id, sucursal_id: sucBarrioNorte.id, servicio_id: servManosSemi.id },
+    { id: uid(), empleado_id: empEliana.id, sucursal_id: sucBarrioNorte.id, servicio_id: servPiesSemi.id },
+    { id: uid(), empleado_id: empCarolina.id, sucursal_id: sucCentro.id, servicio_id: servCejas.id },
+    { id: uid(), empleado_id: empCarolina.id, sucursal_id: sucCentro.id, servicio_id: servLaminado.id },
+  ];
+
   // Insumos
   const insShampoo = {
     id: uid(),
@@ -910,6 +923,7 @@ export function seed(): Store {
     empleados: [empAnita, empCamila, empEliana, empCarolina],
     profesionalesAgenda,
     profesionalesHorarios,
+    profesionalesServicios,
     clientes: clientesCatalogo,
     proveedores: [provVlinda, provKeraplus, provDistrilook],
     servicios: [

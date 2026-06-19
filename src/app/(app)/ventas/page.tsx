@@ -57,16 +57,22 @@ export default async function VentasPage({
   const esEmpleado = user.rol === "empleado" && !!user.empleado_id;
   const empleadoIdForzado = esEmpleado ? user.empleado_id : sp.empleado;
 
+  const empleados = await listEmpleados({ sucursalId: sucursal.id });
+  const clientes = await listClientes();
+  const empleadoIdFiltrado =
+    esEmpleado || !empleadoIdForzado
+      ? empleadoIdForzado
+      : empleados.some((empleado) => empleado.id === empleadoIdForzado)
+        ? empleadoIdForzado
+        : undefined;
   const ingresos = await listIngresos({
     sucursalId: sucursal.id,
-    empleadoId: empleadoIdForzado,
+    empleadoId: empleadoIdFiltrado,
     clienteId: sp.cliente,
     desde,
     hasta,
     revision: !esEmpleado ? sp.revision : undefined,
   });
-  const empleados = await listEmpleados();
-  const clientes = await listClientes();
 
   // Vista personal del empleado: sólo sus líneas y su comisión
   if (esEmpleado) {

@@ -9,6 +9,11 @@ import {
   getProfesionalAgendaConfig,
   listProfesionalHorarios,
 } from "@/lib/data/profesionales-horarios";
+import {
+  listProfesionalServicios,
+  listServiciosPublicosElegibles,
+  replaceProfesionalServicios,
+} from "@/lib/data/profesionales-servicios";
 
 const DIAS = [
   { value: 1, label: "Lunes" },
@@ -43,10 +48,11 @@ export default async function ProfesionalAgendaPage({
     redirect("/turnos");
   }
 
-  const horarios = await listProfesionalHorarios(
-    agenda.empleado_id,
-    agenda.sucursal_id,
-  );
+  const [horarios, servicios, serviciosAsignados] = await Promise.all([
+    listProfesionalHorarios(agenda.empleado_id, agenda.sucursal_id),
+    listServiciosPublicosElegibles(),
+    listProfesionalServicios(agenda.empleado_id, agenda.sucursal_id),
+  ]);
 
   async function addHorario(formData: FormData) {
     "use server";
@@ -57,6 +63,14 @@ export default async function ProfesionalAgendaPage({
     "use server";
     await deleteProfesionalHorario(id, String(formData.get("id") ?? ""));
   }
+  async function saveServicios(formData: FormData) {
+    "use server";
+    await replaceProfesionalServicios(id, formData);
+  }
+
+  const serviciosAsignadosIds = new Set(
+    serviciosAsignados.map((item) => item.servicio_id),
+  );
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -90,6 +104,51 @@ export default async function ProfesionalAgendaPage({
             value={agenda.activo_publico ? "Activa" : "Oculta"}
           />
         </dl>
+      </section>
+
+      <section className="space-y-3 border-t border-border pt-6">
+        <div className="space-y-1">
+          <h2 className="font-display text-xl tracking-[0.15em] uppercase">
+            Servicios que realiza
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Si no marcas servicios, este profesional queda sin restriccion adicional en la reserva publica.
+          </p>
+        </div>
+
+        <form
+          action={saveServicios}
+          className="space-y-4 rounded-md border border-border bg-card p-4"
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            {servicios.map((servicio) => (
+              <label
+                key={servicio.id}
+                className="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <input
+                  type="checkbox"
+                  name="servicio_id"
+                  value={servicio.id}
+                  defaultChecked={serviciosAsignadosIds.has(servicio.id)}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-sage-500"
+                />
+                <span>
+                  <span className="block font-medium">{servicio.nombre}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {servicio.rubro}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <button
+            type="submit"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+          >
+            Guardar servicios
+          </button>
+        </form>
       </section>
 
       <section className="space-y-3 border-t border-border pt-6">

@@ -6,6 +6,7 @@ import {
   horariosSucursal as horariosSucursalTable,
   profesionalesAgenda as profesionalesAgendaTable,
   profesionalesHorarios as profesionalesHorariosTable,
+  profesionalesServicios as profesionalesServiciosTable,
   promocionItems as promocionItemsTable,
   servicios as serviciosTable,
   sucursales as sucursalesTable,
@@ -27,6 +28,10 @@ import {
   listProfesionalesHorariosBySucursal,
 } from "@/lib/data/profesionales-horarios";
 import {
+  listProfesionalesServiciosAll,
+  listProfesionalesServiciosBySucursal,
+} from "@/lib/data/profesionales-servicios";
+import {
   buildAvailableSlots,
   buildTurnoDetalle,
   listOpenDatesForSucursal,
@@ -39,6 +44,7 @@ import type {
   HorarioSucursal,
   ProfesionalAgenda,
   ProfesionalHorario,
+  ProfesionalServicio,
   Servicio,
   Sucursal,
   Turno,
@@ -142,6 +148,17 @@ export function mapProfesionalAgendaRow(
   };
 }
 
+export function mapProfesionalServicio(
+  row: typeof profesionalesServiciosTable.$inferSelect,
+): ProfesionalServicio {
+  return {
+    id: row.id,
+    empleado_id: row.empleadoId,
+    sucursal_id: row.sucursalId,
+    servicio_id: row.servicioId,
+  };
+}
+
 export function mapCliente(
   row: typeof clientesTable.$inferSelect,
 ): Cliente {
@@ -221,6 +238,7 @@ async function getServiciosActivos() {
     const items = await db
       .select({
         promoId: promocionItemsTable.promoServicioId,
+        servicioId: promocionItemsTable.componenteServicioId,
         nombre: serviciosTable.nombre,
         orden: promocionItemsTable.orden,
       })
@@ -232,14 +250,20 @@ async function getServiciosActivos() {
       .where(inArray(promocionItemsTable.promoServicioId, promoIds))
       .orderBy(asc(promocionItemsTable.orden));
     const byPromo = new Map<string, string[]>();
+    const firstServiceByPromo = new Map<string, string>();
     for (const it of items) {
       const list = byPromo.get(it.promoId) ?? [];
       list.push(it.nombre);
       byPromo.set(it.promoId, list);
+      if (!firstServiceByPromo.has(it.promoId)) {
+        firstServiceByPromo.set(it.promoId, it.servicioId);
+      }
     }
     for (const s of servicios) {
       const comp = byPromo.get(s.id);
       if (comp) s.promo_componentes = comp;
+      const first = firstServiceByPromo.get(s.id);
+      if (first) s.promo_primer_servicio_id = first;
     }
   }
 
@@ -458,6 +482,7 @@ export async function getReservaPublicaSnapshot() {
     turnos,
     serviciosHorarios,
     profesionalesHorarios,
+    profesionalesServicios,
   ] = await Promise.all([
     getSucursalesActivas(),
     getServiciosActivos(),
@@ -466,6 +491,7 @@ export async function getReservaPublicaSnapshot() {
     getTurnosRaw({ desdeFechaTurno: today }),
     listServiciosHorariosAll(),
     listProfesionalesHorariosAll(),
+    listProfesionalesServiciosAll(),
   ]);
 
   return {
@@ -476,6 +502,7 @@ export async function getReservaPublicaSnapshot() {
     turnos,
     serviciosHorarios,
     profesionalesHorarios,
+    profesionalesServicios,
   };
 }
 
@@ -649,7 +676,14 @@ export async function getSlotsDisponibles(args: {
   servicioId: string;
   profesionalId?: string;
 }) {
-  const [horarios, profesionales, servicios, turnos, serviciosHorarios] =
+  const [
+    horarios,
+    profesionales,
+    servicios,
+    turnos,
+    serviciosHorarios,
+    profesionalesServicios,
+  ] =
     await Promise.all([
       getHorarios(args.sucursalId),
       getProfesionalesReserva({
@@ -661,6 +695,7 @@ export async function getSlotsDisponibles(args: {
         sucursalId: args.sucursalId,
       }),
       listServicioHorarios(args.servicioId),
+      listProfesionalesServiciosBySucursal(args.sucursalId),
     ]);
 
   return buildAvailableSlots({
@@ -673,6 +708,7 @@ export async function getSlotsDisponibles(args: {
     servicios,
     turnos,
     serviciosHorarios,
+    profesionalesServicios,
   });
 }
 
@@ -694,6 +730,7 @@ export async function getFechasDisponiblesReservaPublica(args: {
     turnos,
     serviciosHorarios,
     profesionalesHorarios,
+    profesionalesServicios,
   ] = await Promise.all([
     getHorarios(args.sucursalId),
     getProfesionalesReserva({ soloSucursalId: args.sucursalId }),
@@ -701,6 +738,7 @@ export async function getFechasDisponiblesReservaPublica(args: {
     getTurnosRaw({ sucursalId: args.sucursalId }),
     listServicioHorarios(args.servicioId),
     listProfesionalesHorariosBySucursal(args.sucursalId),
+    listProfesionalesServiciosBySucursal(args.sucursalId),
   ]);
 
   return listReservableDates({
@@ -714,6 +752,7 @@ export async function getFechasDisponiblesReservaPublica(args: {
     turnos,
     serviciosHorarios,
     profesionalesHorarios,
+    profesionalesServicios,
   });
 }
 

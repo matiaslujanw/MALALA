@@ -145,6 +145,7 @@ export interface Servicio {
   vence_el?: string; // YYYY-MM-DD, vencimiento opcional (solo promos)
   // Solo promos: nombres de los servicios que combina (para mostrar en la reserva).
   promo_componentes?: string[];
+  promo_primer_servicio_id?: ID;
 }
 
 export interface PromocionComponente {
@@ -183,6 +184,13 @@ export interface ProfesionalHorario {
   dia_semana: number; // 0 domingo ... 6 sabado
   apertura: string; // HH:mm
   cierre: string; // HH:mm
+}
+
+export interface ProfesionalServicio {
+  id: ID;
+  empleado_id: ID;
+  sucursal_id: ID;
+  servicio_id: ID;
 }
 
 export interface ProfesionalAgenda {

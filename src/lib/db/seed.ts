@@ -16,6 +16,7 @@ import {
   movimientosStock,
   profesionalesAgenda,
   profesionalesHorarios,
+  profesionalesServicios,
   profiles,
   proveedores,
   recetas,
@@ -99,6 +100,7 @@ async function clearAppTables() {
   await db.delete(movimientosStock);
   await db.delete(stockSucursal);
   await db.delete(recetas);
+  await db.delete(profesionalesServicios);
   await db.delete(profesionalesHorarios);
   await db.delete(profesionalesAgenda);
   await db.delete(horariosSucursal);
@@ -254,6 +256,15 @@ async function main() {
       diaSemana: item.dia_semana,
       apertura: item.apertura,
       cierre: item.cierre,
+    })),
+  );
+
+  await db.insert(profesionalesServicios).values(
+    snapshot.profesionalesServicios.map((item) => ({
+      id: item.id,
+      empleadoId: item.empleado_id,
+      sucursalId: item.sucursal_id,
+      servicioId: item.servicio_id,
     })),
   );
 

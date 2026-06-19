@@ -15,6 +15,7 @@ import type {
   MovimientoStock,
   ProfesionalAgenda,
   ProfesionalHorario,
+  ProfesionalServicio,
   Proveedor,
   Receta,
   RubroGasto,
@@ -34,6 +35,7 @@ export interface Store {
   empleados: Empleado[];
   profesionalesAgenda: ProfesionalAgenda[];
   profesionalesHorarios: ProfesionalHorario[];
+  profesionalesServicios: ProfesionalServicio[];
   clientes: Cliente[];
   proveedores: Proveedor[];
   servicios: Servicio[];
@@ -71,6 +73,8 @@ function normalizeStore(existing: Store | undefined): Store {
       existing.profesionalesAgenda ?? fresh.profesionalesAgenda,
     profesionalesHorarios:
       existing.profesionalesHorarios ?? fresh.profesionalesHorarios,
+    profesionalesServicios:
+      existing.profesionalesServicios ?? fresh.profesionalesServicios,
     turnos: existing.turnos ?? fresh.turnos,
     turnoEventos: existing.turnoEventos ?? fresh.turnoEventos,
   };

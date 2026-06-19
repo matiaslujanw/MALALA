@@ -20,6 +20,7 @@ import {
 import { createPublicTurnoAction } from "@/lib/data/turnos-actions";
 import {
   buildAvailableSlots,
+  filterProfesionalesByServicio,
   listOpenDatesForSucursal,
   listReservableDates,
   type ProfesionalReserva,
@@ -29,6 +30,7 @@ import { cn, formatARS } from "@/lib/utils";
 import type {
   HorarioSucursal,
   ProfesionalHorario,
+  ProfesionalServicio,
   Servicio,
   ServicioHorario,
   Sucursal,
@@ -44,6 +46,7 @@ interface Props {
     turnos: Turno[];
     serviciosHorarios: ServicioHorario[];
     profesionalesHorarios: ProfesionalHorario[];
+    profesionalesServicios: ProfesionalServicio[];
   };
   loggedInLabel?: string;
 }
@@ -122,8 +125,28 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   );
 
   const profesionales = useMemo(
-    () => snapshot.profesionales.filter((item) => item.sucursal_id === bookingSucursalId),
-    [bookingSucursalId, snapshot.profesionales],
+    () => {
+      if (!bookingSucursalId) return [];
+      if (!servicioId) {
+        return snapshot.profesionales.filter(
+          (item) => item.sucursal_id === bookingSucursalId,
+        );
+      }
+      return filterProfesionalesByServicio({
+        sucursalId: bookingSucursalId,
+        servicioId,
+        profesionales: snapshot.profesionales,
+        servicios: snapshot.servicios,
+        profesionalesServicios: snapshot.profesionalesServicios,
+      });
+    },
+    [
+      bookingSucursalId,
+      servicioId,
+      snapshot.profesionales,
+      snapshot.profesionalesServicios,
+      snapshot.servicios,
+    ],
   );
 
   const servicioSeleccionado = useMemo(
@@ -150,6 +173,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
               turnos: snapshot.turnos,
               serviciosHorarios: snapshot.serviciosHorarios,
               profesionalesHorarios: snapshot.profesionalesHorarios,
+              profesionalesServicios: snapshot.profesionalesServicios,
             })
           : listOpenDatesForSucursal(snapshot.horarios, bookingSucursalId, 6);
       // Una promo no se puede reservar para una fecha posterior a su vencimiento.
@@ -165,6 +189,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
       snapshot.horarios,
       snapshot.profesionales,
       snapshot.profesionalesHorarios,
+      snapshot.profesionalesServicios,
       snapshot.servicios,
       snapshot.serviciosHorarios,
       snapshot.turnos,
@@ -187,6 +212,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
       turnos: snapshot.turnos,
       serviciosHorarios: snapshot.serviciosHorarios,
       profesionalesHorarios: snapshot.profesionalesHorarios,
+      profesionalesServicios: snapshot.profesionalesServicios,
     });
   }, [
     bookingSucursalId,
@@ -195,6 +221,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     servicioSeleccionado,
     snapshot.horarios,
     snapshot.profesionalesHorarios,
+    snapshot.profesionalesServicios,
     snapshot.serviciosHorarios,
     snapshot.profesionales,
     snapshot.servicios,
@@ -1161,6 +1188,14 @@ function renderStepContent(args: {
   }
 
   if (args.currentStep === 3) {
+    if (args.profesionales.length === 0) {
+      return (
+        <div className="rounded-[1.35rem] border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
+          No hay profesionales configurados para este servicio en esta sucursal.
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-3">
         <button

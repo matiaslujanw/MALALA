@@ -30,7 +30,9 @@ export default async function NuevaLiquidacionPage({
   // Todas las activas: la comisión se calcula por la sucursal del servicio,
   // no por la sucursal principal del empleado, así que una empleada de otra
   // sucursal igual puede tener comisiones pendientes acá.
-  const empleados = await listEmpleados();
+  const empleados = await listEmpleados({
+    sucursalIds: scope.sucursalIdsPermitidas,
+  });
 
   return (
     <div className="space-y-8 max-w-5xl">

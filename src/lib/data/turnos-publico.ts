@@ -16,6 +16,7 @@ import {
 import { buildAvailableSlots, buildTurnoDetalle, type ProfesionalReserva, type TurnoDetalle } from "@/lib/turnos-helpers";
 import { listServiciosHorariosAll } from "@/lib/data/servicios-horarios";
 import { listProfesionalesHorariosBySucursal } from "@/lib/data/profesionales-horarios";
+import { listProfesionalesServiciosBySucursal } from "@/lib/data/profesionales-servicios";
 import { turnoReprogramacionSchema } from "@/lib/validations/turno";
 import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
 import { fieldErrors } from "./_helpers";
@@ -127,7 +128,14 @@ export async function getSlotsDisponiblesPorToken(args: TurnoPublicSlotsArgs) {
   if (!row) return [];
   if (row.tokenExpiraEn.getTime() <= Date.now()) return [];
 
-  const [horarios, profRows, servRows, turnosRows, profesionalesHorarios] = await Promise.all([
+  const [
+    horarios,
+    profRows,
+    servRows,
+    turnosRows,
+    profesionalesHorarios,
+    profesionalesServicios,
+  ] = await Promise.all([
     db.select().from(horariosSucursalTable).where(eq(horariosSucursalTable.sucursalId, row.sucursalId)),
     db
       .select({ meta: profesionalesAgendaTable, empleado: empleadosTable })
@@ -153,6 +161,7 @@ export async function getSlotsDisponiblesPorToken(args: TurnoPublicSlotsArgs) {
         ),
       ),
     listProfesionalesHorariosBySucursal(row.sucursalId),
+    listProfesionalesServiciosBySucursal(row.sucursalId),
   ]);
 
   return buildAvailableSlots({
@@ -172,6 +181,7 @@ export async function getSlotsDisponiblesPorToken(args: TurnoPublicSlotsArgs) {
       .map((t) => mapTurno(t.turno, t.cliente)),
     serviciosHorarios: await listServiciosHorariosAll(),
     profesionalesHorarios,
+    profesionalesServicios,
   });
 }
 
@@ -258,7 +268,14 @@ export async function reprogramarTurnoPorTokenAction(
         sql`SELECT pg_advisory_xact_lock(hashtext(${row.sucursalId}), hashtext(${parsed.data.fecha_turno}))`,
       );
 
-      const [horarios, profRows, servRows, blocked, profesionalesHorarios] = await Promise.all([
+      const [
+        horarios,
+        profRows,
+        servRows,
+        blocked,
+        profesionalesHorarios,
+        profesionalesServicios,
+      ] = await Promise.all([
         tx
           .select()
           .from(horariosSucursalTable)
@@ -286,6 +303,7 @@ export async function reprogramarTurnoPorTokenAction(
             ),
           ),
         listProfesionalesHorariosBySucursal(row.sucursalId),
+        listProfesionalesServiciosBySucursal(row.sucursalId),
       ]);
 
       const slots = buildAvailableSlots({
@@ -306,6 +324,7 @@ export async function reprogramarTurnoPorTokenAction(
           .map((t) => mapTurno(t.turno, t.cliente)),
         serviciosHorarios: await listServiciosHorariosAll(),
         profesionalesHorarios,
+        profesionalesServicios,
       });
 
       if (!slots.some((s) => s.hora === parsed.data.hora)) {

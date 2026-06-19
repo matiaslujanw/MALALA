@@ -271,6 +271,31 @@ export const profesionalesHorarios = pgTable("profesionales_horarios", {
   cierre: text("cierre").notNull(),
 });
 
+export const profesionalesServicios = pgTable(
+  "profesionales_servicios",
+  {
+    id: text("id").primaryKey(),
+    empleadoId: text("empleado_id")
+      .notNull()
+      .references(() => empleados.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+    servicioId: text("servicio_id")
+      .notNull()
+      .references(() => servicios.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    empleadoSucursalServicioIdx: uniqueIndex(
+      "profesionales_servicios_empleado_sucursal_servicio_uq",
+    ).on(table.empleadoId, table.sucursalId, table.servicioId),
+    sucursalEmpleadoIdx: index("profesionales_servicios_sucursal_empleado_idx").on(
+      table.sucursalId,
+      table.empleadoId,
+    ),
+  }),
+);
+
 export const insumos = pgTable("insumos", {
   id: text("id").primaryKey(),
   nombre: text("nombre").notNull(),
@@ -854,6 +879,7 @@ export const schema = {
   serviciosHorarios,
   profesionalesAgenda,
   profesionalesHorarios,
+  profesionalesServicios,
   insumos,
   recetas,
   mediosPago,

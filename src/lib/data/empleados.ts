@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
@@ -11,6 +11,7 @@ import {
   profiles as profilesTable,
 } from "@/lib/db/schema";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
+import { requireUser } from "@/lib/auth/session";
 import type { Empleado, Rol } from "@/lib/types";
 import { empleadoSchema } from "@/lib/validations/empleado";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
@@ -115,16 +116,26 @@ function mapEmpleado(row: typeof empleadosTable.$inferSelect): Empleado {
 export async function listEmpleados(opts?: {
   incluirInactivos?: boolean;
   sucursalId?: string;
+  sucursalIds?: string[];
 }): Promise<Empleado[]> {
   requireSupabaseRuntime(
     "Los empleados del back office solo se leen desde Supabase.",
   );
 
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const db = getDb();
   const filters = [];
   if (!opts?.incluirInactivos) filters.push(eq(empleadosTable.activo, true));
+  const sucursalIdsBase = opts?.sucursalIds?.length
+    ? opts.sucursalIds.filter((id) => scope.sucursalIdsPermitidas.includes(id))
+    : scope.sucursalIdsPermitidas;
+
   if (opts?.sucursalId) {
+    if (!isSucursalAllowed(scope, opts.sucursalId)) return [];
     filters.push(eq(empleadosTable.sucursalPrincipalId, opts.sucursalId));
+  } else if (!scope.puedeVerGlobal || sucursalIdsBase.length > 0) {
+    filters.push(inArray(empleadosTable.sucursalPrincipalId, sucursalIdsBase));
   }
 
   const rows =
@@ -144,6 +155,8 @@ export async function getEmpleado(empleadoId: string): Promise<Empleado | null> 
     "Los empleados del back office solo se leen desde Supabase.",
   );
 
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const db = getDb();
   const [row] = await db
     .select()
@@ -151,7 +164,15 @@ export async function getEmpleado(empleadoId: string): Promise<Empleado | null> 
     .where(eq(empleadosTable.id, empleadoId))
     .limit(1);
 
-  return row ? mapEmpleado(row) : null;
+  if (!row) return null;
+  if (
+    !scope.puedeVerGlobal &&
+    !scope.sucursalIdsPermitidas.includes(row.sucursalPrincipalId)
+  ) {
+    return null;
+  }
+
+  return mapEmpleado(row);
 }
 
 function parse(formData: FormData) {
@@ -297,7 +318,7 @@ export async function updateEmpleado(
   empleadoId: string,
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La edicion de empleados requiere Supabase configurado.",
   );
@@ -307,6 +328,16 @@ export async function updateEmpleado(
   const db = getDb();
   const existing = await getEmpleado(empleadoId);
   if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
+  const scope = buildAccessScope(user);
+  if (!isSucursalAllowed(scope, existing.sucursal_principal_id)) {
+    return { ok: false, errors: { _: ["No podes editar empleados de otra sucursal"] } };
+  }
+  if (!isSucursalAllowed(scope, parsed.data.sucursal_principal_id)) {
+    return {
+      ok: false,
+      errors: { sucursal_principal_id: ["No podes mover el empleado a esa sucursal"] },
+    };
+  }
 
   await db
     .update(empleadosTable)
@@ -331,13 +362,17 @@ export async function updateEmpleado(
 export async function toggleEmpleadoActivo(
   empleadoId: string,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La activacion de empleados requiere Supabase configurado.",
   );
 
   const empleado = await getEmpleado(empleadoId);
   if (!empleado) return { ok: false, errors: { _: ["No encontrado"] } };
+  const scope = buildAccessScope(user);
+  if (!isSucursalAllowed(scope, empleado.sucursal_principal_id)) {
+    return { ok: false, errors: { _: ["No podes gestionar empleados de otra sucursal"] } };
+  }
 
   const db = getDb();
   await db

@@ -17,6 +17,7 @@ import { buildAccessScope } from "@/lib/auth/access";
 import { buildAvailableSlots, type ProfesionalReserva } from "@/lib/turnos-helpers";
 import { listServiciosHorariosAll } from "@/lib/data/servicios-horarios";
 import { listProfesionalesHorariosBySucursal } from "@/lib/data/profesionales-horarios";
+import { listProfesionalesServiciosBySucursal } from "@/lib/data/profesionales-servicios";
 import {
   turnoCreateSchema,
   turnoEstadoSchema,
@@ -142,7 +143,14 @@ async function createTurnoInternal(
         sql`SELECT pg_advisory_xact_lock(hashtext(${parsed.data.sucursal_id}), hashtext(${parsed.data.fecha_turno}))`
       );
 
-      const [horariosRows, profRows, servRows, blockedRows, profesionalesHorarios] =
+      const [
+        horariosRows,
+        profRows,
+        servRows,
+        blockedRows,
+        profesionalesHorarios,
+        profesionalesServicios,
+      ] =
         await Promise.all([
         tx
           .select()
@@ -186,6 +194,9 @@ async function createTurnoInternal(
         access === "publico"
           ? listProfesionalesHorariosBySucursal(parsed.data.sucursal_id)
           : Promise.resolve([]),
+        access === "publico"
+          ? listProfesionalesServiciosBySucursal(parsed.data.sucursal_id)
+          : Promise.resolve([]),
       ]);
 
       const slots = buildAvailableSlots({
@@ -204,6 +215,7 @@ async function createTurnoInternal(
         turnos: blockedRows.map((row) => mapTurno(row.turno, row.cliente)),
         serviciosHorarios: await listServiciosHorariosAll(),
         profesionalesHorarios,
+        profesionalesServicios,
       });
 
       const exists = slots.some((slot) => slot.hora === parsed.data.hora);
