@@ -144,7 +144,21 @@ export default async function StockPage({
                 <tr key={insumo.id} className="hover:bg-cream/30">
                   <td className="px-4 py-3 font-medium">{insumo.nombre}</td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {cantidad.toLocaleString("es-AR")} {UNIDAD_LABEL[insumo.unidad_medida]}
+                    <div>
+                      {cantidad.toLocaleString("es-AR")}{" "}
+                      {UNIDAD_LABEL[insumo.unidad_medida]}
+                    </div>
+                    {insumo.tamano_envase !== 1 && (
+                      <div className="text-[11px] text-muted-foreground">
+                        ≈{" "}
+                        {(cantidad / insumo.tamano_envase).toLocaleString(
+                          "es-AR",
+                          { maximumFractionDigits: 2 },
+                        )}{" "}
+                        env. de {insumo.tamano_envase}{" "}
+                        {UNIDAD_LABEL[insumo.unidad_medida]}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                     {insumo.umbral_stock_bajo}

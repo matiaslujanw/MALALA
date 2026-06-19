@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { ServicioForm } from "@/components/forms/servicio-form";
-import { createServicio } from "@/lib/data/servicios";
+import { createServicio, listRubrosServicios } from "@/lib/data/servicios";
 import { requireUser } from "@/lib/auth/session";
 
 export default async function NuevoServicioPage() {
   const user = await requireUser();
   if (user.rol !== "admin") redirect("/catalogos/servicios");
+
+  const rubros = await listRubrosServicios();
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";
@@ -23,7 +25,7 @@ export default async function NuevoServicioPage() {
         </p>
       </header>
 
-      <ServicioForm action={action} submitLabel="Crear" />
+      <ServicioForm action={action} rubros={rubros} submitLabel="Crear" />
     </div>
   );
 }

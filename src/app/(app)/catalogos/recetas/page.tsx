@@ -48,13 +48,20 @@ export default async function RecetasPage() {
                     <th className="text-right font-medium px-4 py-3">
                       Precio efectivo
                     </th>
-                    <th className="text-right font-medium px-4 py-3">Margen</th>
+                    <th className="text-right font-medium px-4 py-3">
+                      Margen real
+                    </th>
                     <th className="px-4 py-3 w-24"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {items.map(({ servicio, cantidadInsumos, costoTotal }) => {
-                    const margen = servicio.precio_efectivo - costoTotal;
+                    // Margen real: precio − insumos − comisión de la empleada.
+                    const comision =
+                      servicio.precio_efectivo *
+                      (servicio.comision_default_pct / 100);
+                    const margen =
+                      servicio.precio_efectivo - costoTotal - comision;
                     const margenPct =
                       servicio.precio_efectivo > 0
                         ? (margen / servicio.precio_efectivo) * 100

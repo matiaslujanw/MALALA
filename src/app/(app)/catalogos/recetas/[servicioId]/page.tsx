@@ -1,5 +1,6 @@
 import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { AgregarInsumoReceta } from "@/components/forms/agregar-insumo-receta";
 import {
   getRecetaItems,
   removeRecetaItem,
@@ -39,7 +40,15 @@ export default async function EditarRecetaPage({
   const insumosDisponibles = insumos.filter((i) => !insumosUsados.has(i.id));
 
   const costoTotal = items.reduce((acc, i) => acc + i.costo, 0);
-  const margen = servicio.precio_efectivo - costoTotal;
+  // Comisión estimada de la empleada: % del precio efectivo (precio pleno).
+  const comision =
+    servicio.precio_efectivo * (servicio.comision_default_pct / 100);
+  // Margen de contribución: lo que queda después de insumos Y comisión.
+  const margen = servicio.precio_efectivo - costoTotal - comision;
+  const margenPct =
+    servicio.precio_efectivo > 0
+      ? (margen / servicio.precio_efectivo) * 100
+      : 0;
 
   async function add(formData: FormData) {
     "use server";
@@ -74,15 +83,7 @@ export default async function EditarRecetaPage({
       </header>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-card border border-border rounded-md p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Costo de receta
-          </p>
-          <p className="font-display text-2xl mt-2 tabular-nums">
-            {formatARS(costoTotal)}
-          </p>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-md p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Precio efectivo
@@ -93,7 +94,23 @@ export default async function EditarRecetaPage({
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Margen
+            Costo insumos
+          </p>
+          <p className="font-display text-2xl mt-2 tabular-nums">
+            −{formatARS(costoTotal)}
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-5">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            Comisión ({servicio.comision_default_pct}%)
+          </p>
+          <p className="font-display text-2xl mt-2 tabular-nums">
+            −{formatARS(comision)}
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-md p-5">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            Margen real
           </p>
           <p
             className="font-display text-2xl mt-2 tabular-nums"
@@ -102,6 +119,9 @@ export default async function EditarRecetaPage({
             }}
           >
             {formatARS(margen)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
+            {margenPct.toFixed(0)}% · después de insumos y comisión
           </p>
         </div>
       </div>
@@ -208,43 +228,11 @@ export default async function EditarRecetaPage({
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground">
             Agregar insumo
           </h2>
-          <form action={add} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_auto] gap-3 items-end">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Insumo
-              </label>
-              <select
-                name="insumo_id"
-                required
-                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {insumosDisponibles.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.nombre} ({UNIDAD_LABEL[i.unidad_medida]})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Cantidad
-              </label>
-              <input
-                type="number"
-                name="cantidad"
-                step="0.01"
-                min="0.01"
-                required
-                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
-            >
-              Agregar
-            </button>
-          </form>
+          <p className="text-xs text-muted-foreground">
+            La cantidad es lo que consume <strong>un</strong> servicio, en la
+            unidad de cada insumo (ml, g o ud) — no en envases.
+          </p>
+          <AgregarInsumoReceta insumosDisponibles={insumosDisponibles} action={add} />
         </section>
       )}
 

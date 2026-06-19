@@ -57,7 +57,7 @@ export default async function ServiciosPage() {
                     <th className="text-right font-medium px-4 py-3">Comisión</th>
                     <th className="text-center font-medium px-4 py-3">Estado</th>
                     {user.rol === "admin" && (
-                      <th className="px-4 py-3 w-20"></th>
+                      <th className="px-4 py-3 w-44"></th>
                     )}
                   </tr>
                 </thead>
@@ -86,11 +86,18 @@ export default async function ServiciosPage() {
                         )}
                       </td>
                       {user.rol === "admin" && (
-                        <td className="px-4 py-3 text-right">
-                          <TableActionLink
-                            href={`/catalogos/servicios/${s.id}`}
-                            variant="edit"
-                          />
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <TableActionLink
+                              href={`/catalogos/recetas/${s.id}`}
+                              variant="view"
+                              label="Receta"
+                            />
+                            <TableActionLink
+                              href={`/catalogos/servicios/${s.id}`}
+                              variant="edit"
+                            />
+                          </div>
                         </td>
                       )}
                     </tr>

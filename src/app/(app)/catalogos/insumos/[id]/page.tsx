@@ -1,11 +1,14 @@
 import { notFound, redirect } from "next/navigation";
 import { InsumoForm } from "@/components/forms/insumo-form";
+import { InsumoServiciosCard } from "@/components/forms/insumo-servicios-card";
 import {
   getInsumo,
   toggleInsumoActivo,
   updateInsumo,
 } from "@/lib/data/insumos";
 import { listProveedores } from "@/lib/data/proveedores";
+import { listServiciosByInsumo } from "@/lib/data/recetas";
+import { listServicios } from "@/lib/data/servicios";
 import { requireUser } from "@/lib/auth/session";
 
 export default async function EditarInsumoPage({
@@ -16,11 +19,19 @@ export default async function EditarInsumoPage({
   const user = await requireUser();
   if (user.rol !== "admin") redirect("/catalogos/insumos");
   const { id } = await params;
-  const [insumo, proveedores] = await Promise.all([
-    getInsumo(id),
-    listProveedores(),
-  ]);
+  const [insumo, proveedores, serviciosUsando, todosServicios] =
+    await Promise.all([
+      getInsumo(id),
+      listProveedores(),
+      listServiciosByInsumo(id),
+      listServicios(),
+    ]);
   if (!insumo) notFound();
+
+  const usadosIds = new Set(serviciosUsando.map((s) => s.servicio.id));
+  const serviciosDisponibles = todosServicios.filter(
+    (s) => !usadosIds.has(s.id),
+  );
 
   async function update(_prev: unknown, formData: FormData) {
     "use server";
@@ -44,6 +55,11 @@ export default async function EditarInsumoPage({
         proveedores={proveedores}
         action={update}
         submitLabel="Guardar"
+      />
+      <InsumoServiciosCard
+        insumo={insumo}
+        serviciosUsando={serviciosUsando}
+        serviciosDisponibles={serviciosDisponibles}
       />
       <div className="border-t border-border pt-6">
         <form action={toggle}>

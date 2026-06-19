@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CurrencyField } from "./field";
 import type { Servicio } from "@/lib/types";
@@ -8,11 +8,15 @@ import type { ActionResult } from "@/lib/data/servicios";
 
 interface Props {
   servicio?: Servicio;
+  /** Rubros ya existentes, para elegir en vez de tipear suelto. */
+  rubros?: string[];
   action: (state: ActionResult | null, formData: FormData) => Promise<ActionResult>;
   submitLabel: string;
 }
 
-export function ServicioForm({ servicio, action, submitLabel }: Props) {
+const NUEVO = "__nuevo__";
+
+export function ServicioForm({ servicio, rubros = [], action, submitLabel }: Props) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
     async (prev, fd) => {
@@ -27,15 +31,63 @@ export function ServicioForm({ servicio, action, submitLabel }: Props) {
 
   const errors = state && !state.ok ? state.errors : {};
 
+  // El rubro actual del servicio puede no estar en la lista (datos viejos): lo
+  // sumamos para que quede seleccionable.
+  const opciones = Array.from(
+    new Set([...rubros, ...(servicio?.rubro ? [servicio.rubro] : [])]),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const sinRubros = opciones.length === 0;
+  const [seleccion, setSeleccion] = useState(
+    sinRubros ? NUEVO : (servicio?.rubro ?? ""),
+  );
+  const [nuevoRubro, setNuevoRubro] = useState("");
+  const esNuevo = seleccion === NUEVO;
+  const rubroFinal = esNuevo ? nuevoRubro : seleccion;
+
   return (
     <form action={formAction} className="space-y-6 max-w-xl">
-      <Field
-        label="Rubro"
-        name="rubro"
-        defaultValue={servicio?.rubro}
-        error={errors.rubro}
-        required
-      />
+      <div className="space-y-1.5">
+        <label
+          htmlFor="rubro_select"
+          className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+        >
+          Rubro
+        </label>
+        {!sinRubros && (
+          <select
+            id="rubro_select"
+            value={seleccion}
+            onChange={(e) => setSeleccion(e.currentTarget.value)}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="" disabled>
+              Seleccioná un rubro
+            </option>
+            {opciones.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+            <option value={NUEVO}>+ Nuevo rubro…</option>
+          </select>
+        )}
+        {esNuevo && (
+          <input
+            type="text"
+            value={nuevoRubro}
+            onChange={(e) => setNuevoRubro(e.currentTarget.value)}
+            placeholder="Nombre del nuevo rubro"
+            autoFocus={!sinRubros}
+            className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        )}
+        {/* Valor real enviado al servidor. */}
+        <input type="hidden" name="rubro" value={rubroFinal} />
+        {errors.rubro && (
+          <p className="text-xs text-destructive">{errors.rubro.join(", ")}</p>
+        )}
+      </div>
       <Field
         label="Nombre"
         name="nombre"

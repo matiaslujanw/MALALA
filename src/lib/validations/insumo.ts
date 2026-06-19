@@ -9,7 +9,9 @@ export const insumoSchema = z
       .transform((s) => (s ? s : undefined)),
     unidad_medida: z.enum(["ud", "ml", "g", "aplicacion"]),
     tamano_envase: z.coerce.number().positive("Debe ser > 0"),
-    precio_envase: z.coerce.number().nonnegative(),
+    precio_envase: z.coerce
+      .number()
+      .positive("Cargá el precio del envase (mayor a 0)"),
     rinde: z.coerce.number().optional(),
     umbral_stock_bajo: z.coerce.number().nonnegative(),
     activo: z.coerce.boolean().default(true),
