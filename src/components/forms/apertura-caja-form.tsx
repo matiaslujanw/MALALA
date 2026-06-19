@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import { crearApertura } from "@/lib/data/apertura-caja";
 import type { AperturaCuentaSugerida } from "@/lib/data/apertura-caja";
 import { formatARS } from "@/lib/utils";
@@ -14,22 +16,19 @@ interface Props {
 }
 
 export function AperturaCajaForm({ sucursalId, fecha, cuentas }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useTransitionFeedback();
   const [error, setError] = useState<string | null>(null);
   const [observacion, setObservacion] = useState("");
-
-  // Declarado por cuenta, arranca en el esperado de cada una.
   const [declarado, setDeclarado] = useState<Record<string, number>>(() =>
-    Object.fromEntries(cuentas.map((c) => [c.cuenta.id, c.esperado])),
+    Object.fromEntries(cuentas.map((cuenta) => [cuenta.cuenta.id, cuenta.esperado])),
   );
 
   const totales = useMemo(() => {
     let esperado = 0;
     let decl = 0;
-    for (const c of cuentas) {
-      esperado += c.esperado;
-      decl += declarado[c.cuenta.id] ?? c.esperado;
+    for (const cuenta of cuentas) {
+      esperado += cuenta.esperado;
+      decl += declarado[cuenta.cuenta.id] ?? cuenta.esperado;
     }
     return { esperado, declarado: decl, diferencia: decl - esperado };
   }, [cuentas, declarado]);
@@ -41,27 +40,32 @@ export function AperturaCajaForm({ sucursalId, fecha, cuentas }: Props) {
     fd.set("sucursal_id", sucursalId);
     fd.set("fecha", fecha);
     fd.set("observacion", observacion);
-    for (const c of cuentas) {
+    for (const cuenta of cuentas) {
       fd.set(
-        `declarado_${c.cuenta.id}`,
-        String(declarado[c.cuenta.id] ?? c.esperado),
+        `declarado_${cuenta.cuenta.id}`,
+        String(declarado[cuenta.cuenta.id] ?? cuenta.esperado),
       );
     }
-    startTransition(async () => {
-      const res = await crearApertura(null, fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", ") || "Error");
-        return;
-      }
-      router.push("/caja");
-      router.refresh();
-    });
+
+    run(
+      async () => {
+        const result = await crearApertura(null, fd);
+        if (!result.ok) {
+          setError(Object.values(result.errors).flat().join(", ") || "Error");
+        }
+        return result;
+      },
+      {
+        redirectTo: "/caja",
+        successMessage: "Caja abierta",
+      },
+    );
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 bg-card border border-border rounded-md p-5"
+      className="space-y-5 rounded-md border border-border bg-card p-5"
     >
       <div className="overflow-hidden rounded-md border border-border">
         <table className="w-full text-sm">
@@ -69,35 +73,36 @@ export function AperturaCajaForm({ sucursalId, fecha, cuentas }: Props) {
             <tr>
               <th className="px-4 py-3 text-left font-medium">Cuenta</th>
               <th className="px-4 py-3 text-right font-medium">Esperado</th>
-              <th className="px-4 py-3 text-right font-medium">
-                Lo que tenés
-              </th>
+              <th className="px-4 py-3 text-right font-medium">Lo que tenes</th>
               <th className="px-4 py-3 text-right font-medium">Diferencia</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {cuentas.map((c) => {
-              const decl = declarado[c.cuenta.id] ?? c.esperado;
-              const diff = decl - c.esperado;
+            {cuentas.map((cuenta) => {
+              const decl = declarado[cuenta.cuenta.id] ?? cuenta.esperado;
+              const diff = decl - cuenta.esperado;
               return (
-                <tr key={c.cuenta.id}>
+                <tr key={cuenta.cuenta.id}>
                   <td className="px-4 py-3 font-medium">
-                    {c.cuenta.nombre}
+                    {cuenta.cuenta.nombre}
                     <span className="ml-1 text-xs uppercase text-muted-foreground">
-                      ({c.cuenta.tipo})
+                      ({cuenta.cuenta.tipo})
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {formatARS(c.esperado)}
+                    {formatARS(cuenta.esperado)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <CurrencyInput
                       value={decl}
                       min={0}
-                      onChange={(v) =>
-                        setDeclarado((prev) => ({ ...prev, [c.cuenta.id]: v }))
+                      onChange={(value) =>
+                        setDeclarado((prev) => ({
+                          ...prev,
+                          [cuenta.cuenta.id]: value,
+                        }))
                       }
-                      className="w-32 px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-32 rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </td>
                   <td
@@ -145,41 +150,42 @@ export function AperturaCajaForm({ sucursalId, fecha, cuentas }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        El <strong>esperado</strong> es lo que la app calcula que debería haber.
-        Cargá en <strong>&ldquo;Lo que tenés&rdquo;</strong> la plata real con la
-        que arrancás. Si hay diferencia, el saldo de la cuenta se ajusta a lo que
+        El <strong>esperado</strong> es lo que la app calcula que deberia haber.
+        Carga en <strong>&ldquo;Lo que tenes&rdquo;</strong> la plata real con la
+        que arrancas. Si hay diferencia, el saldo de la cuenta se ajusta a lo que
         cargues.
       </p>
 
       <div className="space-y-1.5">
         <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Observación (opcional)
+          Observacion (opcional)
         </label>
         <textarea
           value={observacion}
           onChange={(e) => setObservacion(e.target.value)}
           rows={2}
-          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="Notas de la apertura…"
+          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          placeholder="Notas de la apertura..."
         />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex items-center gap-3">
-        <button
+        <LoadingButton
           type="submit"
-          disabled={pending}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+          pending={pending}
+          pendingLabel="Abriendo..."
+          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
         >
-          {pending ? "Abriendo…" : "Abrir caja"}
-        </button>
-        <a
+          Abrir caja
+        </LoadingButton>
+        <Link
           href="/caja"
-          className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
+          className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-cream"
         >
           Cancelar
-        </a>
+        </Link>
       </div>
     </form>
   );

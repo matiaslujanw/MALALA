@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "@/components/forms/field";
 import {
   createLiquidacion,
   previewLiquidacion,
@@ -73,7 +74,7 @@ export function NuevaLiquidacionForm({
   empleados,
   permiteCambiarSucursal,
 }: Props) {
-  const router = useRouter();
+  const { pending: saving, run: runSave } = useTransitionFeedback();
   const [sucursalId, setSucursalId] = useState(initialSucursal);
   const [empleadoId, setEmpleadoId] = useState("");
 
@@ -84,7 +85,6 @@ export function NuevaLiquidacionForm({
   const [preview, setPreview] = useState<LiquidacionPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewing, startPreview] = useTransition();
-  const [saving, startSaving] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [horas, setHoras] = useState(0);
   const [diasViatico, setDiasViatico] = useState(0);
@@ -147,14 +147,20 @@ export function NuevaLiquidacionForm({
     fd.set("periodo_hasta", hasta);
     fd.set("horas_trabajadas", String(horas));
     fd.set("dias_viatico", String(diasViatico));
-    startSaving(async () => {
-      const res = await createLiquidacion(fd);
-      if (!res.ok) {
-        setErrors(res.errors);
-        return;
-      }
-      router.push(`/liquidaciones/${res.liquidacionId}`);
-    });
+    runSave(
+      async () => {
+        const res = await createLiquidacion(fd);
+        if (!res.ok) {
+          setErrors(res.errors);
+        }
+        return res;
+      },
+      {
+        redirectTo: (res) =>
+          `/liquidaciones/${(res as unknown as { liquidacionId: string }).liquidacionId}`,
+        successMessage: "Liquidacion creada",
+      },
+    );
   }
 
   const empleadosActivos = useMemo(
@@ -285,14 +291,15 @@ export function NuevaLiquidacionForm({
         </div>
 
         <div className="pt-2">
-          <button
+          <LoadingButton
             type="button"
             onClick={doPreview}
-            disabled={previewing}
-            className="bg-primary text-primary-foreground px-5 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+            pending={previewing}
+            pendingLabel="Calculando..."
+            className="rounded-md bg-primary px-5 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
           >
-            {previewing ? "Calculando…" : "Calcular comisiones"}
-          </button>
+            Calcular comisiones
+          </LoadingButton>
           {previewError && (
             <p className="text-xs text-destructive mt-2">{previewError}</p>
           )}
@@ -514,14 +521,16 @@ export function NuevaLiquidacionForm({
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button
+            <LoadingButton
               type="button"
               onClick={doSave}
-              disabled={saving || !puedeGuardar}
-              className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+              pending={saving}
+              pendingLabel="Guardando..."
+              disabled={!puedeGuardar}
+              className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
             >
-              {saving ? "Guardando…" : "Guardar liquidación"}
-            </button>
+              Guardar liquidación
+            </LoadingButton>
             <p className="text-xs text-muted-foreground">
               Se generará una liquidación pendiente. Luego registrás el pago al
               empleado.

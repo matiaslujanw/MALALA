@@ -6,6 +6,8 @@ import Link from "next/link";
 import { X, AlertTriangle, Scissors, Package, CreditCard, Tags } from "lucide-react";
 import { createIngreso } from "@/lib/data/ingresos-actions";
 import { createClienteQuick } from "@/lib/data/clientes";
+import { persistFlashToast, useToast } from "@/components/feedback/toast-provider";
+import { LoadingButton } from "@/components/forms/field";
 import type {
   Cliente,
   CuentaBancaria,
@@ -125,6 +127,7 @@ export function NuevaVentaForm({
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const { notifySuccess, notifyError } = useToast();
 
   // Header
   const [clientesList, setClientesList] = useState<Cliente[]>(clientes);
@@ -163,9 +166,10 @@ export function NuevaVentaForm({
         telefono: newClienteTel.trim() || undefined,
       });
       if (!res.ok) {
-        setNewClienteError(
-          Object.values(res.errors).flat().join(", ") || "Error al crear",
-        );
+        const message =
+          Object.values(res.errors).flat().join(", ") || "Error al crear";
+        setNewClienteError(message);
+        notifyError(message);
         return;
       }
       setClientesList((prev) =>
@@ -182,8 +186,11 @@ export function NuevaVentaForm({
       setShowNewCliente(false);
       setNewClienteNombre("");
       setNewClienteTel("");
+      notifySuccess("Cliente creado");
     } catch (e) {
-      setNewClienteError(e instanceof Error ? e.message : "Error inesperado");
+      const message = e instanceof Error ? e.message : "Error inesperado";
+      setNewClienteError(message);
+      notifyError(message);
     } finally {
       setNewClienteSaving(false);
     }
@@ -311,14 +318,16 @@ export function NuevaVentaForm({
 
   // Cuando no hay mp2, valor1 = total automáticamente
   useEffect(() => {
-    if (!mp2Id) {
-      setValor1(total);
-      setValor2(0);
-    } else {
-      setValor2(Math.max(0, total - (Number(valor1) || 0)));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total, mp2Id]);
+    const timeoutId = window.setTimeout(() => {
+      if (!mp2Id) {
+        setValor1(total);
+        setValor2(0);
+      } else {
+        setValor2(Math.max(0, total - (Number(valor1) || 0)));
+      }
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [mp2Id, total, valor1]);
 
   // ----- Helpers de líneas -----
   function updateLinea(idx: number, patch: Partial<LineaForm>) {
@@ -481,6 +490,7 @@ export function NuevaVentaForm({
           "Revisá las líneas: los servicios necesitan servicio + empleado y los productos necesitan producto + cantidad > 0",
         ],
       });
+      notifyError("Revisá las líneas antes de guardar");
       return;
     }
 
@@ -538,16 +548,27 @@ export function NuevaVentaForm({
       const result = await createIngreso(formData);
       if (!result.ok) {
         setErrors(result.errors);
+        notifyError("No se pudo guardar la venta");
         return;
       }
       if (result.warnings) {
         setWarnings(result.warnings);
         setTimeout(() => {
-          if (result.ingresoId) router.push(`/ventas/${result.ingresoId}`);
+          if (result.ingresoId) {
+            persistFlashToast({
+              type: "success",
+              message: "Venta guardada con advertencias",
+            });
+            router.push(`/ventas/${result.ingresoId}`);
+          }
         }, 1500);
         return;
       }
       if (result.ingresoId) {
+        persistFlashToast({
+          type: "success",
+          message: "Venta guardada",
+        });
         router.push(`/ventas/${result.ingresoId}`);
       }
     });
@@ -1194,13 +1215,15 @@ export function NuevaVentaForm({
 
       {/* Acciones */}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <LoadingButton
           type="submit"
-          disabled={pending || !pagosOk || lineas.length === 0}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          pending={pending}
+          pendingLabel="Guardando..."
+          disabled={!pagosOk || lineas.length === 0}
+          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:cursor-not-allowed"
         >
-          {pending ? "Guardando…" : "Guardar venta"}
-        </button>
+          Guardar venta
+        </LoadingButton>
         {!pending && !pagosOk && (
           <span className="text-xs text-destructive">
             La suma de pagos no coincide con el total ({formatARS(diff)} de
@@ -1290,14 +1313,15 @@ export function NuevaVentaForm({
             >
               Cancelar
             </button>
-            <button
+            <LoadingButton
               type="button"
               onClick={handleCreateCliente}
-              disabled={newClienteSaving}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+              pending={newClienteSaving}
+              pendingLabel="Guardando..."
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
             >
-              {newClienteSaving ? "Guardando…" : "Crear"}
-            </button>
+              Crear
+            </LoadingButton>
           </div>
         </div>
       </div>

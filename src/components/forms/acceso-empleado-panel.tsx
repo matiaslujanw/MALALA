@@ -1,8 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { useRouter } from "next/navigation";
-import { Field, SelectField } from "./field";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { Field, LoadingButton, SelectField } from "./field";
 import type { ActionResult } from "@/lib/data/_helpers";
 
 const ROL_LABEL: Record<string, string> = {
@@ -21,16 +20,15 @@ interface Props {
   ) => Promise<ActionResult>;
 }
 
-export function AccesoEmpleadoPanel({ acceso, rolesDisponibles, action }: Props) {
-  const router = useRouter();
-  const [state, formAction, pending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = await action(prev, fd);
-    if (result.ok) router.refresh();
-    return result;
-  }, null);
+export function AccesoEmpleadoPanel({
+  acceso,
+  rolesDisponibles,
+  action,
+}: Props) {
+  const [state, formAction, pending] = useActionStateFeedback(action, {
+    successMessage: "Acceso creado",
+    refreshOnSuccess: true,
+  });
 
   const errors = state && !state.ok ? state.errors : {};
 
@@ -55,12 +53,15 @@ export function AccesoEmpleadoPanel({ acceso, rolesDisponibles, action }: Props)
           </p>
         </div>
       ) : (
-        <form action={formAction} className="space-y-3 rounded-md border border-border bg-card p-4">
+        <form
+          action={formAction}
+          className="space-y-3 rounded-md border border-border bg-card p-4"
+        >
           <p className="text-xs text-muted-foreground">
-            Este empleado todavía no tiene acceso. Creá su login con email,
-            contraseña y rol. La puede cambiar después.
+            Este empleado todavia no tiene acceso. Crea su login con email,
+            contraseña y rol. La puede cambiar despues.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field
               label="Email de acceso"
               name="email"
@@ -73,7 +74,7 @@ export function AccesoEmpleadoPanel({ acceso, rolesDisponibles, action }: Props)
               name="rol"
               error={errors.rol}
               options={rolesDisponibles}
-              placeholder="Seleccioná rol"
+              placeholder="Selecciona rol"
               required
             />
           </div>
@@ -82,19 +83,20 @@ export function AccesoEmpleadoPanel({ acceso, rolesDisponibles, action }: Props)
             name="password"
             type="password"
             error={errors.password}
-            hint="Mínimo 8 caracteres."
+            hint="Minimo 8 caracteres."
             required
           />
           {errors._ && (
             <p className="text-xs text-destructive">{errors._.join(", ")}</p>
           )}
-          <button
+          <LoadingButton
             type="submit"
-            disabled={pending}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:opacity-50"
+            pending={pending}
+            pendingLabel="Creando..."
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
           >
-            {pending ? "Creando…" : "Crear acceso"}
-          </button>
+            Crear acceso
+          </LoadingButton>
         </form>
       )}
     </section>

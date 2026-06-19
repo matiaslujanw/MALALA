@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "@/components/forms/field";
 import { upsertIntegracionManychatAction } from "@/lib/data/integraciones-manychat";
 import type { IntegracionManychatRow } from "@/lib/data/integraciones-manychat";
-import type { ActionResult } from "@/lib/data/_helpers";
 
 interface Props {
   integ: IntegracionManychatRow;
@@ -46,10 +46,13 @@ function Field({
 }
 
 export function IntegracionManychatForm({ integ }: Props) {
-  const [state, action, pending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(upsertIntegracionManychatAction, null);
+  const [state, action, pending] = useActionStateFeedback(
+    upsertIntegracionManychatAction,
+    {
+      refreshOnSuccess: true,
+      successMessage: "Integracion guardada",
+    },
+  );
 
   const fieldErrors = state && !state.ok ? state.errors : {};
   const globalError = fieldErrors._?.[0];
@@ -114,16 +117,16 @@ export function IntegracionManychatForm({ integ }: Props) {
       </label>
 
       {globalError && <p className="text-sm text-rose-600">{globalError}</p>}
-      {state?.ok && <p className="text-sm text-emerald-700">Guardado ✓</p>}
 
       <div className="flex justify-end">
-        <button
+        <LoadingButton
           type="submit"
-          disabled={pending}
-          className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          pending={pending}
+          pendingLabel="Guardando..."
+          className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-white"
         >
-          {pending ? "Guardando…" : "Guardar"}
-        </button>
+          Guardar
+        </LoadingButton>
       </div>
     </form>
   );

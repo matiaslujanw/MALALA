@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import { Trash2, FileText, Plus } from "lucide-react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import type { Cliente, FichaRegistro } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/_helpers";
 
@@ -47,29 +48,20 @@ export function FichaTecnica({
   addRegistro,
   deleteRegistro,
 }: Props) {
-  const router = useRouter();
-
-  const [perfilState, perfilAction, perfilPending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const r = await updatePerfil(prev, fd);
-    if (r.ok) router.refresh();
-    return r;
-  }, null);
+  const [perfilState, perfilAction, perfilPending] = useActionStateFeedback(
+    updatePerfil,
+    {
+      refreshOnSuccess: true,
+      successMessage: "Perfil tecnico guardado",
+    },
+  );
 
   const addFormRef = useRef<HTMLFormElement>(null);
-  const [regState, regAction, regPending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const r = await addRegistro(prev, fd);
-    if (r.ok) {
-      addFormRef.current?.reset();
-      router.refresh();
-    }
-    return r;
-  }, null);
+  const [regState, regAction, regPending] = useActionStateFeedback(addRegistro, {
+    refreshOnSuccess: true,
+    successMessage: "Registro tecnico agregado",
+    onSuccess: () => addFormRef.current?.reset(),
+  });
 
   const perfilErr = perfilState && !perfilState.ok ? perfilState.errors : {};
   const regErr = regState && !regState.ok ? regState.errors : {};
@@ -80,98 +72,94 @@ export function FichaTecnica({
       <div className="flex items-center gap-2">
         <FileText className="h-5 w-5 stroke-[1.5] text-sage-700" />
         <h2 className="font-display text-xl tracking-[0.15em] uppercase">
-          Ficha técnica
+          Ficha tecnica
         </h2>
       </div>
 
-      {/* Perfil técnico */}
       <form action={perfilAction} className="space-y-4 rounded-md border border-border bg-card p-5">
         <h3 className="text-xs uppercase tracking-widest text-muted-foreground">
           Perfil del cliente
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo label="Tipo de cabello" name="tipo_cabello" defaultValue={perfil.tipo_cabello} placeholder="Liso, fino, teñido…" />
-          <Campo label="Salud del cabello" name="salud_cabello" defaultValue={perfil.salud_cabello} placeholder="Sano, dañado, decolorado…" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Campo label="Tipo de cabello" name="tipo_cabello" defaultValue={perfil.tipo_cabello} placeholder="Liso, fino, teñido..." />
+          <Campo label="Salud del cabello" name="salud_cabello" defaultValue={perfil.salud_cabello} placeholder="Sano, dañado, decolorado..." />
           <Campo label="Color actual / base" name="color_actual" defaultValue={perfil.color_actual} placeholder="Ej. 6.0 base natural" />
-          <Campo label="Alergias / sensibilidades" name="alergias" defaultValue={perfil.alergias} placeholder="Amoníaco, PPD…" />
+          <Campo label="Alergias / sensibilidades" name="alergias" defaultValue={perfil.alergias} placeholder="Amoniaco, PPD..." />
         </div>
         <Textarea
-          label="Observaciones técnicas"
+          label="Observaciones tecnicas"
           name="observaciones_tecnicas"
           defaultValue={perfil.observaciones_tecnicas}
-          placeholder="Notas generales del cabello / piel del cliente"
+          placeholder="Notas generales del cabello o piel del cliente"
         />
         {perfilErr._ && <p className="text-xs text-destructive">{perfilErr._.join(", ")}</p>}
         <div className="flex items-center gap-3">
-          <button
+          <LoadingButton
             type="submit"
-            disabled={perfilPending}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+            pending={perfilPending}
+            pendingLabel="Guardando..."
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
           >
-            {perfilPending ? "Guardando…" : "Guardar perfil"}
-          </button>
-          {perfilState?.ok && (
-            <span className="text-xs text-sage-700">Perfil guardado.</span>
-          )}
+            Guardar perfil
+          </LoadingButton>
         </div>
       </form>
 
-      {/* Registros fechados */}
       <div className="space-y-3">
         <h3 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Registros técnicos
+          Registros tecnicos
         </h3>
 
-        {/* Alta de registro */}
         <form
           ref={addFormRef}
           action={regAction}
           className="space-y-3 rounded-md border border-border bg-card p-4"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Campo label="Fecha" name="fecha" type="date" defaultValue={hoy} />
             <Select label="Servicio" name="servicio_id" placeholder="— Opcional —" options={servicios} />
             <Select label="Empleado" name="empleado_id" placeholder="— Opcional —" options={empleados} />
           </div>
-          <Campo label="Fórmula de color" name="formula" placeholder="Ej. 7.1 + 6.0 + 20 vol · 35 min" />
-          <Textarea label="Técnica / notas" name="notas" placeholder="Mechas, técnica, tiempos, resultado…" />
+          <Campo label="Formula de color" name="formula" placeholder="Ej. 7.1 + 6.0 + 20 vol · 35 min" />
+          <Textarea label="Tecnica / notas" name="notas" placeholder="Mechas, tecnica, tiempos, resultado..." />
           {regErr.formula && <p className="text-xs text-destructive">{regErr.formula.join(", ")}</p>}
           {regErr._ && <p className="text-xs text-destructive">{regErr._.join(", ")}</p>}
-          <button
+          <LoadingButton
             type="submit"
-            disabled={regPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white hover:bg-sage-900 disabled:opacity-50 transition-colors"
+            pending={regPending}
+            pendingLabel="Agregando..."
+            className="inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-sage-900"
           >
             <Plus className="h-3.5 w-3.5 stroke-[1.5]" />
-            {regPending ? "Agregando…" : "Agregar registro"}
-          </button>
+            Agregar registro
+          </LoadingButton>
         </form>
 
         {registros.length === 0 ? (
           <div className="rounded-md border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Todavía no hay registros técnicos para este cliente.
+            Todavia no hay registros tecnicos para este cliente.
           </div>
         ) : (
           <ol className="space-y-2">
-            {registros.map((r) => (
-              <li key={r.id} className="rounded-md border border-border bg-card p-4">
+            {registros.map((registro) => (
+              <li key={registro.id} className="rounded-md border border-border bg-card p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="text-sm font-medium tabular-nums">
-                    {fmtFecha(r.fecha)}
-                    {r.servicio_nombre && (
+                    {fmtFecha(registro.fecha)}
+                    {registro.servicio_nombre && (
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        · {r.servicio_nombre}
+                        · {registro.servicio_nombre}
                       </span>
                     )}
-                    {r.empleado_nombre && (
+                    {registro.empleado_nombre && (
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        · {r.empleado_nombre}
+                        · {registro.empleado_nombre}
                       </span>
                     )}
                   </p>
                   {puedeEliminar && (
                     <form action={deleteRegistro}>
-                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="id" value={registro.id} />
                       <button
                         type="submit"
                         className="text-muted-foreground transition-colors hover:text-destructive"
@@ -182,17 +170,17 @@ export function FichaTecnica({
                     </form>
                   )}
                 </div>
-                {r.formula && (
+                {registro.formula && (
                   <p className="mt-1.5 text-sm">
                     <span className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Fórmula:{" "}
+                      Formula:{" "}
                     </span>
-                    {r.formula}
+                    {registro.formula}
                   </p>
                 )}
-                {r.notas && (
-                  <p className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">
-                    {r.notas}
+                {registro.notas && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                    {registro.notas}
                   </p>
                 )}
               </li>
@@ -219,16 +207,15 @@ function Campo({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </label>
       <input
-        id={name}
         name={name}
         type={type}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
   );
@@ -247,16 +234,15 @@ function Textarea({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </label>
       <textarea
-        id={name}
         name={name}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        rows={2}
-        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        rows={3}
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
       />
     </div>
   );
@@ -275,19 +261,17 @@ function Select({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </label>
       <select
-        id={name}
         name={name}
-        defaultValue=""
-        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
       >
         <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.nombre}
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.nombre}
           </option>
         ))}
       </select>

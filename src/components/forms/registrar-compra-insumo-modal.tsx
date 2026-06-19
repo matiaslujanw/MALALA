@@ -1,15 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import { CurrencyInput } from "./currency-input";
-import type {
-  Insumo,
-  MedioPago,
-  Proveedor,
-  Sucursal,
-} from "@/lib/types";
+import type { Insumo, MedioPago, Proveedor, Sucursal } from "@/lib/types";
 import { registrarCompraInsumo } from "@/lib/data/insumos";
 import type { CreateEgresoResult } from "@/lib/data/egresos";
 import { formatARS } from "@/lib/utils";
@@ -43,7 +39,6 @@ export function RegistrarCompraInsumoModal({
   defaultSucursalId,
   triggerLabel = "Registrar compra",
 }: Props) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sucursalId, setSucursalId] = useState(defaultSucursalId);
   const [cantidad, setCantidad] = useState<number>(1);
@@ -51,23 +46,21 @@ export function RegistrarCompraInsumoModal({
   const [pagado, setPagado] = useState(true);
 
   const mediosVisibles = useMemo(
-    () => mediosPago.filter((m) => m.sucursal_id === sucursalId && m.activo),
+    () => mediosPago.filter((medio) => medio.sucursal_id === sucursalId && medio.activo),
     [mediosPago, sucursalId],
   );
 
-  const [state, formAction, pending] = useActionState<
-    CreateEgresoResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const result = await registrarCompraInsumo(prev, fd);
-    if (result.ok) {
-      router.refresh();
+  const [state, formAction, pending] = useActionStateFeedback<
+    CreateEgresoResult
+  >(registrarCompraInsumo, {
+    refreshOnSuccess: true,
+    successMessage: "Compra registrada",
+    onSuccess: () => {
       setOpen(false);
       setCantidad(1);
       setValor(0);
-    }
-    return result;
-  }, null);
+    },
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -79,8 +72,7 @@ export function RegistrarCompraInsumoModal({
   }, [open, pending]);
 
   const errors = state && !state.ok ? state.errors : {};
-  const precioUnitarioCalc =
-    cantidad > 0 && valor > 0 ? valor / cantidad : null;
+  const precioUnitarioCalc = cantidad > 0 && valor > 0 ? valor / cantidad : null;
 
   return (
     <>
@@ -98,7 +90,7 @@ export function RegistrarCompraInsumoModal({
           onClick={() => !pending && setOpen(false)}
         >
           <div
-            className="bg-card border border-border rounded-md shadow-lg w-full max-w-lg p-6 space-y-4"
+            className="w-full max-w-lg space-y-4 rounded-md border border-border bg-card p-6 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
@@ -106,7 +98,7 @@ export function RegistrarCompraInsumoModal({
                 <h3 className="font-display text-lg tracking-[0.15em] uppercase">
                   Registrar compra
                 </h3>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   {insumo.nombre}
                   {proveedor ? ` · ${proveedor.nombre}` : ""}
                 </p>
@@ -123,11 +115,7 @@ export function RegistrarCompraInsumoModal({
             <form action={formAction} className="space-y-4">
               <input type="hidden" name="insumo_id" value={insumo.id} />
               {insumo.proveedor_id && (
-                <input
-                  type="hidden"
-                  name="proveedor_id"
-                  value={insumo.proveedor_id}
-                />
+                <input type="hidden" name="proveedor_id" value={insumo.proveedor_id} />
               )}
 
               <div className="grid grid-cols-2 gap-3">
@@ -140,7 +128,7 @@ export function RegistrarCompraInsumoModal({
                     name="fecha"
                     defaultValue={todayYMD()}
                     required
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -152,11 +140,11 @@ export function RegistrarCompraInsumoModal({
                     value={sucursalId}
                     onChange={(e) => setSucursalId(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                   >
-                    {sucursales.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre}
+                    {sucursales.map((sucursal) => (
+                      <option key={sucursal.id} value={sucursal.id}>
+                        {sucursal.nombre}
                       </option>
                     ))}
                   </select>
@@ -176,7 +164,7 @@ export function RegistrarCompraInsumoModal({
                     value={cantidad}
                     onChange={(e) => setCantidad(Number(e.target.value))}
                     required
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring tabular-nums text-right"
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <p className="text-[10px] text-muted-foreground">
                     Cada envase trae {insumo.tamano_envase}{" "}
@@ -191,11 +179,11 @@ export function RegistrarCompraInsumoModal({
                     value={valor}
                     onChange={setValor}
                     min={0}
-                    className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <input type="hidden" name="valor" value={valor} />
                   {precioUnitarioCalc != null && (
-                    <p className="text-[10px] text-muted-foreground tabular-nums">
+                    <p className="text-[10px] tabular-nums text-muted-foreground">
                       Precio por envase: {formatARS(precioUnitarioCalc)}
                     </p>
                   )}
@@ -209,16 +197,16 @@ export function RegistrarCompraInsumoModal({
                 <select
                   name="mp_id"
                   required
-                  className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                 >
                   <option value="">
                     {mediosVisibles.length === 0
-                      ? "Cargá un medio en esta sucursal"
-                      : "Seleccioná"}
+                      ? "Carga un medio en esta sucursal"
+                      : "Selecciona"}
                   </option>
-                  {mediosVisibles.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.codigo} — {m.nombre}
+                  {mediosVisibles.map((medio) => (
+                    <option key={medio.id} value={medio.id}>
+                      {medio.codigo} - {medio.nombre}
                     </option>
                   ))}
                 </select>
@@ -240,37 +228,39 @@ export function RegistrarCompraInsumoModal({
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Observación
+                  Observacion
                 </label>
                 <textarea
                   name="observacion"
                   rows={2}
-                  className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
-              {Object.entries(errors).map(([k, v]) => (
-                <p key={k} className="text-xs text-destructive">
-                  {Array.isArray(v) ? v.join(", ") : String(v)}
+              {Object.entries(errors).map(([key, value]) => (
+                <p key={key} className="text-xs text-destructive">
+                  {Array.isArray(value) ? value.join(", ") : String(value)}
                 </p>
               ))}
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="flex justify-end gap-2 border-t border-border pt-2">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   disabled={pending}
-                  className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
+                  className="rounded-md border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-cream"
                 >
                   Cancelar
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  disabled={pending || cantidad <= 0 || valor <= 0}
-                  className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+                  disabled={cantidad <= 0 || valor <= 0}
+                  pending={pending}
+                  pendingLabel="Guardando..."
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
                 >
-                  {pending ? "Guardando…" : "Registrar compra"}
-                </button>
+                  Registrar compra
+                </LoadingButton>
               </div>
             </form>
           </div>

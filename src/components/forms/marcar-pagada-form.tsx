@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import { marcarLiquidacionPagada } from "@/lib/data/liquidaciones";
 import type { MedioPago } from "@/lib/types";
 
@@ -11,8 +12,7 @@ interface Props {
 }
 
 export function MarcarPagadaForm({ liquidacionId, mediosPago }: Props) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = useTransitionFeedback();
   const efectivo = mediosPago.find((m) => m.codigo === "EF");
   const [mpId, setMpId] = useState(efectivo?.id ?? mediosPago[0]?.id ?? "");
   const [observacion, setObservacion] = useState("");
@@ -24,20 +24,25 @@ export function MarcarPagadaForm({ liquidacionId, mediosPago }: Props) {
     const fd = new FormData();
     fd.set("mp_id", mpId);
     fd.set("observacion", observacion);
-    startTransition(async () => {
-      const res = await marcarLiquidacionPagada(liquidacionId, fd);
-      if (!res.ok) {
-        setError(Object.values(res.errors).flat().join(", ") || "Error");
-        return;
-      }
-      router.refresh();
-    });
+    run(
+      async () => {
+        const res = await marcarLiquidacionPagada(liquidacionId, fd);
+        if (!res.ok) {
+          setError(Object.values(res.errors).flat().join(", ") || "Error");
+        }
+        return res;
+      },
+      {
+        refreshOnSuccess: true,
+        successMessage: "Liquidacion marcada como pagada",
+      },
+    );
   }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-card border border-border rounded-md p-5 space-y-3"
+      className="space-y-3 rounded-md border border-border bg-card p-5"
     >
       <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
         Registrar pago
@@ -49,34 +54,35 @@ export function MarcarPagadaForm({ liquidacionId, mediosPago }: Props) {
         <select
           value={mpId}
           onChange={(e) => setMpId(e.target.value)}
-          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         >
-          {mediosPago.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.codigo} — {m.nombre}
+          {mediosPago.map((medio) => (
+            <option key={medio.id} value={medio.id}>
+              {medio.codigo} - {medio.nombre}
             </option>
           ))}
         </select>
       </div>
       <div className="space-y-1.5">
         <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Observación
+          Observacion
         </label>
         <textarea
           value={observacion}
           onChange={(e) => setObservacion(e.target.value)}
           rows={2}
-          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
+          className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
         />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      <button
+      <LoadingButton
         type="submit"
-        disabled={pending}
-        className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+        pending={pending}
+        pendingLabel="Guardando..."
+        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
       >
-        {pending ? "Guardando…" : "Marcar pagada"}
-      </button>
+        Marcar pagada
+      </LoadingButton>
     </form>
   );
 }

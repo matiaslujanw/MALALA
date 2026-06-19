@@ -1,15 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Check, AlertTriangle } from "lucide-react";
+import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "./field";
 import type { ActionResult } from "@/lib/data/_helpers";
 
 type Estado = "ok" | "error" | "";
 
 interface Props {
   ingresoId: string;
-  /** undefined = sin dato, true = satisfecho, false = no satisfecho. */
   satisfecho?: boolean;
   nota?: string;
   puedeEditar: boolean;
@@ -26,20 +26,15 @@ export function SatisfaccionVentaForm({
   puedeEditar,
   action,
 }: Props) {
-  const router = useRouter();
   const inicial: Estado =
     satisfecho === true ? "ok" : satisfecho === false ? "error" : "";
   const [estado, setEstado] = useState<Estado>(inicial);
   const [notaTxt, setNotaTxt] = useState(nota ?? "");
 
-  const [state, formAction, pending] = useActionState<
-    ActionResult | null,
-    FormData
-  >(async (prev, fd) => {
-    const r = await action(prev, fd);
-    if (r.ok) router.refresh();
-    return r;
-  }, null);
+  const [state, formAction, pending] = useActionStateFeedback(action, {
+    refreshOnSuccess: true,
+    successMessage: "Satisfaccion guardada",
+  });
 
   const error = state && !state.ok ? Object.values(state.errors).flat()[0] : null;
 
@@ -47,7 +42,7 @@ export function SatisfaccionVentaForm({
     return (
       <section className="space-y-2">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Satisfacción del cliente
+          Satisfaccion del cliente
         </h2>
         <SatisfaccionBadge satisfecho={satisfecho} />
         {satisfecho === false && nota && (
@@ -58,10 +53,10 @@ export function SatisfaccionVentaForm({
   }
 
   return (
-    <section className="space-y-3 bg-card border border-border rounded-md p-5">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+    <section className="space-y-3 rounded-md border border-border bg-card p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Satisfacción del cliente
+          Satisfaccion del cliente
         </h2>
         <SatisfaccionBadge satisfecho={satisfecho} />
       </div>
@@ -87,7 +82,7 @@ export function SatisfaccionVentaForm({
           />
         </div>
 
-        {estado === "error" && (
+        {estado === "error" ? (
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Motivo (opcional)
@@ -97,26 +92,26 @@ export function SatisfaccionVentaForm({
               value={notaTxt}
               onChange={(e) => setNotaTxt(e.target.value)}
               rows={2}
-              placeholder="Ej. quedó disconforme con el color; hubo que repasar y se usó más insumo…"
-              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Ej. quedó disconforme con el color o hubo que repasar."
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-        )}
-        {estado !== "error" && (
+        ) : (
           <input type="hidden" name="satisfaccion_nota" value="" />
         )}
 
         {error && <p className="text-xs text-destructive">{error}</p>}
 
         <div className="flex items-center gap-3">
-          <button
+          <LoadingButton
             type="submit"
-            disabled={pending || estado === ""}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 disabled:opacity-50 transition-colors"
+            disabled={estado === ""}
+            pending={pending}
+            pendingLabel="Guardando..."
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
           >
-            {pending ? "Guardando…" : "Guardar"}
-          </button>
-          {state?.ok && <span className="text-xs text-sage-700">Guardado.</span>}
+            Guardar
+          </LoadingButton>
         </div>
       </form>
     </section>
@@ -126,7 +121,7 @@ export function SatisfaccionVentaForm({
 function SatisfaccionBadge({ satisfecho }: { satisfecho?: boolean }) {
   if (satisfecho === true) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-sage-100 text-sage-800">
+      <span className="inline-flex items-center gap-1 rounded bg-sage-100 px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-sage-800">
         <Check className="h-3.5 w-3.5 stroke-[1.5]" />
         Satisfecho
       </span>
@@ -135,7 +130,7 @@ function SatisfaccionBadge({ satisfecho }: { satisfecho?: boolean }) {
   if (satisfecho === false) {
     return (
       <span
-        className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider px-2 py-0.5 rounded"
+        className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium uppercase tracking-wider"
         style={{ backgroundColor: "rgb(201 169 97 / 0.18)", color: "var(--danger)" }}
       >
         <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5]" />
@@ -144,7 +139,7 @@ function SatisfaccionBadge({ satisfecho }: { satisfecho?: boolean }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs uppercase tracking-wider px-2 py-0.5 rounded bg-stone-100 text-stone-500">
+    <span className="inline-flex items-center gap-1 rounded bg-stone-100 px-2 py-0.5 text-xs uppercase tracking-wider text-stone-500">
       Sin dato
     </span>
   );
@@ -165,8 +160,8 @@ function Opcion({
 }) {
   const activeCls =
     tone === "ok"
-      ? "bg-sage-700 text-white border-sage-700"
-      : "bg-[var(--danger)] text-white border-[var(--danger)]";
+      ? "border-sage-700 bg-sage-700 text-white"
+      : "border-[var(--danger)] bg-[var(--danger)] text-white";
   return (
     <button
       type="button"

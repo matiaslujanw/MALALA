@@ -5,8 +5,8 @@ import { requireUser } from "@/lib/auth/session";
 import type { Rol, Usuario } from "@/lib/types";
 
 export type ActionResult =
-  | { ok: true }
-  | { ok: false; errors: Record<string, string[]> };
+  | { ok: true; message?: string }
+  | { ok: false; errors: Record<string, string[]>; message?: string };
 
 export function fieldErrors(err: unknown): Record<string, string[]> {
   if (err && typeof err === "object" && "issues" in err) {
@@ -24,7 +24,11 @@ export function fieldErrors(err: unknown): Record<string, string[]> {
 }
 
 export function failure(msg: string): ActionResult {
-  return { ok: false, errors: { _: [msg] } };
+  return { ok: false, errors: { _: [msg] }, message: msg };
+}
+
+export function success(message?: string): ActionResult {
+  return message ? { ok: true, message } : { ok: true };
 }
 
 export async function requireRole(roles: Rol[]): Promise<Usuario> {

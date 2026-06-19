@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
 import { Check, Undo2 } from "lucide-react";
+import { useTransitionFeedback } from "@/components/feedback/action-feedback";
+import { LoadingButton } from "@/components/forms/field";
 import { togglePagadoEgreso } from "@/lib/data/egresos-actions";
-import { useRouter } from "next/navigation";
 
 export function TogglePagadoButton({
   egresoId,
@@ -12,30 +12,28 @@ export function TogglePagadoButton({
   egresoId: string;
   pagado: boolean;
 }) {
-  const [pending, start] = useTransition();
-  const router = useRouter();
+  const { pending, run } = useTransitionFeedback();
 
-  // Pendiente → CTA verde llamativo para saldarlo.
-  // Pagado → botón sutil para revertir.
   const className = pagado
-    ? "inline-flex items-center gap-1.5 text-xs uppercase tracking-wider px-2.5 py-1.5 rounded-md border border-border text-muted-foreground hover:bg-cream transition-colors disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider px-2.5 py-1.5 rounded-md bg-sage-700 text-white hover:bg-sage-900 transition-colors disabled:opacity-50";
+    ? "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-cream disabled:opacity-50"
+    : "inline-flex items-center gap-1.5 rounded-md bg-sage-700 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-white transition-colors hover:bg-sage-900 disabled:opacity-50";
 
   return (
-    <button
+    <LoadingButton
       type="button"
-      disabled={pending}
+      pending={pending}
+      pendingLabel={pagado ? "Actualizando..." : "Guardando..."}
       onClick={() =>
-        start(async () => {
-          await togglePagadoEgreso(egresoId);
-          router.refresh();
+        run(() => togglePagadoEgreso(egresoId), {
+          refreshOnSuccess: true,
+          successMessage: pagado
+            ? "Egreso marcado como pendiente"
+            : "Egreso marcado como pagado",
         })
       }
       className={className}
     >
-      {pending ? (
-        "…"
-      ) : pagado ? (
+      {pagado ? (
         <>
           <Undo2 className="h-3.5 w-3.5 stroke-[2]" />
           Marcar pendiente
@@ -46,6 +44,6 @@ export function TogglePagadoButton({
           Marcar pagado
         </>
       )}
-    </button>
+    </LoadingButton>
   );
 }
