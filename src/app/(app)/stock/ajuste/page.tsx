@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { AjusteForm } from "@/components/forms/ajuste-form";
 import { listInsumos } from "@/lib/data/insumos";
-import { listSucursales } from "@/lib/data/sucursales";
 import { createAjusteManual, listStockBySucursal } from "@/lib/data/stock";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
@@ -11,22 +10,17 @@ export default async function AjustePage() {
   const sucursal = await getActiveSucursal();
   if (!sucursal) redirect("/stock");
 
-  const [insumos, sucursales] = await Promise.all([
+  // El ajuste manual se limita a la sucursal activa de la sesión.
+  const [insumos, stockActual] = await Promise.all([
     listInsumos(),
-    listSucursales(),
+    listStockBySucursal(sucursal.id),
   ]);
 
-  // Stock actual por sucursal/insumo, para mostrar el saldo y un preview del
-  // ajuste en el form. Mapa: sucursalId -> insumoId -> cantidad.
-  const stockPorSucursal = await Promise.all(
-    sucursales.map((s) => listStockBySucursal(s.id)),
-  );
-  const stockMap: Record<string, Record<string, number>> = {};
-  sucursales.forEach((s, i) => {
-    stockMap[s.id] = Object.fromEntries(
-      stockPorSucursal[i].map((row) => [row.insumo.id, row.cantidad]),
-    );
-  });
+  const stockMap: Record<string, Record<string, number>> = {
+    [sucursal.id]: Object.fromEntries(
+      stockActual.map((row) => [row.insumo.id, row.cantidad]),
+    ),
+  };
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";
@@ -46,7 +40,7 @@ export default async function AjustePage() {
       </header>
       <AjusteForm
         insumos={insumos}
-        sucursales={sucursales}
+        sucursales={[sucursal]}
         stockMap={stockMap}
         defaultSucursalId={sucursal.id}
         action={action}
