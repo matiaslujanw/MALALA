@@ -7,12 +7,26 @@ interface Message {
   content: string;
 }
 
-const SUGERENCIAS = [
-  "¿Qué sucursal facturó más este mes?",
-  "Dame los 5 servicios más vendidos",
-  "¿Hay stock crítico en alguna sucursal?",
+interface PendingAction {
+  tool: string;
+  args: Record<string, unknown>;
+  resumen: string;
+}
+
+const SUGERENCIAS_GESTION = [
+  "¿Cuánto se facturó hoy?",
+  "Dame los 5 servicios más vendidos del mes",
+  "¿Hay stock crítico?",
   "¿Cómo viene la ocupación de turnos esta semana?",
 ];
+
+const SUGERENCIAS_EMPLEADO = [
+  "¿Qué turnos hay hoy?",
+  "Mostrame la agenda de mañana",
+  "¿Qué servicios hay en el catálogo?",
+];
+
+type Rol = "superadmin" | "admin" | "encargada" | "empleado";
 
 function escapeHtml(s: string) {
   return s
@@ -32,13 +46,50 @@ function renderMarkdown(text: string): string {
   return html;
 }
 
-export function AdminChat() {
+// Web Speech API (no tipada en TS estándar)
+type SpeechRecognitionCtor = new () => {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+function getSpeechRecognition(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+export function AdminChat({
+  rol,
+  sucursalNombre,
+}: {
+  rol: Rol;
+  sucursalNombre: string;
+}) {
+  const sugerencias = rol === "empleado" ? SUGERENCIAS_EMPLEADO : SUGERENCIAS_GESTION;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [toolLabel, setToolLabel] = useState<string | null>(null);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [listening, setListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<InstanceType<SpeechRecognitionCtor> | null>(null);
+
+  useEffect(() => {
+    setVoiceSupported(getSpeechRecognition() !== null);
+    return () => recognitionRef.current?.stop();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +97,32 @@ export function AdminChat() {
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, loading, toolLabel, open]);
+  }, [messages, loading, toolLabel, pending, open]);
+
+  function toggleVoice() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognition();
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "es-AR";
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.onresult = (e) => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) {
+        text += e.results[i][0].transcript;
+      }
+      setInput(text);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
@@ -55,6 +131,7 @@ export function AdminChat() {
     setInput("");
     setLoading(true);
     setToolLabel(null);
+    setPending(null);
 
     try {
       const res = await fetch("/api/admin-chat", {
@@ -71,6 +148,7 @@ export function AdminChat() {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantText = "";
+      let pendingAction: PendingAction | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -92,16 +170,26 @@ export function AdminChat() {
             setToolLabel(`Consultando ${data.name}...`);
           } else if (event === "text") {
             assistantText = data.content;
+          } else if (event === "confirm_required") {
+            pendingAction = {
+              tool: data.tool,
+              args: data.args,
+              resumen: data.resumen,
+            };
           } else if (event === "error") {
             assistantText = `Error: ${data.message}`;
           }
         }
       }
 
-      setMessages([
-        ...next,
-        { role: "assistant", content: assistantText || "(sin respuesta)" },
-      ]);
+      if (assistantText) {
+        setMessages([...next, { role: "assistant", content: assistantText }]);
+      } else if (!pendingAction) {
+        setMessages([...next, { role: "assistant", content: "(sin respuesta)" }]);
+      } else {
+        setMessages(next);
+      }
+      if (pendingAction) setPending(pendingAction);
     } catch (err) {
       setMessages([
         ...next,
@@ -114,6 +202,56 @@ export function AdminChat() {
       setLoading(false);
       setToolLabel(null);
     }
+  }
+
+  async function confirmAction() {
+    if (!pending || loading) return;
+    const action = pending;
+    setPending(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin-chat/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tool: action.tool, args: action.args }),
+      });
+      const json = await res.json().catch(() => null);
+      let content: string;
+      if (!res.ok) {
+        content = `No se pudo ejecutar: ${json?.error ?? `HTTP ${res.status}`}`;
+      } else {
+        const result = json?.result;
+        if (result?.ok) {
+          content = result.message ?? "✓ Acción realizada.";
+        } else {
+          const errs = result?.errors
+            ? Object.values(result.errors as Record<string, string[]>)
+                .flat()
+                .join(" ")
+            : result?.message;
+          content = `No se pudo ejecutar: ${errs ?? "error desconocido"}`;
+        }
+      }
+      setMessages((prev) => [...prev, { role: "assistant", content }]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Error: ${err instanceof Error ? err.message : String(err)}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function cancelAction() {
+    setPending(null);
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "Acción cancelada." },
+    ]);
   }
 
   return (
@@ -145,7 +283,7 @@ export function AdminChat() {
           <div className="flex items-start justify-between border-b border-border p-4">
             <div>
               <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                Auditoría IA
+                Asistente IA
               </p>
               <h2 className="font-display text-lg tracking-[0.18em] uppercase">
                 Asistente
@@ -154,7 +292,10 @@ export function AdminChat() {
             {messages.length > 0 && (
               <button
                 type="button"
-                onClick={() => setMessages([])}
+                onClick={() => {
+                  setMessages([]);
+                  setPending(null);
+                }}
                 className="text-xs uppercase tracking-wider text-muted-foreground hover:text-ink"
               >
                 Limpiar
@@ -166,9 +307,9 @@ export function AdminChat() {
             {messages.length === 0 && (
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Preguntale sobre turnos, ingresos, stock, empleados, caja.
+                  {sucursalNombre} · Preguntale sobre turnos, ventas, stock o caja.
                 </p>
-                {SUGERENCIAS.map((s) => (
+                {sugerencias.map((s) => (
                   <button
                     key={s}
                     onClick={() => sendMessage(s)}
@@ -198,6 +339,33 @@ export function AdminChat() {
               ),
             )}
 
+            {pending && (
+              <div className="mr-auto w-full max-w-[95%] rounded-2xl border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-ink">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-700">
+                  Confirmar acción
+                </p>
+                <p className="mb-3 leading-relaxed">{pending.resumen}</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={confirmAction}
+                    disabled={loading}
+                    className="rounded-xl bg-primary px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700 disabled:opacity-50"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelAction}
+                    disabled={loading}
+                    className="rounded-xl border border-stone-300 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition hover:text-ink disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
             {loading && (
               <div className="mr-auto max-w-[90%] rounded-2xl border border-dashed border-stone-200 bg-cream/40 px-3 py-2 text-xs text-muted-foreground">
                 {toolLabel ?? "Pensando..."}
@@ -213,11 +381,30 @@ export function AdminChat() {
             className="border-t border-border p-3"
           >
             <div className="flex gap-2">
+              {voiceSupported && (
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  disabled={loading}
+                  aria-label={listening ? "Detener dictado" : "Dictar por voz"}
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
+                    listening
+                      ? "border-red-400 bg-red-50 text-red-600"
+                      : "border-border bg-card text-muted-foreground hover:border-sage-700 hover:text-ink"
+                  }`}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    <line x1="12" y1="19" x2="12" y2="22" />
+                  </svg>
+                </button>
+              )}
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
-                placeholder="Hacé tu pregunta..."
+                placeholder={listening ? "Escuchando..." : "Hacé tu pregunta..."}
                 className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm focus:border-sage-700 focus:outline-none disabled:opacity-50"
               />
               <button

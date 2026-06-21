@@ -78,15 +78,27 @@ export function AjusteForm({
             placeholder="Seleccioná insumo"
             required
           />
-          <SelectField
-            label="Sucursal"
-            name="sucursal_id"
-            value={sucursalId}
-            onChange={(e) => setSucursalId(e.currentTarget.value)}
-            error={errors.sucursal_id}
-            options={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
-            required
-          />
+          {sucursales.length > 1 ? (
+            <SelectField
+              label="Sucursal"
+              name="sucursal_id"
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.currentTarget.value)}
+              error={errors.sucursal_id}
+              options={sucursales.map((s) => ({ value: s.id, label: s.nombre }))}
+              required
+            />
+          ) : (
+            <div className="space-y-1.5">
+              <p className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Sucursal
+              </p>
+              <p className="text-sm">
+                {sucursales.find((s) => s.id === sucursalId)?.nombre ?? "—"}
+              </p>
+              <input type="hidden" name="sucursal_id" value={sucursalId} />
+            </div>
+          )}
 
           {insumo && (
             <div className="bg-cream/40 border border-border rounded-md p-4 space-y-1.5">

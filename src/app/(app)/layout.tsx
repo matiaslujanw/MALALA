@@ -106,7 +106,7 @@ export default async function AppLayout({
           </ToastProvider>
         </main>
       </div>
-      {user.rol === "admin" && <AdminChat />}
+      <AdminChat rol={user.rol} sucursalNombre={sucursal.nombre} />
     </div>
   );
 }

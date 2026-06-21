@@ -3,7 +3,7 @@
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   insumos as insumosTable,
@@ -216,6 +216,12 @@ export async function createAjusteManual(
     motivo: formData.get("motivo"),
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+
+  // El ajuste manual solo puede aplicarse sobre la sucursal activa de la sesión.
+  const sucursalActiva = await getActiveSucursal();
+  if (!sucursalActiva || parsed.data.sucursal_id !== sucursalActiva.id) {
+    return failure("Solo podés ajustar el stock de tu sucursal activa.");
+  }
 
   await applyMovement({
     insumo_id: parsed.data.insumo_id,
