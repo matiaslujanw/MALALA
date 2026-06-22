@@ -324,6 +324,11 @@ export async function listIngresos(
   if (filtros.sucursalId && !isSucursalAllowed(scope, filtros.sucursalId)) {
     return [];
   }
+  // Fail-closed: un empleado sin ficha vinculada (empleado_id) no ve ninguna
+  // venta, en vez de filtrar "abierto" y ver todas las de la sucursal.
+  if (scope.rol === "empleado" && !scope.empleadoId) {
+    return [];
+  }
   if (
     scope.rol === "empleado" &&
     filtros.empleadoId &&
@@ -426,7 +431,10 @@ export async function getIngreso(
       .where(eq(ingresoLineasTable.ingresoId, ingresoId))
   ).map(mapIngresoLinea);
 
-  if (scope.rol === "empleado" && scope.empleadoId) {
+  if (scope.rol === "empleado") {
+    // Fail-closed: sin ficha vinculada no ve ningún detalle; con ficha, solo
+    // las ventas donde participó.
+    if (!scope.empleadoId) return null;
     const isOwn = lineas.some((linea) => linea.empleado_id === scope.empleadoId);
     if (!isOwn) return null;
   }
