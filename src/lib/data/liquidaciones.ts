@@ -281,6 +281,51 @@ async function empleadoPerteneceASucursal(
   return empleado?.sucursalId === sucursalId;
 }
 
+/**
+ * Busca una liquidación ya existente del mismo empleado+sucursal cuyo período se
+ * superponga con [desde, hasta]. Dos rangos se solapan si: existente.desde <=
+ * nuevo.hasta && existente.hasta >= nuevo.desde. Las liquidaciones anuladas se
+ * borran de la tabla, así que cualquier fila encontrada está vigente.
+ */
+async function buscarLiquidacionSolapada(args: {
+  empleadoId: string;
+  sucursalId: string;
+  desde: string;
+  hasta: string;
+}): Promise<{ desde: string; hasta: string } | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      desde: liquidacionesTable.periodoDesde,
+      hasta: liquidacionesTable.periodoHasta,
+    })
+    .from(liquidacionesTable)
+    .where(
+      and(
+        eq(liquidacionesTable.empleadoId, args.empleadoId),
+        eq(liquidacionesTable.sucursalId, args.sucursalId),
+        lte(liquidacionesTable.periodoDesde, args.hasta),
+        gte(liquidacionesTable.periodoHasta, args.desde),
+      ),
+    )
+    .limit(1);
+
+  return row ? { desde: ymd(row.desde), hasta: ymd(row.hasta) } : null;
+}
+
+function errorSolapada(solapada: { desde: string; hasta: string }) {
+  const f = (s: string) => s.split("-").reverse().join("/");
+  return {
+    ok: false as const,
+    errors: {
+      _: [
+        `Ya existe una liquidación de este empleado que cubre esas fechas ` +
+          `(${f(solapada.desde)} a ${f(solapada.hasta)}). Anulala o ajustá el período.`,
+      ],
+    },
+  };
+}
+
 export async function previewLiquidacion(input: {
   sucursalId: string;
   empleadoId: string;
@@ -319,6 +364,14 @@ export async function previewLiquidacion(input: {
       },
     };
   }
+
+  const solapada = await buscarLiquidacionSolapada({
+    empleadoId: parsed.data.empleado_id,
+    sucursalId: parsed.data.sucursal_id,
+    desde: parsed.data.periodo_desde,
+    hasta: parsed.data.periodo_hasta,
+  });
+  if (solapada) return errorSolapada(solapada);
 
   const lineas = await fetchLineasPendientes({
     sucursalId: parsed.data.sucursal_id,
@@ -400,6 +453,14 @@ export async function createLiquidacion(
       },
     };
   }
+
+  const solapada = await buscarLiquidacionSolapada({
+    empleadoId: parsed.data.empleado_id,
+    sucursalId: parsed.data.sucursal_id,
+    desde: parsed.data.periodo_desde,
+    hasta: parsed.data.periodo_hasta,
+  });
+  if (solapada) return errorSolapada(solapada);
 
   const horasTrabajadas = parsed.data.horas_trabajadas;
   const diasViatico = parsed.data.dias_viatico;
