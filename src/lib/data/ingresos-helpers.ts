@@ -29,6 +29,98 @@ export interface IngresoBreakdown {
   neto: number;
 }
 
+// ───────────────────────── Cálculo financiero de una venta ─────────────────────────
+// Funciones puras compartidas entre la creación de la venta (createIngreso) y los
+// tests. Replican exactamente la lógica original que vivía inline en createIngreso.
+
+export interface DescuentoCalc {
+  subtotal: number;
+  descuentoMonto: number;
+  descuentoPct: number;
+  totalNeto: number;
+}
+
+/**
+ * Subtotal de líneas, monto y porcentaje de descuento, y total neto (antes de
+ * recargos de medio de pago).
+ * - descuento_tipo "pct"  → monto = subtotal × (valor / 100)
+ * - descuento_tipo "monto"→ pct derivado = (valor / subtotal) × 100
+ */
+export function computeDescuento(args: {
+  subtotal: number;
+  descuentoTipo: "pct" | "monto";
+  descuentoValor: number;
+}): DescuentoCalc {
+  const { subtotal, descuentoTipo, descuentoValor } = args;
+  const descuentoMonto =
+    descuentoTipo === "pct" ? subtotal * (descuentoValor / 100) : descuentoValor;
+  const descuentoPct =
+    descuentoTipo === "pct"
+      ? descuentoValor
+      : subtotal > 0
+        ? (descuentoValor / subtotal) * 100
+        : 0;
+  return { subtotal, descuentoMonto, descuentoPct, totalNeto: subtotal - descuentoMonto };
+}
+
+export interface RecargoCalc {
+  recargo1: number;
+  recargo2: number;
+  valor1Cobrado: number;
+  valor2Cobrado: number | null;
+  total: number;
+}
+
+/**
+ * Recargos por medio de pago (ej. tarjeta) sobre la porción cobrada con cada
+ * medio, y total efectivamente pagado por el cliente (neto + recargos).
+ */
+export function computeRecargos(args: {
+  totalNeto: number;
+  mp1Id: string;
+  valor1: number;
+  mp2Id?: string;
+  valor2?: number | null;
+  recargoPctById: Map<string, number>;
+}): RecargoCalc {
+  const { totalNeto, mp1Id, valor1, mp2Id, valor2, recargoPctById } = args;
+  const recargo1 = valor1 * ((recargoPctById.get(mp1Id) ?? 0) / 100);
+  const recargo2 =
+    mp2Id && valor2 != null
+      ? valor2 * ((recargoPctById.get(mp2Id) ?? 0) / 100)
+      : 0;
+  return {
+    recargo1,
+    recargo2,
+    valor1Cobrado: valor1 + recargo1,
+    valor2Cobrado: valor2 != null ? valor2 + recargo2 : null,
+    total: totalNeto + recargo1 + recargo2,
+  };
+}
+
+/**
+ * Comisión de una línea de servicio:
+ * - soporta_descuento = true  → sobre el precio final pagado (descuento prorrateado)
+ * - soporta_descuento = false → sobre el precio de lista (regular)
+ */
+export function comisionMontoServicio(args: {
+  precioEfectivo: number;
+  comisionPct: number;
+  soportaDescuento: boolean;
+  precioLista?: number;
+  subtotal: number;
+  descuentoMonto: number;
+}): number {
+  const { precioEfectivo, comisionPct, soportaDescuento, precioLista, subtotal, descuentoMonto } =
+    args;
+  const descProrrateado =
+    subtotal > 0 ? descuentoMonto * (precioEfectivo / subtotal) : 0;
+  const base = soportaDescuento
+    ? precioEfectivo - descProrrateado
+    : (precioLista ?? precioEfectivo);
+  return base * (comisionPct / 100);
+}
+
 export interface IngresoLineaConDetalle extends IngresoLinea {
   servicio: Servicio | null;
   insumo: Insumo | null;

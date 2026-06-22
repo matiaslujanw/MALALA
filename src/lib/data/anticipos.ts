@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, gte, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
@@ -11,7 +11,7 @@ import {
   empleados as empleadosTable,
   rubrosGasto as rubrosGastoTable,
 } from "@/lib/db/schema";
-import { getActiveSucursalForUser } from "@/lib/auth/session";
+import { getActiveSucursalForUser, requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import {
@@ -49,14 +49,25 @@ function mapAnticipo(row: typeof anticiposTable.$inferSelect): Anticipo {
   };
 }
 
-/** Todos los anticipos de un empleado, más recientes primero. */
+/**
+ * Anticipos de un empleado (más recientes primero), confinados a las sucursales
+ * permitidas del usuario. Los anticipos son por sucursal, así que una encargada
+ * solo ve los de su sucursal aunque el empleado rote entre locales.
+ */
 export async function listAnticipos(empleadoId: string): Promise<Anticipo[]> {
   requireSupabaseRuntime("Los anticipos requieren Supabase configurado.");
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   const db = getDb();
   const rows = await db
     .select()
     .from(anticiposTable)
-    .where(eq(anticiposTable.empleadoId, empleadoId))
+    .where(
+      and(
+        eq(anticiposTable.empleadoId, empleadoId),
+        inArray(anticiposTable.sucursalId, scope.sucursalIdsPermitidas),
+      ),
+    )
     .orderBy(desc(anticiposTable.fecha), desc(anticiposTable.creadoEn));
   return rows.map(mapAnticipo);
 }

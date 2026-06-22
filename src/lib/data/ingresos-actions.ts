@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client/postgres";
 import { ingresos as ingresosTable } from "@/lib/db/schema";
 import type { CreateIngresoResult } from "./ingresos";
 import { createIngreso as createIngresoImpl } from "./ingresos";
+import { buildAccessScope } from "@/lib/auth/access";
 import { failure, requireRole, type ActionResult } from "./_helpers";
 
 export async function createIngreso(formData: FormData): Promise<CreateIngresoResult> {
@@ -21,6 +22,7 @@ export async function setSatisfaccionVenta(
   formData: FormData,
 ): Promise<ActionResult> {
   const user = await requireRole(["admin", "encargada"]);
+  const scope = buildAccessScope(user);
 
   const id = String(formData.get("ingreso_id") ?? "");
   if (!id) return failure("Venta no encontrada");
@@ -31,11 +33,14 @@ export async function setSatisfaccionVenta(
 
   const db = getDb();
   const [existing] = await db
-    .select({ id: ingresosTable.id })
+    .select({ id: ingresosTable.id, sucursalId: ingresosTable.sucursalId })
     .from(ingresosTable)
     .where(eq(ingresosTable.id, id))
     .limit(1);
   if (!existing) return failure("Venta no encontrada");
+  if (!scope.sucursalIdsPermitidas.includes(existing.sucursalId)) {
+    return failure("No tenés acceso a esa venta");
+  }
 
   await db
     .update(ingresosTable)
