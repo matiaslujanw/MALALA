@@ -441,7 +441,11 @@ async function buildAgendaTurnos(args: {
   profesionalId?: string;
   estado?: string;
   employeeScopeId?: string;
+  restrictToEmpleado?: boolean;
 }) {
+  // Fail-closed: un empleado sin ficha vinculada (empleado_id) no ve ningún
+  // turno, en vez de mostrar los de toda la sucursal.
+  if (args.restrictToEmpleado && !args.employeeScopeId) return [];
   const effectiveProfesionalId = args.employeeScopeId ?? args.profesionalId;
   const { sucursales, servicios, profesionales } = await getTurnoContextForScope(
     args.scopeSucursalIds,
@@ -526,6 +530,7 @@ export async function listTurnos(opts?: {
     profesionalId: opts?.profesionalId,
     estado: opts?.estado,
     employeeScopeId: scope.rol === "empleado" ? scope.empleadoId : undefined,
+    restrictToEmpleado: scope.rol === "empleado",
   });
 }
 
@@ -581,6 +586,7 @@ export async function getTurnosAgendaData(args?: {
       profesionalId: args?.profesionalId,
       estado: args?.estado,
       employeeScopeId: scope.rol === "empleado" ? scope.empleadoId : undefined,
+      restrictToEmpleado: scope.rol === "empleado",
     }),
     getProfesionalesReserva({
       soloSucursalId: sucursalId,
@@ -640,8 +646,10 @@ export async function getTurnosAgendaRangeData(args: {
   });
 
   const filtered =
-    scope.rol === "empleado" && scope.empleadoId
-      ? rawTurnos.filter((t) => t.profesional_id === scope.empleadoId)
+    scope.rol === "empleado"
+      ? scope.empleadoId
+        ? rawTurnos.filter((t) => t.profesional_id === scope.empleadoId)
+        : [] // fail-closed: empleado sin ficha vinculada no ve turnos
       : rawTurnos;
 
   const detallados = filtered
