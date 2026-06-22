@@ -15,10 +15,13 @@
    | Email | Rol | Sucursal default |
    |-------|-----|------------------|
    | `admin@malala.com` | admin | Malala Centro |
+   | `admin.norte@malala.com` | admin | Malala Barrio Norte |
    | `encargada.centro@malala.com` | encargada | Malala Centro |
    | `anita@malala.com` | empleado | Malala Centro |
    | `encargada.norte@malala.com` | encargada | Malala Barrio Norte |
    | `eliana@malala.com` | empleado | Malala Barrio Norte |
+
+   > Nota: cada `admin` está atado a SU sucursal (ve y gestiona solo la suya). El rol que ve **ambas** sucursales es `superadmin`, que no está en el seed. Por eso hay un admin por sucursal.
 
 4. **Técnica clave — "ataque por URL directa":** la seguridad real está en el backend, no en que la UI esconda botones. Para probarla:
    - Logueado como **encargada.centro**, navegá normalmente y copiá de la barra de direcciones algún ID de Centro (ej. `/ventas/<id>`, `/caja/<id>`, `/egresos/<id>`).
