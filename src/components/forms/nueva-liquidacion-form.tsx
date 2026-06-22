@@ -45,18 +45,6 @@ function secondHalfOfThisMonth() {
   };
 }
 
-function thisMonth() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const mm = String(m + 1).padStart(2, "0");
-  const lastDay = new Date(y, m + 1, 0).getDate();
-  return {
-    desde: `${y}-${mm}-01`,
-    hasta: `${y}-${mm}-${String(lastDay).padStart(2, "0")}`,
-  };
-}
-
 function quincenaActual() {
   const day = new Date().getDate();
   return day <= 15 ? firstHalfOfThisMonth() : secondHalfOfThisMonth();
@@ -104,13 +92,6 @@ export function NuevaLiquidacionForm({
     setPreviewError(null);
     setHoras(0);
     setDiasViatico(0);
-  }
-
-  function applyRange(r: { desde: string; hasta: string }) {
-    clearPreviewState();
-    const { desde: d, hasta: h } = clampRange(r);
-    setDesde(d);
-    setHasta(h);
   }
 
   function doPreview() {
@@ -275,30 +256,6 @@ export function NuevaLiquidacionForm({
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
             />
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => applyRange(firstHalfOfThisMonth())}
-            className="text-xs uppercase tracking-wider px-3 py-1.5 border border-border rounded-md hover:bg-cream"
-          >
-            1ª quincena
-          </button>
-          <button
-            type="button"
-            onClick={() => applyRange(secondHalfOfThisMonth())}
-            className="text-xs uppercase tracking-wider px-3 py-1.5 border border-border rounded-md hover:bg-cream"
-          >
-            2ª quincena
-          </button>
-          <button
-            type="button"
-            onClick={() => applyRange(thisMonth())}
-            className="text-xs uppercase tracking-wider px-3 py-1.5 border border-border rounded-md hover:bg-cream"
-          >
-            Mes actual
-          </button>
         </div>
 
         <div className="pt-2">
