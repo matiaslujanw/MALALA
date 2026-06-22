@@ -1,31 +1,33 @@
 import { z } from "zod";
 
+// nullish: tolera `null` (lo que devuelve FormData.get cuando el campo no existe)
+// además de undefined/"".
 const optStr = z
   .string()
-  .optional()
+  .nullish()
   .transform((s) => (s && s !== "" ? s : undefined));
 
 export const egresoSchema = z
   .object({
-    fecha: z.string().min(1).optional(),
+    fecha: z.string().min(1).nullish(),
     sucursal_id: z.string().min(1, "Sucursal requerida"),
     rubro_id: z.string().min(1, "Rubro requerido"),
     insumo_id: optStr,
     proveedor_id: optStr,
-    cantidad: z.coerce.number().nonnegative().optional(),
+    cantidad: z.coerce.number().nonnegative().nullish(),
     valor: z.coerce.number().positive("El monto debe ser > 0"),
     mp_id: z.string().min(1, "Medio de pago requerido"),
     mp1_cuenta_id: optStr,
     mp2_id: optStr,
-    valor2: z.coerce.number().nonnegative().optional(),
+    valor2: z.coerce.number().nonnegative().nullish(),
     mp2_cuenta_id: optStr,
     observacion: z
       .string()
-      .optional()
+      .nullish()
       .transform((s) => (s ?? "").trim() || undefined),
     pagado: z
       .union([z.literal("on"), z.literal("true"), z.literal("false"), z.boolean()])
-      .optional()
+      .nullish()
       .transform((v) => v === true || v === "on" || v === "true"),
   })
   .superRefine((data, ctx) => {

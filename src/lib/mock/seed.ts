@@ -82,9 +82,18 @@ export function seed(): Store {
   const userAdmin = {
     id: uid(),
     email: "admin@malala.com",
-    nombre: "Admin",
+    nombre: "Admin Centro",
     rol: "admin" as const,
     sucursal_default_id: sucCentro.id,
+    activo: true,
+  };
+  const userAdminNorte: Store["usuarios"][number] = {
+    id: uid(),
+    email: "admin.norte@malala.com",
+    nombre: "Admin Barrio Norte",
+    rol: "admin" as const,
+    sucursal_default_id: sucBarrioNorte.id,
+    empleado_id: undefined,
     activo: true,
   };
   const userEncargadaCentro: Store["usuarios"][number] = {
@@ -915,6 +924,7 @@ export function seed(): Store {
     horariosSucursal,
     usuarios: [
       userAdmin,
+      userAdminNorte,
       userEncargadaCentro,
       userEmpleadoCentro,
       userEncargadaNorte,

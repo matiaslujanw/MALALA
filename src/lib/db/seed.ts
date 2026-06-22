@@ -1,33 +1,8 @@
 import "../../../envConfig";
 import { seed as buildMockSeed } from "../mock/seed";
-import { tryNormalizarTelefonoAR } from "../phone";
 import { getSqlClient, getDb } from "./client/postgres";
 import { createSupabaseAdminClient } from "./client/supabase-admin";
-import {
-  cierresCaja,
-  clientes,
-  egresos,
-  empleados,
-  horariosSucursal,
-  ingresoLineas,
-  ingresos,
-  insumoProveedores,
-  insumos,
-  mediosPago,
-  movimientosStock,
-  profesionalesAgenda,
-  profesionalesHorarios,
-  profesionalesServicios,
-  profiles,
-  proveedores,
-  recetas,
-  rubrosGasto,
-  servicios,
-  stockSucursal,
-  sucursales,
-  turnoEventos,
-  turnos,
-} from "./schema";
+import { profiles, sucursales } from "./schema";
 
 const DEFAULT_SEED_PASSWORD = process.env.MALALA_SEED_PASSWORD ?? "ChangeMe123!";
 
@@ -89,33 +64,62 @@ async function ensureAuthUsers(
   return result;
 }
 
-async function clearAppTables() {
-  const db = getDb();
+// Todas las tablas de la app (schema public) que el seed limpia. Se vacían con
+// un único TRUNCATE ... CASCADE: el CASCADE resuelve el orden de las FKs y, si
+// alguna tabla nueva no estuviera listada, igual queda vacía por la dependencia.
+// No toca auth.users (lo gestiona ensureAuthUsers).
+const APP_TABLES = [
+  "turno_eventos",
+  "turnos",
+  "anticipos",
+  "liquidacion_lineas",
+  "liquidaciones",
+  "movimientos_cc",
+  "movimientos_bancarios",
+  "cierre_caja_cuentas",
+  "apertura_caja_cuentas",
+  "aperturas_caja",
+  "cierres_caja",
+  "ingreso_lineas",
+  "ingresos",
+  "egresos",
+  "movimientos_stock",
+  "stock_sucursal",
+  "recetas",
+  "promocion_items",
+  "profesionales_servicios",
+  "profesionales_horarios",
+  "profesionales_agenda",
+  "servicios_horarios",
+  "horarios_sucursal",
+  "cuentas_bancarias",
+  "motivos_descuento",
+  "rubros_gasto",
+  "medios_pago",
+  "insumos",
+  "servicios",
+  "cliente_ficha_registros",
+  "clientes",
+  "proveedores",
+  "whatsapp_envios",
+  "integraciones_manychat",
+  "push_notification_queue",
+  "push_subscriptions",
+  "profiles",
+  "empleados",
+  "sucursales",
+] as const;
 
-  await db.delete(turnoEventos);
-  await db.delete(turnos);
-  await db.delete(cierresCaja);
-  await db.delete(ingresoLineas);
-  await db.delete(ingresos);
-  await db.delete(egresos);
-  await db.delete(movimientosStock);
-  await db.delete(stockSucursal);
-  await db.delete(recetas);
-  await db.delete(profesionalesServicios);
-  await db.delete(profesionalesHorarios);
-  await db.delete(profesionalesAgenda);
-  await db.delete(horariosSucursal);
-  await db.delete(rubrosGasto);
-  await db.delete(mediosPago);
-  await db.delete(insumos);
-  await db.delete(servicios);
-  await db.delete(clientes);
-  await db.delete(proveedores);
-  await db.delete(profiles);
-  await db.delete(empleados);
-  await db.delete(sucursales);
+async function clearAppTables() {
+  const sql = getSqlClient();
+  const tableList = APP_TABLES.map((name) => `"${name}"`).join(", ");
+  await sql.unsafe(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
 }
 
+// Seed mínimo: deja la base limpia con SOLO los usuarios y las 2 sucursales que
+// esos usuarios necesitan (sucursal_default_id). El resto de los datos
+// (empleados, servicios, insumos, medios de pago, rubros, clientes, etc.) se
+// cargan a mano desde la app para testear los flujos reales.
 async function main() {
   const snapshot = buildMockSeed();
   const db = getDb();
@@ -154,23 +158,6 @@ async function main() {
     })),
   );
 
-  await db.insert(empleados).values(
-    snapshot.empleados.map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
-      activo: item.activo,
-      sucursalPrincipalId: item.sucursal_principal_id,
-      tipoComision: item.tipo_comision,
-      porcentajeDefault: item.porcentaje_default,
-      sueldoAsegurado: item.sueldo_asegurado,
-      valorHora: item.valor_hora,
-      viaticoPorDia: item.viatico_por_dia ?? 0,
-      horasPorDia: item.horas_por_dia,
-      diasTrabajo: item.dias_trabajo,
-      observacion: item.observacion ?? null,
-    })),
-  );
-
   await db.insert(profiles).values(
     snapshot.usuarios.map((item) => ({
       userId: userIdByLegacyId.get(item.id)!,
@@ -178,325 +165,13 @@ async function main() {
       nombre: item.nombre,
       rol: item.rol,
       sucursalDefaultId: item.sucursal_default_id,
-      empleadoId: item.empleado_id ?? null,
+      empleadoId: null,
       activo: item.activo,
-    })),
-  );
-
-  const clientesPorE164 = new Map<string, string>();
-  const clientesRows = snapshot.clientes.map((item) => {
-    const e164 = item.telefono ? tryNormalizarTelefonoAR(item.telefono) : null;
-    if (e164) clientesPorE164.set(e164, item.id);
-    return {
-      id: item.id,
-      nombre: item.nombre,
-      telefono: item.telefono ?? null,
-      telefonoE164: e164,
-      email: null as string | null,
-      observacion: item.observacion ?? null,
-      activo: item.activo,
-      saldoCc: item.saldo_cc,
-    };
-  });
-  await db.insert(clientes).values(clientesRows);
-
-  await db.insert(proveedores).values(
-    snapshot.proveedores.map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
-      telefono: item.telefono ?? null,
-      cuit: item.cuit ?? null,
-      deudaPendiente: item.deuda_pendiente,
-    })),
-  );
-
-  await db.insert(servicios).values(
-    snapshot.servicios.map((item) => ({
-      id: item.id,
-      rubro: item.rubro,
-      nombre: item.nombre,
-      precioLista: item.precio_lista,
-      precioEfectivo: item.precio_efectivo,
-      comisionDefaultPct: item.comision_default_pct,
-      activo: item.activo,
-      duracionMin: item.duracion_min ?? null,
-      descripcionCorta: item.descripcion_corta ?? null,
-      destacadoPct: item.destacado_pct ?? null,
-    })),
-  );
-
-  await db.insert(horariosSucursal).values(
-    snapshot.horariosSucursal.map((item) => ({
-      id: item.id,
-      sucursalId: item.sucursal_id,
-      diaSemana: item.dia_semana,
-      apertura: item.apertura,
-      cierre: item.cierre,
-    })),
-  );
-
-  await db.insert(profesionalesAgenda).values(
-    snapshot.profesionalesAgenda.map((item) => ({
-      id: item.id,
-      empleadoId: item.empleado_id,
-      sucursalId: item.sucursal_id,
-      especialidad: item.especialidad,
-      avatarUrl: item.avatar_url,
-      color: item.color,
-      bio: item.bio ?? null,
-      prioridad: item.prioridad,
-      activoPublico: item.activo_publico,
-    })),
-  );
-
-  await db.insert(profesionalesHorarios).values(
-    snapshot.profesionalesHorarios.map((item) => ({
-      id: item.id,
-      empleadoId: item.empleado_id,
-      sucursalId: item.sucursal_id,
-      diaSemana: item.dia_semana,
-      apertura: item.apertura,
-      cierre: item.cierre,
-    })),
-  );
-
-  await db.insert(profesionalesServicios).values(
-    snapshot.profesionalesServicios.map((item) => ({
-      id: item.id,
-      empleadoId: item.empleado_id,
-      sucursalId: item.sucursal_id,
-      servicioId: item.servicio_id,
-    })),
-  );
-
-  await db.insert(insumos).values(
-    snapshot.insumos.map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
-      unidadMedida: item.unidad_medida,
-      tamanoEnvase: item.tamano_envase,
-      precioEnvase: item.precio_envase,
-      precioUnitario: item.precio_unitario,
-      rinde: item.rinde ?? null,
-      umbralStockBajo: item.umbral_stock_bajo,
-      activo: item.activo,
-    })),
-  );
-
-  const insumoProveedorRows = snapshot.insumos.flatMap((item) =>
-    (item.proveedor_ids ?? []).map((proveedorId) => ({
-      id: crypto.randomUUID(),
-      insumoId: item.id,
-      proveedorId,
-    })),
-  );
-  if (insumoProveedorRows.length > 0) {
-    await db.insert(insumoProveedores).values(insumoProveedorRows);
-  }
-
-  await db.insert(recetas).values(
-    snapshot.recetas.map((item) => ({
-      id: item.id,
-      servicioId: item.servicio_id,
-      insumoId: item.insumo_id,
-      cantidad: item.cantidad,
-    })),
-  );
-
-  await db.insert(mediosPago).values(
-    snapshot.mediosPago.map((item) => ({
-      id: item.id,
-      sucursalId: item.sucursal_id,
-      codigo: item.codigo,
-      nombre: item.nombre,
-      activo: item.activo,
-    })),
-  );
-
-  await db.insert(rubrosGasto).values(
-    snapshot.rubrosGasto.map((item) => ({
-      id: item.id,
-      rubro: item.rubro,
-      subrubro: item.subrubro ?? null,
-      activo: item.activo,
-    })),
-  );
-
-  await db.insert(stockSucursal).values(
-    snapshot.stockSucursal.map((item) => ({
-      id: item.id,
-      insumoId: item.insumo_id,
-      sucursalId: item.sucursal_id,
-      cantidad: item.cantidad,
-    })),
-  );
-
-  if (snapshot.movimientosStock.length) {
-    await db.insert(movimientosStock).values(
-      snapshot.movimientosStock.map((item) => ({
-        id: item.id,
-        insumoId: item.insumo_id,
-        sucursalId: item.sucursal_id,
-        tipo: item.tipo,
-        cantidad: item.cantidad,
-        motivo: item.motivo ?? null,
-        refTipo: item.ref_tipo ?? null,
-        refId: item.ref_id ?? null,
-        usuarioId: userIdByLegacyId.get(item.usuario_id)!,
-        fecha: new Date(item.fecha),
-      })),
-    );
-  }
-
-  await db.insert(ingresos).values(
-    snapshot.ingresos.map((item) => ({
-      id: item.id,
-      fecha: new Date(item.fecha),
-      sucursalId: item.sucursal_id,
-      clienteId: item.cliente_id ?? null,
-      subtotal: item.subtotal,
-      descuentoPct: item.descuento_pct,
-      descuentoMonto: item.descuento_monto,
-      total: item.total,
-      mp1Id: item.mp1_id,
-      valor1: item.valor1,
-      mp2Id: item.mp2_id ?? null,
-      valor2: item.valor2 ?? null,
-      observacion: item.observacion ?? null,
-      usuarioId: userIdByLegacyId.get(item.usuario_id)!,
-      anulado: item.anulado,
-    })),
-  );
-
-  await db.insert(ingresoLineas).values(
-    snapshot.ingresoLineas.map((item) => ({
-      id: item.id,
-      ingresoId: item.ingreso_id,
-      servicioId: item.servicio_id,
-      empleadoId: item.empleado_id ?? null,
-      precioEfectivo: item.precio_efectivo,
-      cantidad: item.cantidad,
-      subtotal: item.subtotal,
-      comisionPct: item.comision_pct,
-      comisionMonto: item.comision_monto,
-    })),
-  );
-
-  await db.insert(egresos).values(
-    snapshot.egresos.map((item) => ({
-      id: item.id,
-      fecha: new Date(item.fecha),
-      sucursalId: item.sucursal_id,
-      rubroId: item.rubro_id,
-      insumoId: item.insumo_id ?? null,
-      proveedorId: item.proveedor_id ?? null,
-      cantidad: item.cantidad ?? null,
-      valor: item.valor,
-      mpId: item.mp_id,
-      observacion: item.observacion ?? null,
-      pagado: item.pagado,
-      usuarioId: userIdByLegacyId.get(item.usuario_id)!,
-    })),
-  );
-
-  if (snapshot.cierresCaja.length) {
-    await db.insert(cierresCaja).values(
-      snapshot.cierresCaja.map((item) => ({
-        id: item.id,
-        sucursalId: item.sucursal_id,
-        fecha: item.fecha,
-        saldoInicialEf: item.saldo_inicial_ef,
-        saldoBanco: item.saldo_banco,
-        billetes: item.billetes,
-        ingresosEf: item.ingresos_ef,
-        egresosEf: item.egresos_ef,
-        ingresosBanc: item.ingresos_banc,
-        egresosBanc: item.egresos_banc,
-        cobrosTc: item.cobros_tc,
-        cobrosTd: item.cobros_td,
-        vouchers: item.vouchers,
-        giftcards: item.giftcards,
-        autoconsumos: item.autoconsumos,
-        cheques: item.cheques,
-        aportes: item.aportes,
-        ingresosCc: item.ingresos_cc,
-        anticipos: item.anticipos,
-        observacion: item.observacion ?? null,
-        cerradoPor: userIdByLegacyId.get(item.cerrado_por)!,
-        fechaCierre: new Date(item.fecha_cierre),
-      })),
-    );
-  }
-
-  const clientesAdHoc: Array<typeof clientesRows[number]> = [];
-  const turnosRows = snapshot.turnos.map((item) => {
-    const e164 = tryNormalizarTelefonoAR(item.cliente_telefono);
-    let clienteId = e164 ? clientesPorE164.get(e164) : undefined;
-    if (!clienteId) {
-      clienteId = `turno-cliente-${item.id}`;
-      clientesAdHoc.push({
-        id: clienteId,
-        nombre: item.cliente_nombre,
-        telefono: item.cliente_telefono ?? null,
-        telefonoE164: e164,
-        email: item.cliente_email ?? null,
-        observacion: null,
-        activo: true,
-        saldoCc: 0,
-      });
-      if (e164) clientesPorE164.set(e164, clienteId);
-    }
-
-    const tokenAcceso = `seed-token-${item.id}`;
-    const tokenExpiraEn = new Date(`${item.fecha_turno}T${item.hora}:00-03:00`);
-
-    return {
-      id: item.id,
-      sucursalId: item.sucursal_id,
-      servicioId: item.servicio_id,
-      profesionalId: item.profesional_id,
-      clienteId,
-      fechaTurno: item.fecha_turno,
-      hora: item.hora,
-      duracionMin: item.duracion_min,
-      estado: item.estado,
-      canal: item.canal,
-      observacion: item.observacion ?? null,
-      creadoEn: new Date(item.creado_en),
-      creadoPorUsuarioId: item.creado_por_usuario_id
-        ? userIdByLegacyId.get(item.creado_por_usuario_id) ?? null
-        : null,
-      actualizadoEn: item.actualizado_en ? new Date(item.actualizado_en) : null,
-      actualizadoPorUsuarioId: item.actualizado_por_usuario_id
-        ? userIdByLegacyId.get(item.actualizado_por_usuario_id) ?? null
-        : null,
-      origen: item.origen,
-      sinPreferencia: item.sin_preferencia,
-      tokenAcceso,
-      tokenExpiraEn,
-    };
-  });
-
-  if (clientesAdHoc.length > 0) {
-    await db.insert(clientes).values(clientesAdHoc);
-  }
-  await db.insert(turnos).values(turnosRows);
-
-  await db.insert(turnoEventos).values(
-    snapshot.turnoEventos.map((item) => ({
-      id: item.id,
-      turnoId: item.turno_id,
-      tipo: item.tipo,
-      actorUsuarioId: item.actor_usuario_id
-        ? userIdByLegacyId.get(item.actor_usuario_id) ?? null
-        : null,
-      fecha: new Date(item.fecha),
-      detalle: item.detalle ?? null,
     })),
   );
 
   console.log(
-    `Seed completado: ${snapshot.sucursales.length} sucursales, ${snapshot.usuarios.length} usuarios, ${snapshot.turnos.length} turnos.`,
+    `Seed minimo completado: ${snapshot.sucursales.length} sucursales y ${snapshot.usuarios.length} usuarios. Sin datos operativos: cargalos a mano desde la app.`,
   );
 }
 

@@ -608,6 +608,19 @@ export async function getCierreCuentas(
   if (!scope.puedeVerCaja) return [];
 
   const db = getDb();
+
+  // Confinamiento por sucursal: el arqueo solo se devuelve si el cierre
+  // pertenece a una sucursal permitida (defensa en profundidad; este endpoint
+  // es invocable directo, no solo desde la página de detalle).
+  const [cierre] = await db
+    .select({ sucursalId: cierresCajaTable.sucursalId })
+    .from(cierresCajaTable)
+    .where(eq(cierresCajaTable.id, cierreId))
+    .limit(1);
+  if (!cierre || !scope.sucursalIdsPermitidas.includes(cierre.sucursalId)) {
+    return [];
+  }
+
   const rows = await db
     .select({
       linea: cierreCajaCuentasTable,
