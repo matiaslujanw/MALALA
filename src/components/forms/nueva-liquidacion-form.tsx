@@ -62,6 +62,16 @@ function quincenaActual() {
   return day <= 15 ? firstHalfOfThisMonth() : secondHalfOfThisMonth();
 }
 
+/** No tiene sentido liquidar a futuro: topamos cualquier fecha a hoy. */
+function clampToToday(ymd: string): string {
+  const hoy = todayYMD();
+  return ymd > hoy ? hoy : ymd;
+}
+
+function clampRange(r: { desde: string; hasta: string }) {
+  return { desde: clampToToday(r.desde), hasta: clampToToday(r.hasta) };
+}
+
 function formatYMD(ymd: string): string {
   const [y, m, d] = ymd.split("-");
   if (!y || !m || !d) return ymd;
@@ -78,7 +88,7 @@ export function NuevaLiquidacionForm({
   const [sucursalId, setSucursalId] = useState(initialSucursal);
   const [empleadoId, setEmpleadoId] = useState("");
 
-  const q = quincenaActual();
+  const q = clampRange(quincenaActual());
   const [desde, setDesde] = useState(q.desde);
   const [hasta, setHasta] = useState(q.hasta);
 
@@ -98,8 +108,9 @@ export function NuevaLiquidacionForm({
 
   function applyRange(r: { desde: string; hasta: string }) {
     clearPreviewState();
-    setDesde(r.desde);
-    setHasta(r.hasta);
+    const { desde: d, hasta: h } = clampRange(r);
+    setDesde(d);
+    setHasta(h);
   }
 
   function doPreview() {
