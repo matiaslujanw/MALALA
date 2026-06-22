@@ -245,7 +245,7 @@ export interface TurnoEvento {
 export interface Insumo {
   id: ID;
   nombre: string;
-  proveedor_id?: ID;
+  proveedor_ids?: ID[];
   unidad_medida: UnidadMedida;
   tamano_envase: number;
   precio_envase: number;

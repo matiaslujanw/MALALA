@@ -416,7 +416,7 @@ export function seed(): Store {
   const insShampoo = {
     id: uid(),
     nombre: "Shampoo neutro 1L",
-    proveedor_id: provVlinda.id,
+    proveedor_ids: [provVlinda.id],
     unidad_medida: "ml" as const,
     tamano_envase: 1000,
     precio_envase: 8000,
@@ -428,7 +428,7 @@ export function seed(): Store {
   const insTinturaCastano = {
     id: uid(),
     nombre: "Tintura castano 60g",
-    proveedor_id: provKeraplus.id,
+    proveedor_ids: [provKeraplus.id],
     unidad_medida: "g" as const,
     tamano_envase: 60,
     precio_envase: 4500,
@@ -440,7 +440,7 @@ export function seed(): Store {
   const insOxidante20 = {
     id: uid(),
     nombre: "Oxidante 20vol 1L",
-    proveedor_id: provKeraplus.id,
+    proveedor_ids: [provKeraplus.id],
     unidad_medida: "ml" as const,
     tamano_envase: 1000,
     precio_envase: 6000,
@@ -452,7 +452,7 @@ export function seed(): Store {
   const insEsmalteSemi = {
     id: uid(),
     nombre: "Esmalte semipermanente 15ml",
-    proveedor_id: provDistrilook.id,
+    proveedor_ids: [provDistrilook.id],
     unidad_medida: "ml" as const,
     tamano_envase: 15,
     precio_envase: 3500,
@@ -464,7 +464,7 @@ export function seed(): Store {
   const insAlgodonDisco = {
     id: uid(),
     nombre: "Disco algodon",
-    proveedor_id: provVlinda.id,
+    proveedor_ids: [provVlinda.id],
     unidad_medida: "ud" as const,
     tamano_envase: 100,
     precio_envase: 1500,
@@ -476,7 +476,7 @@ export function seed(): Store {
   const insAcetona = {
     id: uid(),
     nombre: "Acetona 500ml",
-    proveedor_id: provVlinda.id,
+    proveedor_ids: [provVlinda.id],
     unidad_medida: "ml" as const,
     tamano_envase: 500,
     precio_envase: 2500,
@@ -488,7 +488,7 @@ export function seed(): Store {
   const insMascarillaFacial = {
     id: uid(),
     nombre: "Mascarilla facial unidosis",
-    proveedor_id: provDistrilook.id,
+    proveedor_ids: [provDistrilook.id],
     unidad_medida: "aplicacion" as const,
     tamano_envase: 1,
     precio_envase: 1200,

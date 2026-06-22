@@ -1,10 +1,11 @@
 "use server";
 
-import { asc, eq, ilike, or } from "drizzle-orm";
+import { asc, eq, ilike, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import {
+  insumoProveedores as insumoProveedoresTable,
   insumos as insumosTable,
   rubrosGasto as rubrosGastoTable,
 } from "@/lib/db/schema";
@@ -13,11 +14,14 @@ import { insumoSchema } from "@/lib/validations/insumo";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import { createEgreso, type CreateEgresoResult } from "./egresos";
 
-function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
+function mapInsumo(
+  row: typeof insumosTable.$inferSelect,
+  proveedorIds: string[] = [],
+): Insumo {
   return {
     id: row.id,
     nombre: row.nombre,
-    proveedor_id: row.proveedorId ?? undefined,
+    proveedor_ids: proveedorIds,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
     precio_envase: row.precioEnvase,
@@ -28,6 +32,48 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     vendible: row.vendible,
     precio_venta: row.precioVenta ?? undefined,
   };
+}
+
+/** Devuelve un Map insumoId -> [proveedorId] para los insumos indicados. */
+async function getProveedorIdsByInsumo(
+  insumoIds: string[],
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (insumoIds.length === 0) return map;
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(insumoProveedoresTable)
+    .where(inArray(insumoProveedoresTable.insumoId, insumoIds));
+  for (const row of rows) {
+    const cur = map.get(row.insumoId) ?? [];
+    cur.push(row.proveedorId);
+    map.set(row.insumoId, cur);
+  }
+  return map;
+}
+
+/** Reemplaza el set de proveedores de un insumo (delete + insert). */
+async function syncProveedoresInsumo(
+  insumoId: string,
+  proveedorIds: string[],
+): Promise<void> {
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(insumoProveedoresTable)
+      .where(eq(insumoProveedoresTable.insumoId, insumoId));
+    const unicos = Array.from(new Set(proveedorIds.filter(Boolean)));
+    if (unicos.length > 0) {
+      await tx.insert(insumoProveedoresTable).values(
+        unicos.map((proveedorId) => ({
+          id: crypto.randomUUID(),
+          insumoId,
+          proveedorId,
+        })),
+      );
+    }
+  });
 }
 
 export async function listInsumos(opts?: {
@@ -45,7 +91,8 @@ export async function listInsumos(opts?: {
         .from(insumosTable)
         .where(eq(insumosTable.activo, true))
         .orderBy(asc(insumosTable.nombre));
-  return rows.map(mapInsumo);
+  const provMap = await getProveedorIdsByInsumo(rows.map((r) => r.id));
+  return rows.map((r) => mapInsumo(r, provMap.get(r.id) ?? []));
 }
 
 export async function getInsumo(insumoId: string): Promise<Insumo | null> {
@@ -59,13 +106,15 @@ export async function getInsumo(insumoId: string): Promise<Insumo | null> {
     .from(insumosTable)
     .where(eq(insumosTable.id, insumoId))
     .limit(1);
-  return row ? mapInsumo(row) : null;
+  if (!row) return null;
+  const provMap = await getProveedorIdsByInsumo([row.id]);
+  return mapInsumo(row, provMap.get(row.id) ?? []);
 }
 
 function parse(formData: FormData) {
   return insumoSchema.safeParse({
     nombre: formData.get("nombre"),
-    proveedor_id: formData.get("proveedor_id"),
+    proveedor_ids: formData.getAll("proveedor_ids"),
     unidad_medida: formData.get("unidad_medida"),
     tamano_envase: formData.get("tamano_envase"),
     precio_envase: formData.get("precio_envase"),
@@ -122,9 +171,12 @@ export async function registrarCompraInsumo(
 
   const rubroId = await findOrCreateRubroInsumos();
 
-  // Si el form no manda proveedor, uso el del catálogo
+  // Proveedor de la compra: el que mande el form; si no, y el insumo tiene un
+  // único proveedor asociado, uso ese; si tiene varios, queda sin proveedor.
+  const formProveedorId = String(formData.get("proveedor_id") ?? "");
   const proveedorId =
-    String(formData.get("proveedor_id") ?? "") || insumo.proveedor_id || "";
+    formProveedorId ||
+    (insumo.proveedor_ids?.length === 1 ? insumo.proveedor_ids[0] : "");
 
   // Armar formData esperado por createEgreso
   const fd = new FormData();
@@ -202,10 +254,15 @@ export async function aumentarPreciosProveedor(
   }
 
   const db = getDb();
-  const rows = await db
-    .select()
+  const joined = await db
+    .select({ insumo: insumosTable })
     .from(insumosTable)
-    .where(eq(insumosTable.proveedorId, proveedorId));
+    .innerJoin(
+      insumoProveedoresTable,
+      eq(insumoProveedoresTable.insumoId, insumosTable.id),
+    )
+    .where(eq(insumoProveedoresTable.proveedorId, proveedorId));
+  const rows = joined.map((j) => j.insumo);
 
   if (rows.length === 0) {
     return { ok: false, errors: { _: ["El proveedor no tiene insumos cargados"] } };
@@ -269,12 +326,18 @@ export async function listInsumosByProveedor(
     "Los insumos del sistema solo se cargan desde Supabase.",
   );
   const db = getDb();
-  const rows = await db
-    .select()
+  const joined = await db
+    .select({ insumo: insumosTable })
     .from(insumosTable)
-    .where(eq(insumosTable.proveedorId, proveedorId))
+    .innerJoin(
+      insumoProveedoresTable,
+      eq(insumoProveedoresTable.insumoId, insumosTable.id),
+    )
+    .where(eq(insumoProveedoresTable.proveedorId, proveedorId))
     .orderBy(asc(insumosTable.nombre));
-  return rows.map(mapInsumo);
+  const rows = joined.map((j) => j.insumo);
+  const provMap = await getProveedorIdsByInsumo(rows.map((r) => r.id));
+  return rows.map((r) => mapInsumo(r, provMap.get(r.id) ?? []));
 }
 
 export async function listInsumosVendibles(): Promise<Insumo[]> {
@@ -287,7 +350,10 @@ export async function listInsumosVendibles(): Promise<Insumo[]> {
     .from(insumosTable)
     .where(eq(insumosTable.vendible, true))
     .orderBy(asc(insumosTable.nombre));
-  return rows.map(mapInsumo).filter((i) => i.activo);
+  const provMap = await getProveedorIdsByInsumo(rows.map((r) => r.id));
+  return rows
+    .map((r) => mapInsumo(r, provMap.get(r.id) ?? []))
+    .filter((i) => i.activo);
 }
 
 export async function createInsumo(formData: FormData): Promise<ActionResult> {
@@ -303,7 +369,6 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
   await db.insert(insumosTable).values({
     id: insumoId,
     nombre: parsed.data.nombre,
-    proveedorId: parsed.data.proveedor_id ?? null,
     unidadMedida: parsed.data.unidad_medida,
     tamanoEnvase: parsed.data.tamano_envase,
     precioEnvase: parsed.data.precio_envase,
@@ -314,6 +379,7 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
     vendible: parsed.data.vendible,
     precioVenta: parsed.data.precio_venta ?? null,
   });
+  await syncProveedoresInsumo(insumoId, parsed.data.proveedor_ids);
 
   // Compra inicial opcional
   const cantidadInicial = Number(formData.get("compra_cantidad") ?? 0);
@@ -334,8 +400,8 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
     fd.set("mp_id", mpInicial);
     fd.set("fecha", String(formData.get("compra_fecha") ?? ""));
     if (formData.get("compra_pagado")) fd.set("pagado", "true");
-    if (parsed.data.proveedor_id) {
-      fd.set("proveedor_id", parsed.data.proveedor_id);
+    if (parsed.data.proveedor_ids.length === 1) {
+      fd.set("proveedor_id", parsed.data.proveedor_ids[0]);
     }
     const compraResult = await registrarCompraInsumo(null, fd);
     if (!compraResult.ok) {
@@ -378,7 +444,6 @@ export async function updateInsumo(
     .update(insumosTable)
     .set({
       nombre: parsed.data.nombre,
-      proveedorId: parsed.data.proveedor_id ?? null,
       unidadMedida: parsed.data.unidad_medida,
       tamanoEnvase: parsed.data.tamano_envase,
       precioEnvase: parsed.data.precio_envase,
@@ -390,6 +455,7 @@ export async function updateInsumo(
       precioVenta: parsed.data.precio_venta ?? null,
     })
     .where(eq(insumosTable.id, insumoId));
+  await syncProveedoresInsumo(insumoId, parsed.data.proveedor_ids);
 
   revalidatePath("/catalogos/insumos");
   revalidatePath("/catalogos/recetas");

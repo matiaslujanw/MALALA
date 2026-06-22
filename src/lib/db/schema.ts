@@ -299,7 +299,6 @@ export const profesionalesServicios = pgTable(
 export const insumos = pgTable("insumos", {
   id: text("id").primaryKey(),
   nombre: text("nombre").notNull(),
-  proveedorId: text("proveedor_id").references(() => proveedores.id),
   unidadMedida: unidadMedidaEnum("unidad_medida").notNull(),
   tamanoEnvase: doublePrecision("tamano_envase").notNull(),
   precioEnvase: doublePrecision("precio_envase").notNull(),
@@ -321,6 +320,27 @@ export const recetas = pgTable("recetas", {
     .references(() => insumos.id, { onDelete: "cascade" }),
   cantidad: doublePrecision("cantidad").notNull(),
 });
+
+// Relación N:N entre insumos y proveedores: un insumo se puede comprar a varios
+// proveedores y un proveedor surte varios insumos.
+export const insumoProveedores = pgTable(
+  "insumo_proveedores",
+  {
+    id: text("id").primaryKey(),
+    insumoId: text("insumo_id")
+      .notNull()
+      .references(() => insumos.id, { onDelete: "cascade" }),
+    proveedorId: text("proveedor_id")
+      .notNull()
+      .references(() => proveedores.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueInsumoProveedor: uniqueIndex("insumo_proveedor_unique_idx").on(
+      table.insumoId,
+      table.proveedorId,
+    ),
+  }),
+);
 
 export const cuentasBancarias = pgTable("cuentas_bancarias", {
   id: text("id").primaryKey(),
@@ -882,6 +902,7 @@ export const schema = {
   profesionalesServicios,
   insumos,
   recetas,
+  insumoProveedores,
   mediosPago,
   cuentasBancarias,
   movimientosBancarios,
