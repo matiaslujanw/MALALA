@@ -65,14 +65,16 @@ export default async function InsumosPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {insumos.map((i) => {
-              const proveedor = i.proveedor_id
-                ? (provMap.get(i.proveedor_id) ?? null)
-                : null;
+              const proveedoresDelInsumo = (i.proveedor_ids ?? [])
+                .map((id) => provMap.get(id))
+                .filter((p): p is NonNullable<typeof p> => p != null);
               return (
                 <tr key={i.id} className="hover:bg-cream/30">
                   <td className="px-4 py-3 font-medium">{i.nombre}</td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {proveedor?.nombre ?? "—"}
+                    {proveedoresDelInsumo.length > 0
+                      ? proveedoresDelInsumo.map((p) => p.nombre).join(", ")
+                      : "—"}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
                     {i.tamano_envase} {UNIDAD_LABEL[i.unidad_medida]}
@@ -102,7 +104,7 @@ export default async function InsumosPage() {
                         sucursales.length > 0 && (
                           <RegistrarCompraInsumoModal
                             insumo={i}
-                            proveedor={proveedor}
+                            proveedores={proveedoresDelInsumo}
                             sucursales={sucursales}
                             mediosPago={mediosPago}
                             defaultSucursalId={sucursalActiva.id}

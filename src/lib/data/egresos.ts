@@ -98,7 +98,6 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
   return {
     id: row.id,
     nombre: row.nombre,
-    proveedor_id: row.proveedorId ?? undefined,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
     precio_envase: row.precioEnvase,

@@ -11,6 +11,7 @@ import {
   horariosSucursal,
   ingresoLineas,
   ingresos,
+  insumoProveedores,
   insumos,
   mediosPago,
   movimientosStock,
@@ -272,7 +273,6 @@ async function main() {
     snapshot.insumos.map((item) => ({
       id: item.id,
       nombre: item.nombre,
-      proveedorId: item.proveedor_id ?? null,
       unidadMedida: item.unidad_medida,
       tamanoEnvase: item.tamano_envase,
       precioEnvase: item.precio_envase,
@@ -282,6 +282,17 @@ async function main() {
       activo: item.activo,
     })),
   );
+
+  const insumoProveedorRows = snapshot.insumos.flatMap((item) =>
+    (item.proveedor_ids ?? []).map((proveedorId) => ({
+      id: crypto.randomUUID(),
+      insumoId: item.id,
+      proveedorId,
+    })),
+  );
+  if (insumoProveedorRows.length > 0) {
+    await db.insert(insumoProveedores).values(insumoProveedorRows);
+  }
 
   await db.insert(recetas).values(
     snapshot.recetas.map((item) => ({

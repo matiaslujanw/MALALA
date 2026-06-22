@@ -78,14 +78,39 @@ export function InsumoForm({
             error={errors.nombre}
             required
           />
-          <SelectField
-            label="Proveedor"
-            name="proveedor_id"
-            defaultValue={insumo?.proveedor_id ?? ""}
-            error={errors.proveedor_id}
-            options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
-            placeholder="— sin proveedor —"
-          />
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Proveedores
+            </label>
+            {proveedores.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No hay proveedores cargados.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-md border border-border bg-card p-3">
+                {proveedores.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      name="proveedor_ids"
+                      value={p.id}
+                      defaultChecked={
+                        insumo?.proveedor_ids?.includes(p.id) ?? false
+                      }
+                      className="h-4 w-4 rounded border-border accent-sage-500"
+                    />
+                    <span>{p.nombre}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Marcá todos los proveedores a los que les comprás este producto.
+            </p>
+          </div>
           <SelectField
             label="Unidad de medida"
             name="unidad_medida"
