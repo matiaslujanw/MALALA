@@ -19,7 +19,10 @@ import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   buildCostoInsumosByServicio,
+  comisionMontoServicio,
   computeBreakdown,
+  computeDescuento,
+  computeRecargos,
   detallarLineas,
   type IngresoConDetalle,
 } from "./ingresos-helpers";
@@ -502,17 +505,11 @@ export async function createIngreso(
       ? linea.precio_efectivo * linea.cantidad
       : linea.precio_efectivo;
   const subtotal = data.lineas.reduce((acc, linea) => acc + subtotalLinea(linea), 0);
-  const descuentoMonto =
-    data.descuento_tipo === "pct"
-      ? subtotal * (data.descuento_valor / 100)
-      : data.descuento_valor;
-  const descuentoPct =
-    data.descuento_tipo === "pct"
-      ? data.descuento_valor
-      : subtotal > 0
-        ? (data.descuento_valor / subtotal) * 100
-        : 0;
-  const totalNeto = subtotal - descuentoMonto; // neto de servicios/productos (antes de recargo)
+  const { descuentoMonto, descuentoPct, totalNeto } = computeDescuento({
+    subtotal,
+    descuentoTipo: data.descuento_tipo,
+    descuentoValor: data.descuento_valor,
+  });
 
   const db = getDb();
 
@@ -545,14 +542,15 @@ export async function createIngreso(
     };
   }
 
-  const recargo1 = data.valor1 * ((recargoPctById.get(data.mp1_id) ?? 0) / 100);
-  const recargo2 =
-    data.mp2_id && data.valor2 != null
-      ? data.valor2 * ((recargoPctById.get(data.mp2_id) ?? 0) / 100)
-      : 0;
-  const valor1Cobrado = data.valor1 + recargo1;
-  const valor2Cobrado = data.valor2 != null ? data.valor2 + recargo2 : null;
-  const total = totalNeto + recargo1 + recargo2; // lo que efectivamente paga el cliente
+  const { valor1Cobrado, valor2Cobrado, total } =
+    computeRecargos({
+      totalNeto,
+      mp1Id: data.mp1_id,
+      valor1: data.valor1,
+      mp2Id: data.mp2_id,
+      valor2: data.valor2,
+      recargoPctById,
+    });
 
   // Precio de lista por servicio: base de la comisión cuando la empleada NO absorbe el descuento.
   const servicioIdsComision = Array.from(
@@ -579,20 +577,17 @@ export async function createIngreso(
     serviciosComisionRows.map((s) => [s.id, s.precioLista]),
   );
 
-  // Comisión por línea de servicio:
-  //   soporta_descuento = true  → sobre el precio final pagado (descuento prorrateado)
-  //   soporta_descuento = false → sobre el precio de lista (regular)
   const comisionMontoDeLinea = (
     linea: Extract<(typeof data.lineas)[number], { tipo: "servicio" }>,
-  ): number => {
-    const subtotalLineaServicio = linea.precio_efectivo;
-    const descProrrateado =
-      subtotal > 0 ? descuentoMonto * (subtotalLineaServicio / subtotal) : 0;
-    const base = linea.soporta_descuento
-      ? subtotalLineaServicio - descProrrateado
-      : (precioListaById.get(linea.servicio_id) ?? subtotalLineaServicio);
-    return base * (linea.comision_pct / 100);
-  };
+  ): number =>
+    comisionMontoServicio({
+      precioEfectivo: linea.precio_efectivo,
+      comisionPct: linea.comision_pct,
+      soportaDescuento: linea.soporta_descuento,
+      precioLista: precioListaById.get(linea.servicio_id),
+      subtotal,
+      descuentoMonto,
+    });
 
   const ingresoId = createId();
   const fecha = new Date();
