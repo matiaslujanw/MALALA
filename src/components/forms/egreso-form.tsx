@@ -119,7 +119,9 @@ export function EgresoForm({
   const insumosVisibles = useMemo(() => {
     const activos = insumos.filter((i) => i.activo);
     if (!proveedorId) return activos;
-    const delProveedor = activos.filter((i) => i.proveedor_id === proveedorId);
+    const delProveedor = activos.filter((i) =>
+      i.proveedor_ids?.includes(proveedorId),
+    );
     return delProveedor.length > 0 ? delProveedor : activos;
   }, [insumos, proveedorId]);
 

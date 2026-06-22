@@ -12,7 +12,7 @@ import { formatARS } from "@/lib/utils";
 
 interface Props {
   insumo: Insumo;
-  proveedor: Proveedor | null;
+  proveedores: Proveedor[];
   sucursales: Sucursal[];
   mediosPago: MedioPago[];
   defaultSucursalId: string;
@@ -33,7 +33,7 @@ function todayYMD(): string {
 
 export function RegistrarCompraInsumoModal({
   insumo,
-  proveedor,
+  proveedores,
   sucursales,
   mediosPago,
   defaultSucursalId,
@@ -100,7 +100,9 @@ export function RegistrarCompraInsumoModal({
                 </h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {insumo.nombre}
-                  {proveedor ? ` · ${proveedor.nombre}` : ""}
+                  {proveedores.length === 1
+                    ? ` · ${proveedores[0].nombre}`
+                    : ""}
                 </p>
               </div>
               <button
@@ -114,8 +116,30 @@ export function RegistrarCompraInsumoModal({
 
             <form action={formAction} className="space-y-4">
               <input type="hidden" name="insumo_id" value={insumo.id} />
-              {insumo.proveedor_id && (
-                <input type="hidden" name="proveedor_id" value={insumo.proveedor_id} />
+              {proveedores.length === 1 && (
+                <input
+                  type="hidden"
+                  name="proveedor_id"
+                  value={proveedores[0].id}
+                />
+              )}
+              {proveedores.length > 1 && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Proveedor
+                  </label>
+                  <select
+                    name="proveedor_id"
+                    defaultValue={proveedores[0].id}
+                    className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+                  >
+                    {proveedores.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">

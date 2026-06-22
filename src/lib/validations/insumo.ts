@@ -3,10 +3,10 @@ import { z } from "zod";
 export const insumoSchema = z
   .object({
     nombre: z.string().min(1, "Nombre requerido").transform((s) => s.trim()),
-    proveedor_id: z
-      .string()
-      .optional()
-      .transform((s) => (s ? s : undefined)),
+    proveedor_ids: z
+      .array(z.string())
+      .default([])
+      .transform((arr) => arr.filter(Boolean)),
     unidad_medida: z.enum(["ud", "ml", "g", "aplicacion"]),
     tamano_envase: z.coerce.number().positive("Debe ser > 0"),
     precio_envase: z.coerce

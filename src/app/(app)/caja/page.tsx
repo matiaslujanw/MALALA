@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { TableActionLink } from "@/components/table-action-link";
 import { AlertTriangle, Plus } from "lucide-react";
+import { CierresAnteriores } from "./cierres-anteriores";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -399,41 +399,18 @@ export default async function CajaPage({
             Todavia no hay cierres registrados.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-md border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">Fecha</th>
-                  <th className="px-4 py-3 text-left font-medium">Cerrado por</th>
-                  <th className="px-4 py-3 text-right font-medium">Total del día</th>
-                  <th className="w-20 px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {cierres.map((item) => (
-                  <tr key={item.cierre.id} className="hover:bg-cream/30">
-                    <td className="px-4 py-3 font-medium tabular-nums">
-                      {formatYMD(item.cierre.fecha)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {item.cerrado_por_nombre}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatARS(
-                        item.cierre.ingresos_ef +
-                          item.cierre.ingresos_banc +
-                          item.cierre.cobros_tc +
-                          item.cierre.cobros_td,
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <TableActionLink href={`/caja/${item.cierre.id}`} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CierresAnteriores
+            cierres={cierres.map((item) => ({
+              id: item.cierre.id,
+              fecha: item.cierre.fecha,
+              cerradoPor: item.cerrado_por_nombre,
+              totalDelDia:
+                item.cierre.ingresos_ef +
+                item.cierre.ingresos_banc +
+                item.cierre.cobros_tc +
+                item.cierre.cobros_td,
+            }))}
+          />
         )}
       </section>
     </div>
