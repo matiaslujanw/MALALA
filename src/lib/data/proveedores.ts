@@ -7,15 +7,27 @@ import { requireSupabaseRuntime } from "@/lib/db/env";
 import {
   egresos as egresosTable,
   proveedores as proveedoresTable,
+  proveedorSucursal as proveedorSucursalTable,
 } from "@/lib/db/schema";
 import type { Proveedor } from "@/lib/types";
 import { proveedorSchema } from "@/lib/validations/proveedor";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
 import {
   fieldErrors,
   normPhone,
   requireRole,
   type ActionResult,
 } from "./_helpers";
+
+/** Set de proveedorId habilitados en una sucursal (membresía). */
+async function proveedorIdsDeSucursal(sucursalId: string): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ proveedorId: proveedorSucursalTable.proveedorId })
+    .from(proveedorSucursalTable)
+    .where(eq(proveedorSucursalTable.sucursalId, sucursalId));
+  return new Set(rows.map((r) => r.proveedorId));
+}
 
 function mapProveedor(row: typeof proveedoresTable.$inferSelect): Proveedor {
   return {
@@ -27,7 +39,9 @@ function mapProveedor(row: typeof proveedoresTable.$inferSelect): Proveedor {
   };
 }
 
-export async function listProveedores(): Promise<Proveedor[]> {
+export async function listProveedores(opts?: {
+  sucursalId?: string;
+}): Promise<Proveedor[]> {
   requireSupabaseRuntime(
     "Los proveedores del sistema solo se cargan desde Supabase.",
   );
@@ -37,6 +51,10 @@ export async function listProveedores(): Promise<Proveedor[]> {
     .select()
     .from(proveedoresTable)
     .orderBy(asc(proveedoresTable.nombre));
+  if (opts?.sucursalId) {
+    const habilitados = await proveedorIdsDeSucursal(opts.sucursalId);
+    return rows.filter((r) => habilitados.has(r.id)).map(mapProveedor);
+  }
   return rows.map(mapProveedor);
 }
 
@@ -45,13 +63,15 @@ export interface ProveedorConTotal extends Proveedor {
   cantidad_compras: number;
 }
 
-export async function listProveedoresConTotal(): Promise<ProveedorConTotal[]> {
+export async function listProveedoresConTotal(opts?: {
+  sucursalId?: string;
+}): Promise<ProveedorConTotal[]> {
   requireSupabaseRuntime(
     "Los proveedores del sistema solo se cargan desde Supabase.",
   );
 
   const db = getDb();
-  const [proveedoresRows, egresosRows] = await Promise.all([
+  const [proveedoresRowsAll, egresosRows] = await Promise.all([
     db.select().from(proveedoresTable).orderBy(asc(proveedoresTable.nombre)),
     db
       .select({
@@ -60,6 +80,12 @@ export async function listProveedoresConTotal(): Promise<ProveedorConTotal[]> {
       })
       .from(egresosTable),
   ]);
+  const proveedoresRows = opts?.sucursalId
+    ? await (async () => {
+        const habilitados = await proveedorIdsDeSucursal(opts.sucursalId!);
+        return proveedoresRowsAll.filter((r) => habilitados.has(r.id));
+      })()
+    : proveedoresRowsAll;
 
   const totalesById = new Map<string, { total: number; cantidad: number }>();
   for (const row of egresosRows) {
@@ -107,7 +133,7 @@ function parse(formData: FormData) {
 export async function createProveedor(
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin", "encargada"]);
+  const user = await requireRole(["admin", "encargada"]);
   requireSupabaseRuntime(
     "La creacion de proveedores requiere Supabase configurado.",
   );
@@ -115,13 +141,24 @@ export async function createProveedor(
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
   const db = getDb();
+  const proveedorId = crypto.randomUUID();
   await db.insert(proveedoresTable).values({
-    id: crypto.randomUUID(),
+    id: proveedorId,
     nombre: parsed.data.nombre,
     telefono: normPhone(parsed.data.telefono) ?? null,
     cuit: parsed.data.cuit ?? null,
     deudaPendiente: 0,
   });
+
+  // Membresía: el proveedor queda habilitado en la sucursal activa del usuario.
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (sucursalActiva) {
+    await db.insert(proveedorSucursalTable).values({
+      id: crypto.randomUUID(),
+      proveedorId,
+      sucursalId: sucursalActiva.id,
+    });
+  }
 
   revalidatePath("/catalogos/proveedores");
   revalidatePath("/egresos");

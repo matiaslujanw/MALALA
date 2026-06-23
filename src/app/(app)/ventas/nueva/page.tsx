@@ -37,7 +37,7 @@ export default async function NuevaVentaPage() {
       incluirCuentaCorriente: true,
     }),
     listInsumosVendibles(),
-    listMotivosDescuento(),
+    listMotivosDescuento({ sucursalId: sucursal.id }),
     listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
     listPromociones(),
     listServiciosHorariosAll(),

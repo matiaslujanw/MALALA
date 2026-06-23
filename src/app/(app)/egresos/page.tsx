@@ -50,8 +50,6 @@ export default async function EgresosPage({
   }
 
   const sucursales = await listSucursales({ soloActivas: true });
-  const rubros = await listRubrosGasto();
-  const proveedores = await listProveedores();
 
   const rango = sp.rango ?? "mes";
   const { desde, hasta } = rangoToFechas(rango);
@@ -64,6 +62,11 @@ export default async function EgresosPage({
   if (!sucursal) {
     redirect("/dashboard");
   }
+
+  // Dropdowns de filtro acotados a la sucursal vista (los nombres de cada
+  // egreso los resuelve listEgresos, así que no se pierde info histórica).
+  const rubros = await listRubrosGasto({ sucursalId: sucursal.id });
+  const proveedores = await listProveedores({ sucursalId: sucursal.id });
 
   const egresos = await listEgresos({
     sucursalId: sucursal.id,

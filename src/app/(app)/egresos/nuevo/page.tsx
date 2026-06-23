@@ -34,10 +34,10 @@ export default async function NuevoEgresoPage({
 
   const [rubros, proveedores, mediosPago, insumos, cuentas] =
     await Promise.all([
-      listRubrosGasto(),
-      listProveedores(),
+      listRubrosGasto({ sucursalId: sucursal.id }),
+      listProveedores({ sucursalId: sucursal.id }),
       listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
-      listInsumos(),
+      listInsumos({ sucursalId: sucursal.id }),
       listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
     ]);
   const mediosActivos = mediosPago;

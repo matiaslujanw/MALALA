@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listProveedoresConTotal } from "@/lib/data/proveedores";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function ProveedoresPage() {
   await requireUser();
-  const proveedores = await listProveedoresConTotal();
+  const sucursal = await getActiveSucursal();
+  const proveedores = await listProveedoresConTotal({ sucursalId: sucursal?.id });
 
   return (
     <div className="space-y-8 max-w-4xl">
