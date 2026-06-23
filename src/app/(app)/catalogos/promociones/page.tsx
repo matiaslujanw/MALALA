@@ -2,12 +2,16 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { TableActionLink } from "@/components/table-action-link";
 import { listPromociones } from "@/lib/data/promociones";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function PromocionesPage() {
   const user = await requireUser();
-  const promociones = await listPromociones({ incluirInactivas: true });
+  const sucursal = await getActiveSucursal();
+  const promociones = await listPromociones({
+    incluirInactivas: true,
+    sucursalId: sucursal?.id,
+  });
 
   return (
     <div className="space-y-8 max-w-5xl">

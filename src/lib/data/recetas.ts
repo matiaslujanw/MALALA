@@ -8,6 +8,7 @@ import {
   insumos as insumosTable,
   recetas as recetasTable,
   servicios as serviciosTable,
+  servicioSucursal as servicioSucursalTable,
 } from "@/lib/db/schema";
 import type { Insumo, Receta, Servicio } from "@/lib/types";
 import { recetaItemSchema } from "@/lib/validations/receta";
@@ -83,7 +84,9 @@ async function loadCatalogs() {
   };
 }
 
-export async function listRecetasResumen(): Promise<RecetaResumen[]> {
+export async function listRecetasResumen(opts?: {
+  sucursalId?: string;
+}): Promise<RecetaResumen[]> {
   requireSupabaseRuntime(
     "Las recetas del sistema solo se cargan desde Supabase.",
   );
@@ -91,7 +94,17 @@ export async function listRecetasResumen(): Promise<RecetaResumen[]> {
   const { servicios, insumos, recetas } = await loadCatalogs();
   const insumoMap = new Map(insumos.map((item) => [item.id, item]));
 
-  return servicios
+  let serviciosVisibles = servicios;
+  if (opts?.sucursalId) {
+    const miembros = await getDb()
+      .select({ servicioId: servicioSucursalTable.servicioId })
+      .from(servicioSucursalTable)
+      .where(eq(servicioSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.servicioId));
+    serviciosVisibles = servicios.filter((s) => habilitados.has(s.id));
+  }
+
+  return serviciosVisibles
     .filter((servicio) => servicio.activo)
     .map((servicio) => {
       const items = recetas.filter((receta) => receta.servicio_id === servicio.id);

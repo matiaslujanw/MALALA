@@ -101,8 +101,11 @@ const REGISTRY: Record<string, ToolEntry> = {
   list_servicios: {
     roles: TODOS,
     mode: "read",
-    execute: (a) =>
-      listServicios({ incluirInactivos: a.incluirInactivos as boolean | undefined }),
+    execute: (a, ctx) =>
+      listServicios({
+        incluirInactivos: a.incluirInactivos as boolean | undefined,
+        sucursalId: ctx.sucursalId,
+      }),
     def: {
       type: "function",
       function: {
@@ -118,8 +121,11 @@ const REGISTRY: Record<string, ToolEntry> = {
   list_promociones: {
     roles: TODOS,
     mode: "read",
-    execute: (a) =>
-      listPromociones({ incluirInactivas: a.incluirInactivas as boolean | undefined }),
+    execute: (a, ctx) =>
+      listPromociones({
+        incluirInactivas: a.incluirInactivas as boolean | undefined,
+        sucursalId: ctx.sucursalId,
+      }),
     def: {
       type: "function",
       function: {
@@ -135,11 +141,12 @@ const REGISTRY: Record<string, ToolEntry> = {
   list_clientes: {
     roles: TODOS,
     mode: "read",
-    execute: async (a) =>
+    execute: async (a, ctx) =>
       (
         await listClientes({
           q: a.q as string | undefined,
           incluirInactivos: a.incluirInactivos as boolean | undefined,
+          sucursalId: ctx.sucursalId,
         })
       ).slice(0, 100),
     def: {

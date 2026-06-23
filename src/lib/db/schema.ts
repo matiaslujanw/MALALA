@@ -486,6 +486,45 @@ export const motivoSucursal = pgTable(
   }),
 );
 
+export const clienteSucursal = pgTable(
+  "cliente_sucursal",
+  {
+    id: text("id").primaryKey(),
+    clienteId: text("cliente_id")
+      .notNull()
+      .references(() => clientes.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueClienteSucursal: uniqueIndex("cliente_sucursal_uq").on(
+      table.clienteId,
+      table.sucursalId,
+    ),
+  }),
+);
+
+// Sirve también para promociones (son filas de servicios con es_promo=true).
+export const servicioSucursal = pgTable(
+  "servicio_sucursal",
+  {
+    id: text("id").primaryKey(),
+    servicioId: text("servicio_id")
+      .notNull()
+      .references(() => servicios.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueServicioSucursal: uniqueIndex("servicio_sucursal_uq").on(
+      table.servicioId,
+      table.sucursalId,
+    ),
+  }),
+);
+
 export const stockSucursal = pgTable(
   "stock_sucursal",
   {

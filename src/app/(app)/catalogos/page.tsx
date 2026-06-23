@@ -12,7 +12,7 @@ import {
   TicketPercent,
   Tags,
 } from "lucide-react";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import {
   listClientes,
@@ -101,17 +101,19 @@ export default async function CatalogosPage() {
   const user = await requireUser();
   const scope = buildAccessScope(user);
 
-  const servicios = await listServicios();
-  const promociones = await listPromociones({ incluirInactivas: true });
-  const insumos = await listInsumos();
-  const recetas = await listRecetasResumen();
-  const clientes = await listClientes();
-  const empleados = await listEmpleados();
-  const proveedores = await listProveedores();
-  const mediosPago = await listMediosPago();
-  const rubrosGasto = await listRubrosGasto();
-  const motivosDescuento = await listMotivosDescuento();
-  const cuentas = await listCuentas();
+  const sucursal = await getActiveSucursal();
+  const sid = sucursal?.id;
+  const servicios = await listServicios({ sucursalId: sid });
+  const promociones = await listPromociones({ incluirInactivas: true, sucursalId: sid });
+  const insumos = await listInsumos({ sucursalId: sid });
+  const recetas = await listRecetasResumen({ sucursalId: sid });
+  const clientes = await listClientes({ sucursalId: sid });
+  const empleados = await listEmpleados({ sucursalId: sid });
+  const proveedores = await listProveedores({ sucursalId: sid });
+  const mediosPago = await listMediosPago({ sucursalId: sid });
+  const rubrosGasto = await listRubrosGasto({ sucursalId: sid });
+  const motivosDescuento = await listMotivosDescuento({ sucursalId: sid });
+  const cuentas = await listCuentas({ sucursalId: sid });
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
 

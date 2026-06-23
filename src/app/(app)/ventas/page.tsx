@@ -58,7 +58,7 @@ export default async function VentasPage({
   const empleadoIdForzado = esEmpleado ? user.empleado_id : sp.empleado;
 
   const empleados = await listEmpleados({ sucursalId: sucursal.id });
-  const clientes = await listClientes();
+  const clientes = await listClientes({ sucursalId: sucursal.id });
   const empleadoIdFiltrado =
     esEmpleado || !empleadoIdForzado
       ? empleadoIdForzado

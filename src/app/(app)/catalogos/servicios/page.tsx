@@ -2,12 +2,16 @@ import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { listServicios } from "@/lib/data/servicios";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function ServiciosPage() {
   const user = await requireUser();
-  const servicios = await listServicios({ incluirInactivos: true });
+  const sucursal = await getActiveSucursal();
+  const servicios = await listServicios({
+    incluirInactivos: true,
+    sucursalId: sucursal?.id,
+  });
 
   // Agrupar por rubro
   const grupos = servicios.reduce<Record<string, typeof servicios>>(

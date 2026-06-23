@@ -4,8 +4,9 @@ import { getDb } from "@/lib/db/client/postgres";
 import {
   promocionItems as promocionItemsTable,
   servicios as serviciosTable,
+  servicioSucursal as servicioSucursalTable,
 } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursalForUser, requireUser } from "@/lib/auth/session";
 import { promocionSchema } from "@/lib/validations/promocion";
 import type { Promocion, PromocionComponente } from "@/lib/types";
 
@@ -111,16 +112,27 @@ function mapPromocion(
 
 export async function listPromociones(opts?: {
   incluirInactivas?: boolean;
+  /** Si se pasa, solo promos habilitadas en esa sucursal (membresía servicio_sucursal). */
+  sucursalId?: string;
 }): Promise<Promocion[]> {
   const db = getDb();
   const where = opts?.incluirInactivas
     ? eq(serviciosTable.esPromo, true)
     : and(eq(serviciosTable.esPromo, true), eq(serviciosTable.activo, true));
-  const rows = await db
+  let rows = await db
     .select()
     .from(serviciosTable)
     .where(where)
     .orderBy(asc(serviciosTable.nombre));
+
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ servicioId: servicioSucursalTable.servicioId })
+      .from(servicioSucursalTable)
+      .where(eq(servicioSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.servicioId));
+    rows = rows.filter((r) => habilitados.has(r.id));
+  }
 
   const componentes = await loadComponentes(rows.map((r) => r.id));
   return rows.map((r) => mapPromocion(r, componentes.get(r.id) ?? []));
@@ -185,6 +197,16 @@ export async function createPromocion(formData: FormData): Promise<ActionResult>
         orden: i,
       })),
     );
+
+    // Membresía: la promo (servicio) queda habilitada en la sucursal activa.
+    const sucursalActiva = await getActiveSucursalForUser(user);
+    if (sucursalActiva) {
+      await tx.insert(servicioSucursalTable).values({
+        id: createId(),
+        servicioId: promoId,
+        sucursalId: sucursalActiva.id,
+      });
+    }
   });
 
   revalidatePath("/catalogos/promociones");

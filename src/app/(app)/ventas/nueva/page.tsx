@@ -28,8 +28,8 @@ export default async function NuevaVentaPage() {
     promociones,
     horariosAll,
   ] = await Promise.all([
-    listClientes(),
-    listServicios(),
+    listClientes({ sucursalId: sucursal.id }),
+    listServicios({ sucursalId: sucursal.id }),
     listEmpleados({ sucursalId: sucursal.id }),
     listMediosPago({
       sucursalId: sucursal.id,
@@ -39,7 +39,7 @@ export default async function NuevaVentaPage() {
     listInsumosVendibles(),
     listMotivosDescuento({ sucursalId: sucursal.id }),
     listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
-    listPromociones(),
+    listPromociones({ sucursalId: sucursal.id }),
     listServiciosHorariosAll(),
   ]);
 
