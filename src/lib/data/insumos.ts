@@ -6,11 +6,13 @@ import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import {
   insumoProveedores as insumoProveedoresTable,
+  insumoSucursal as insumoSucursalTable,
   insumos as insumosTable,
   rubrosGasto as rubrosGastoTable,
 } from "@/lib/db/schema";
 import type { Insumo } from "@/lib/types";
 import { insumoSchema } from "@/lib/validations/insumo";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import { createEgreso, type CreateEgresoResult } from "./egresos";
 
@@ -78,19 +80,35 @@ async function syncProveedoresInsumo(
 
 export async function listInsumos(opts?: {
   incluirInactivos?: boolean;
+  /**
+   * Si se pasa, devuelve solo los insumos habilitados en esa sucursal
+   * (membresía insumo_sucursal). El catálogo y el stock lo usan para aislar
+   * por sucursal; recetas/ventas siguen consultando el insumo global sin filtro.
+   */
+  sucursalId?: string;
 }): Promise<Insumo[]> {
   requireSupabaseRuntime(
     "Los insumos del sistema solo se cargan desde Supabase.",
   );
 
   const db = getDb();
-  const rows = opts?.incluirInactivos
+  let rows = opts?.incluirInactivos
     ? await db.select().from(insumosTable).orderBy(asc(insumosTable.nombre))
     : await db
         .select()
         .from(insumosTable)
         .where(eq(insumosTable.activo, true))
         .orderBy(asc(insumosTable.nombre));
+
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ insumoId: insumoSucursalTable.insumoId })
+      .from(insumoSucursalTable)
+      .where(eq(insumoSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.insumoId));
+    rows = rows.filter((r) => habilitados.has(r.id));
+  }
+
   const provMap = await getProveedorIdsByInsumo(rows.map((r) => r.id));
   return rows.map((r) => mapInsumo(r, provMap.get(r.id) ?? []));
 }
@@ -357,7 +375,7 @@ export async function listInsumosVendibles(): Promise<Insumo[]> {
 }
 
 export async function createInsumo(formData: FormData): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La creacion de insumos requiere Supabase configurado.",
   );
@@ -380,6 +398,17 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
     precioVenta: parsed.data.precio_venta ?? null,
   });
   await syncProveedoresInsumo(insumoId, parsed.data.proveedor_ids);
+
+  // Membresía: el insumo nuevo queda habilitado en la sucursal activa del admin,
+  // así cada sucursal arma su propio catálogo. Ver [[listInsumos]].
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (sucursalActiva) {
+    await db.insert(insumoSucursalTable).values({
+      id: crypto.randomUUID(),
+      insumoId,
+      sucursalId: sucursalActiva.id,
+    });
+  }
 
   // Compra inicial opcional
   const cantidadInicial = Number(formData.get("compra_cantidad") ?? 0);

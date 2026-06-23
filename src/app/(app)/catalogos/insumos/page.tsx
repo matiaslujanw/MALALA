@@ -17,14 +17,13 @@ const UNIDAD_LABEL: Record<string, string> = {
 
 export default async function InsumosPage() {
   const user = await requireUser();
-  const [insumos, proveedores, sucursales, mediosPago, sucursalActiva] =
-    await Promise.all([
-      listInsumos({ incluirInactivos: true }),
-      listProveedores(),
-      listSucursales({ soloActivas: true }),
-      listMediosPago({ soloActivos: true }),
-      getActiveSucursal(),
-    ]);
+  const sucursalActiva = await getActiveSucursal();
+  const [insumos, proveedores, sucursales, mediosPago] = await Promise.all([
+    listInsumos({ incluirInactivos: true, sucursalId: sucursalActiva?.id }),
+    listProveedores(),
+    listSucursales({ soloActivas: true }),
+    listMediosPago({ soloActivos: true }),
+  ]);
   const provMap = new Map(proveedores.map((p) => [p.id, p]));
   const puedeCargarCompra = user.rol === "admin" || user.rol === "encargada";
 
@@ -36,7 +35,7 @@ export default async function InsumosPage() {
             Insumos
           </h1>
           <p className="text-sm text-muted-foreground">
-            {insumos.length} insumos · catálogo compartido
+            {insumos.length} insumos · {sucursalActiva?.nombre ?? "sucursal"}
           </p>
         </div>
         {user.rol === "admin" && (

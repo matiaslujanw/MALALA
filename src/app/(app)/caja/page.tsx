@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
-  autocerrarDiasSinMovimiento,
   getCajasPendientesDeCierre,
   getCierreDeFecha,
+  getEstadoCajaDelDia,
   getResumenDelDia,
   listCierres,
 } from "@/lib/data/caja";
@@ -71,14 +71,15 @@ export default async function CajaPage({
   const hoy = todayYMD();
   const puedeCerrar = user.rol === "admin" || user.rol === "encargada";
 
-  // Los días anteriores sin ningún movimiento (domingos, feriados) se cierran
-  // solos en cero antes de leer el estado, así no piden nada ni quedan como
-  // pendientes. Los días con movimiento se respetan para el cierre manual.
-  if (puedeCerrar) {
-    await autocerrarDiasSinMovimiento(sucursal.id);
-  }
+  // Aperturas y cierres son 100% manuales: no se autocierra ningún día. Los días
+  // abiertos sin cerrar quedan como pendientes hasta que se cierren a mano.
 
   const resumen = await getResumenDelDia(sucursal.id, hoy);
+  const estado = await getEstadoCajaDelDia(sucursal.id, hoy);
+  const totalInicial = estado.reduce((s, r) => s + r.saldoInicial, 0);
+  const totalIngresos = estado.reduce((s, r) => s + r.ingresos, 0);
+  const totalEgresos = estado.reduce((s, r) => s + r.egresos, 0);
+  const totalEsperado = estado.reduce((s, r) => s + r.saldoEsperado, 0);
   const cierres = await listCierres({ sucursalId: sucursal.id, limit: 30 });
   const cierreHoy = await getCierreDeFecha(sucursal.id, hoy);
   const aperturaHoy = await getAperturaDeFecha(sucursal.id, hoy);
@@ -192,7 +193,7 @@ export default async function CajaPage({
             </Link>
           ) : null}
 
-          {puedeCerrar && !cierreHoy ? (
+          {puedeCerrar && aperturaHoy && !cierreHoy ? (
             <Link
               href="/caja/nuevo"
               className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
@@ -216,82 +217,103 @@ export default async function CajaPage({
       <section className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-            Movimientos de hoy
+            Estado de caja de hoy · por cuenta
           </h2>
           <span className="text-xs tabular-nums text-muted-foreground">
             {formatYMD(hoy)}
           </span>
         </div>
-        {/* Una card por medio de pago real de la sucursal (mismo origen que la
-            tabla de abajo) para que cualquier medio —incluidos los que no son
-            EF/TR/TC/TD, como Mercado Pago o uno nuevo— sume y se actualice. */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {resumen.porMp.map((row) => (
-            <Kpi
-              key={row.mp.id}
-              label={row.mp.nombre}
-              value={formatARS(row.neto)}
-            />
-          ))}
-        </div>
-        <div className="overflow-hidden rounded-md border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Medio</th>
-                <th className="px-4 py-3 text-right font-medium">Ingresos</th>
-                <th className="px-4 py-3 text-right font-medium">Egresos</th>
-                <th className="px-4 py-3 text-right font-medium">Neto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {resumen.porMp.map((row) => (
-                <tr key={row.mp.id}>
-                  <td className="px-4 py-3 font-medium">
-                    {row.mp.nombre}
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({row.mp.codigo})
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatARS(row.ingresos)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {formatARS(row.egresos)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-right font-medium tabular-nums"
-                    style={{
-                      color: row.neto >= 0 ? "var(--ink)" : "var(--danger)",
-                    }}
-                  >
-                    {formatARS(row.neto)}
-                  </td>
-                </tr>
+        {estado.length === 0 ? (
+          <div className="rounded-md border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+            No hay cuentas cargadas en esta sucursal.
+          </div>
+        ) : (
+          <>
+            {/* Saldo esperado por cuenta = saldo inicial (apertura) + ingresos −
+                egresos del día. Es la plata que debería haber ahora en cada cuenta. */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {estado.map((row) => (
+                <Kpi
+                  key={row.cuenta.id}
+                  label={`${row.cuenta.nombre} · esperado`}
+                  value={formatARS(row.saldoEsperado)}
+                />
               ))}
-              <tr className="bg-cream/40 font-medium">
-                <td className="px-4 py-3">Totales</td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(resumen.totalIngresos)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(resumen.totalEgresos)}
-                </td>
-                <td
-                  className="px-4 py-3 text-right tabular-nums"
-                  style={{
-                    color:
-                      resumen.totalNeto >= 0
-                        ? "var(--sage-700)"
-                        : "var(--danger)",
-                  }}
-                >
-                  {formatARS(resumen.totalNeto)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            </div>
+            <div className="overflow-hidden rounded-md border border-border bg-card">
+              <table className="w-full text-sm">
+                <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Cuenta</th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Saldo inicial
+                    </th>
+                    <th className="px-4 py-3 text-right font-medium">Ingresos</th>
+                    <th className="px-4 py-3 text-right font-medium">Egresos</th>
+                    <th className="px-4 py-3 text-right font-medium">
+                      Saldo esperado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {estado.map((row) => (
+                    <tr key={row.cuenta.id}>
+                      <td className="px-4 py-3 font-medium">
+                        {row.cuenta.nombre}
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({row.cuenta.tipo})
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {formatARS(row.saldoInicial)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatARS(row.ingresos)}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {formatARS(row.egresos)}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right font-medium tabular-nums"
+                        style={{
+                          color:
+                            row.saldoEsperado >= 0
+                              ? "var(--ink)"
+                              : "var(--danger)",
+                        }}
+                      >
+                        {formatARS(row.saldoEsperado)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-cream/40 font-medium">
+                    <td className="px-4 py-3">Totales</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatARS(totalInicial)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatARS(totalIngresos)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatARS(totalEgresos)}
+                    </td>
+                    <td
+                      className="px-4 py-3 text-right tabular-nums"
+                      style={{
+                        color:
+                          totalEsperado >= 0
+                            ? "var(--sage-700)"
+                            : "var(--danger)",
+                      }}
+                    >
+                      {formatARS(totalEsperado)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
         <p className="text-xs text-muted-foreground">
           {resumen.cantIngresos} ticket{resumen.cantIngresos !== 1 ? "s" : ""} ·{" "}
           {resumen.cantEgresos} egreso{resumen.cantEgresos !== 1 ? "s" : ""} hoy.

@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import {
   anticipos as anticiposTable,
+  aperturasCaja as aperturasCajaTable,
   cierresCaja as cierresCajaTable,
   egresos as egresosTable,
   empleados as empleadosTable,
@@ -169,6 +170,24 @@ export async function registrarAnticipo(
       if (cierreDelDia) {
         throw new Error(
           `La caja del ${ymdHoy} ya está cerrada para esta sucursal. Reabrí el cierre antes de registrar el anticipo.`,
+        );
+      }
+
+      // Apertura obligatoria: el anticipo genera un egreso, así que requiere la
+      // caja del día abierta en esta sucursal.
+      const [aperturaDelDia] = await tx
+        .select({ id: aperturasCajaTable.id })
+        .from(aperturasCajaTable)
+        .where(
+          and(
+            eq(aperturasCajaTable.sucursalId, sucursal.id),
+            eq(aperturasCajaTable.fecha, ymdHoy),
+          ),
+        )
+        .limit(1);
+      if (!aperturaDelDia) {
+        throw new Error(
+          `Tenés que abrir la caja del ${ymdHoy} antes de registrar anticipos.`,
         );
       }
 

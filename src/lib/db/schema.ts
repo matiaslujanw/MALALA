@@ -342,6 +342,28 @@ export const insumoProveedores = pgTable(
   }),
 );
 
+// Membresía de un insumo en una sucursal: la definición del insumo es global,
+// pero cada sucursal "habilita" los suyos y solo ve esos en su catálogo. El
+// stock y las recetas siguen funcionando con el insumo global.
+export const insumoSucursal = pgTable(
+  "insumo_sucursal",
+  {
+    id: text("id").primaryKey(),
+    insumoId: text("insumo_id")
+      .notNull()
+      .references(() => insumos.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueInsumoSucursal: uniqueIndex("insumo_sucursal_uq").on(
+      table.insumoId,
+      table.sucursalId,
+    ),
+  }),
+);
+
 export const cuentasBancarias = pgTable("cuentas_bancarias", {
   id: text("id").primaryKey(),
   sucursalId: text("sucursal_id")
