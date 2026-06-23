@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
+  aperturasCaja as aperturasCajaTable,
   cierresCaja as cierresCajaTable,
   egresos as egresosTable,
   insumos as insumosTable,
@@ -362,6 +363,25 @@ export async function createEgreso(
       if (cierreDelDia) {
         throw new Error(
           `La caja del ${ymdFecha} ya esta cerrada para esta sucursal. Reabri el cierre o carga el egreso con otra fecha.`,
+        );
+      }
+
+      // Apertura obligatoria: no se puede cargar egresos si la caja de ese día
+      // no fue abierta en esta sucursal.
+      const [aperturaDelDia] = await tx
+        .select({ id: aperturasCajaTable.id })
+        .from(aperturasCajaTable)
+        .where(
+          and(
+            eq(aperturasCajaTable.sucursalId, data.sucursal_id),
+            eq(aperturasCajaTable.fecha, ymdFecha),
+          ),
+        )
+        .limit(1);
+
+      if (!aperturaDelDia) {
+        throw new Error(
+          `Tenés que abrir la caja del ${ymdFecha} antes de cargar egresos.`,
         );
       }
 

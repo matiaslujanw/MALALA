@@ -4,6 +4,7 @@ import { and, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
+  aperturasCaja as aperturasCajaTable,
   clientes as clientesTable,
   cierresCaja as cierresCajaTable,
   empleados as empleadosTable,
@@ -609,6 +610,24 @@ export async function createIngreso(
       if (cierreDelDia) {
         throw new Error(
           "La caja de hoy ya esta cerrada para esta sucursal. Reabri el cierre para registrar mas ventas.",
+        );
+      }
+
+      // Apertura obligatoria: no se puede vender si la caja del día no fue abierta.
+      const [aperturaDelDia] = await tx
+        .select({ id: aperturasCajaTable.id })
+        .from(aperturasCajaTable)
+        .where(
+          and(
+            eq(aperturasCajaTable.sucursalId, data.sucursal_id),
+            eq(aperturasCajaTable.fecha, hoyYmd),
+          ),
+        )
+        .limit(1);
+
+      if (!aperturaDelDia) {
+        throw new Error(
+          "Tenés que abrir la caja de hoy antes de registrar ventas.",
         );
       }
 
