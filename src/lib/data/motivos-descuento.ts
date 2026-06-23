@@ -4,9 +4,13 @@ import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
-import { motivosDescuento as motivosDescuentoTable } from "@/lib/db/schema";
+import {
+  motivosDescuento as motivosDescuentoTable,
+  motivoSucursal as motivoSucursalTable,
+} from "@/lib/db/schema";
 import type { MotivoDescuento } from "@/lib/types";
 import { motivoDescuentoSchema } from "@/lib/validations/motivo-descuento";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 
 function mapMotivoDescuento(
@@ -19,7 +23,9 @@ function mapMotivoDescuento(
   };
 }
 
-export async function listMotivosDescuento(): Promise<MotivoDescuento[]> {
+export async function listMotivosDescuento(opts?: {
+  sucursalId?: string;
+}): Promise<MotivoDescuento[]> {
   requireSupabaseRuntime(
     "Los motivos de descuento solo se cargan desde Supabase.",
   );
@@ -29,13 +35,21 @@ export async function listMotivosDescuento(): Promise<MotivoDescuento[]> {
     .select()
     .from(motivosDescuentoTable)
     .orderBy(asc(motivosDescuentoTable.nombre));
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ motivoId: motivoSucursalTable.motivoId })
+      .from(motivoSucursalTable)
+      .where(eq(motivoSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.motivoId));
+    return rows.filter((r) => habilitados.has(r.id)).map(mapMotivoDescuento);
+  }
   return rows.map(mapMotivoDescuento);
 }
 
 export async function createMotivoDescuento(
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La creacion de motivos de descuento requiere Supabase configurado.",
   );
@@ -46,11 +60,21 @@ export async function createMotivoDescuento(
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
   const db = getDb();
+  const motivoId = crypto.randomUUID();
   await db.insert(motivosDescuentoTable).values({
-    id: crypto.randomUUID(),
+    id: motivoId,
     nombre: parsed.data.nombre,
     activo: true,
   });
+
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (sucursalActiva) {
+    await db.insert(motivoSucursalTable).values({
+      id: crypto.randomUUID(),
+      motivoId,
+      sucursalId: sucursalActiva.id,
+    });
+  }
 
   revalidatePath("/catalogos/motivos-descuento");
   revalidatePath("/ventas/nueva");

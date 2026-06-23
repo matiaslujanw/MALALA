@@ -4,16 +4,31 @@ import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
-import { clientes as clientesTable } from "@/lib/db/schema";
+import {
+  clientes as clientesTable,
+  clienteSucursal as clienteSucursalTable,
+} from "@/lib/db/schema";
 import type { Cliente } from "@/lib/types";
 import { clienteSchema } from "@/lib/validations/cliente";
 import { tryNormalizarTelefonoAR } from "@/lib/phone";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
+import type { Usuario } from "@/lib/types";
 import {
   fieldErrors,
   normPhone,
   requireRole,
   type ActionResult,
 } from "./_helpers";
+
+/** Asocia un cliente a la sucursal activa del usuario (membresía). */
+async function asociarClienteASucursal(user: Usuario, clienteId: string) {
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (!sucursalActiva) return;
+  await getDb()
+    .insert(clienteSucursalTable)
+    .values({ id: crypto.randomUUID(), clienteId, sucursalId: sucursalActiva.id })
+    .onConflictDoNothing();
+}
 
 function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
   return {
@@ -37,6 +52,8 @@ function mapCliente(row: typeof clientesTable.$inferSelect): Cliente {
 export async function listClientes(opts?: {
   incluirInactivos?: boolean;
   q?: string;
+  /** Si se pasa, solo clientes habilitados en esa sucursal (membresía). */
+  sucursalId?: string;
 }): Promise<Cliente[]> {
   const q = opts?.q?.trim();
   requireSupabaseRuntime(
@@ -67,6 +84,15 @@ export async function listClientes(opts?: {
           .from(clientesTable)
           .orderBy(asc(clientesTable.nombre));
 
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ clienteId: clienteSucursalTable.clienteId })
+      .from(clienteSucursalTable)
+      .where(eq(clienteSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.clienteId));
+    return rows.filter((r) => habilitados.has(r.id)).map(mapCliente);
+  }
+
   return rows.map(mapCliente);
 }
 
@@ -96,7 +122,7 @@ function parse(formData: FormData) {
 }
 
 export async function createCliente(formData: FormData): Promise<ActionResult> {
-  await requireRole(["admin", "encargada", "empleado"]);
+  const user = await requireRole(["admin", "encargada", "empleado"]);
   requireSupabaseRuntime(
     "La creacion de clientes requiere Supabase configurado.",
   );
@@ -104,9 +130,10 @@ export async function createCliente(formData: FormData): Promise<ActionResult> {
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
   const db = getDb();
+  const clienteId = crypto.randomUUID();
   const telefono = normPhone(parsed.data.telefono) ?? null;
   await db.insert(clientesTable).values({
-    id: crypto.randomUUID(),
+    id: clienteId,
     nombre: parsed.data.nombre,
     telefono,
     telefonoE164: telefono ? tryNormalizarTelefonoAR(telefono) : null,
@@ -115,6 +142,7 @@ export async function createCliente(formData: FormData): Promise<ActionResult> {
     activo: parsed.data.activo,
     saldoCc: 0,
   });
+  await asociarClienteASucursal(user, clienteId);
 
   revalidatePath("/catalogos/clientes");
   revalidatePath("/ventas");
@@ -131,7 +159,7 @@ export async function createClienteQuick(input: {
   telefono?: string;
   observacion?: string;
 }): Promise<CreateClienteQuickResult> {
-  await requireRole(["admin", "encargada", "empleado"]);
+  const user = await requireRole(["admin", "encargada", "empleado"]);
   requireSupabaseRuntime(
     "La creacion de clientes requiere Supabase configurado.",
   );
@@ -157,6 +185,7 @@ export async function createClienteQuick(input: {
     activo: parsed.data.activo,
     saldoCc: 0,
   });
+  await asociarClienteASucursal(user, id);
 
   revalidatePath("/catalogos/clientes");
   revalidatePath("/ventas");

@@ -1,8 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
-import { servicios as serviciosTable } from "@/lib/db/schema";
-import { requireUser } from "@/lib/auth/session";
+import {
+  servicios as serviciosTable,
+  servicioSucursal as servicioSucursalTable,
+} from "@/lib/db/schema";
+import { getActiveSucursalForUser, requireUser } from "@/lib/auth/session";
 import { servicioSchema } from "@/lib/validations/servicio";
 import type { Servicio } from "@/lib/types";
 
@@ -29,6 +32,8 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
 
 export async function listServicios(opts?: {
   incluirInactivos?: boolean;
+  /** Si se pasa, solo servicios habilitados en esa sucursal (membresía). */
+  sucursalId?: string;
 }): Promise<Servicio[]> {
   const db = getDb();
   // Las promociones también son filas de `servicios` (es_promo=true) pero se
@@ -46,6 +51,15 @@ export async function listServicios(opts?: {
           and(eq(serviciosTable.activo, true), eq(serviciosTable.esPromo, false)),
         )
         .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
+
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ servicioId: servicioSucursalTable.servicioId })
+      .from(servicioSucursalTable)
+      .where(eq(servicioSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.servicioId));
+    return rows.filter((r) => habilitados.has(r.id)).map(mapServicio);
+  }
 
   return rows.map(mapServicio);
 }
@@ -114,8 +128,9 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
   }
 
   const db = getDb();
+  const servicioId = createId();
   await db.insert(serviciosTable).values({
-    id: createId(),
+    id: servicioId,
     rubro: parsed.data.rubro,
     nombre: parsed.data.nombre,
     precioLista: parsed.data.precio_lista,
@@ -123,6 +138,16 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
     comisionDefaultPct: parsed.data.comision_default_pct,
     activo: parsed.data.activo,
   });
+
+  // Membresía: el servicio queda habilitado en la sucursal activa del admin.
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (sucursalActiva) {
+    await db.insert(servicioSucursalTable).values({
+      id: createId(),
+      servicioId,
+      sucursalId: sucursalActiva.id,
+    });
+  }
 
   revalidatePath("/catalogos/servicios");
   revalidatePath("/");

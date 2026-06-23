@@ -427,6 +427,104 @@ export const motivosDescuento = pgTable("motivos_descuento", {
   activo: boolean("activo").notNull().default(true),
 });
 
+// Tablas puente de membresía por sucursal (mismo patrón que insumo_sucursal):
+// la definición es global, pero cada sucursal ve/gestiona solo las suyas.
+export const proveedorSucursal = pgTable(
+  "proveedor_sucursal",
+  {
+    id: text("id").primaryKey(),
+    proveedorId: text("proveedor_id")
+      .notNull()
+      .references(() => proveedores.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueProveedorSucursal: uniqueIndex("proveedor_sucursal_uq").on(
+      table.proveedorId,
+      table.sucursalId,
+    ),
+  }),
+);
+
+export const rubroSucursal = pgTable(
+  "rubro_sucursal",
+  {
+    id: text("id").primaryKey(),
+    rubroId: text("rubro_id")
+      .notNull()
+      .references(() => rubrosGasto.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueRubroSucursal: uniqueIndex("rubro_sucursal_uq").on(
+      table.rubroId,
+      table.sucursalId,
+    ),
+  }),
+);
+
+export const motivoSucursal = pgTable(
+  "motivo_sucursal",
+  {
+    id: text("id").primaryKey(),
+    motivoId: text("motivo_id")
+      .notNull()
+      .references(() => motivosDescuento.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueMotivoSucursal: uniqueIndex("motivo_sucursal_uq").on(
+      table.motivoId,
+      table.sucursalId,
+    ),
+  }),
+);
+
+export const clienteSucursal = pgTable(
+  "cliente_sucursal",
+  {
+    id: text("id").primaryKey(),
+    clienteId: text("cliente_id")
+      .notNull()
+      .references(() => clientes.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueClienteSucursal: uniqueIndex("cliente_sucursal_uq").on(
+      table.clienteId,
+      table.sucursalId,
+    ),
+  }),
+);
+
+// Sirve también para promociones (son filas de servicios con es_promo=true).
+export const servicioSucursal = pgTable(
+  "servicio_sucursal",
+  {
+    id: text("id").primaryKey(),
+    servicioId: text("servicio_id")
+      .notNull()
+      .references(() => servicios.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    uniqueServicioSucursal: uniqueIndex("servicio_sucursal_uq").on(
+      table.servicioId,
+      table.sucursalId,
+    ),
+  }),
+);
+
 export const stockSucursal = pgTable(
   "stock_sucursal",
   {

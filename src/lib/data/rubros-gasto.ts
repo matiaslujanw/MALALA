@@ -4,9 +4,13 @@ import { asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
-import { rubrosGasto as rubrosGastoTable } from "@/lib/db/schema";
+import {
+  rubrosGasto as rubrosGastoTable,
+  rubroSucursal as rubroSucursalTable,
+} from "@/lib/db/schema";
 import type { RubroGasto } from "@/lib/types";
 import { rubroGastoSchema } from "@/lib/validations/rubro-gasto";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 
 function mapRubroGasto(row: typeof rubrosGastoTable.$inferSelect): RubroGasto {
@@ -18,7 +22,9 @@ function mapRubroGasto(row: typeof rubrosGastoTable.$inferSelect): RubroGasto {
   };
 }
 
-export async function listRubrosGasto(): Promise<RubroGasto[]> {
+export async function listRubrosGasto(opts?: {
+  sucursalId?: string;
+}): Promise<RubroGasto[]> {
   requireSupabaseRuntime(
     "Los rubros de gasto del sistema solo se cargan desde Supabase.",
   );
@@ -28,13 +34,21 @@ export async function listRubrosGasto(): Promise<RubroGasto[]> {
     .select()
     .from(rubrosGastoTable)
     .orderBy(asc(rubrosGastoTable.rubro), asc(rubrosGastoTable.subrubro));
+  if (opts?.sucursalId) {
+    const miembros = await db
+      .select({ rubroId: rubroSucursalTable.rubroId })
+      .from(rubroSucursalTable)
+      .where(eq(rubroSucursalTable.sucursalId, opts.sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.rubroId));
+    return rows.filter((r) => habilitados.has(r.id)).map(mapRubroGasto);
+  }
   return rows.map(mapRubroGasto);
 }
 
 export async function createRubroGasto(
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La creacion de rubros requiere Supabase configurado.",
   );
@@ -46,12 +60,22 @@ export async function createRubroGasto(
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
   const db = getDb();
+  const rubroId = crypto.randomUUID();
   await db.insert(rubrosGastoTable).values({
-    id: crypto.randomUUID(),
+    id: rubroId,
     rubro: parsed.data.rubro,
     subrubro: parsed.data.subrubro ?? null,
     activo: true,
   });
+
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (sucursalActiva) {
+    await db.insert(rubroSucursalTable).values({
+      id: crypto.randomUUID(),
+      rubroId,
+      sucursalId: sucursalActiva.id,
+    });
+  }
 
   revalidatePath("/catalogos/rubros-gasto");
   revalidatePath("/egresos");

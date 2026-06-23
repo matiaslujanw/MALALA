@@ -2,12 +2,16 @@ import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { listClientes } from "@/lib/data/clientes";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function ClientesPage() {
   await requireUser();
-  const clientes = await listClientes({ incluirInactivos: true });
+  const sucursal = await getActiveSucursal();
+  const clientes = await listClientes({
+    incluirInactivos: true,
+    sucursalId: sucursal?.id,
+  });
 
   return (
     <div className="space-y-8 max-w-5xl">

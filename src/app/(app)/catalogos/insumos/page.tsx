@@ -26,6 +26,10 @@ export default async function InsumosPage() {
   ]);
   const provMap = new Map(proveedores.map((p) => [p.id, p]));
   const puedeCargarCompra = user.rol === "admin" || user.rol === "encargada";
+  // Las compras se cargan solo en la sucursal activa (sucursales aisladas).
+  const sucursalesParaCompra = sucursalActiva
+    ? sucursales.filter((s) => s.id === sucursalActiva.id)
+    : sucursales;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -104,7 +108,7 @@ export default async function InsumosPage() {
                           <RegistrarCompraInsumoModal
                             insumo={i}
                             proveedores={proveedoresDelInsumo}
-                            sucursales={sucursales}
+                            sucursales={sucursalesParaCompra}
                             mediosPago={mediosPago}
                             defaultSucursalId={sucursalActiva.id}
                           />

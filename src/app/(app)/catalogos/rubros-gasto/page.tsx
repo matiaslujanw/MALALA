@@ -4,13 +4,14 @@ import {
   listRubrosGasto,
   toggleRubroGastoActivo,
 } from "@/lib/data/rubros-gasto";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function RubrosGastoPage() {
   const user = await requireUser();
   if (user.rol !== "admin") redirect("/catalogos");
 
-  const rubros = await listRubrosGasto();
+  const sucursal = await getActiveSucursal();
+  const rubros = await listRubrosGasto({ sucursalId: sucursal?.id });
 
   async function create(formData: FormData) {
     "use server";

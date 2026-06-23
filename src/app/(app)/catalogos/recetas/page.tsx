@@ -1,11 +1,12 @@
 import { TableActionLink } from "@/components/table-action-link";
 import { listRecetasResumen } from "@/lib/data/recetas";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 export default async function RecetasPage() {
   await requireUser();
-  const resumen = await listRecetasResumen();
+  const sucursal = await getActiveSucursal();
+  const resumen = await listRecetasResumen({ sucursalId: sucursal?.id });
 
   // Agrupar por rubro
   const grupos = resumen.reduce<Record<string, typeof resumen>>((acc, r) => {

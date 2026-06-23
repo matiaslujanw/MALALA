@@ -4,13 +4,14 @@ import {
   listMotivosDescuento,
   toggleMotivoDescuentoActivo,
 } from "@/lib/data/motivos-descuento";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 
 export default async function MotivosDescuentoPage() {
   const user = await requireUser();
   if (user.rol !== "admin") redirect("/catalogos");
 
-  const motivos = await listMotivosDescuento();
+  const sucursal = await getActiveSucursal();
+  const motivos = await listMotivosDescuento({ sucursalId: sucursal?.id });
 
   async function create(formData: FormData) {
     "use server";
