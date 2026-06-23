@@ -36,11 +36,11 @@
 
 | # | Caso | Pasos | Esperado | Resultado |
 |---|------|-------|----------|-----------|
-| A1 | Ventas cruzadas por URL | Como **encargada.norte**, abrí `/ventas/<id-de-Centro>` | "No encontrado" / redirige, **nunca** muestra la venta |X|
-| A2 | Caja cruzada por URL | Como **encargada.norte**, abrí `/caja/<id-cierre-de-Centro>` | No muestra el cierre ajeno |X|
-| A3 | Egreso cruzado por URL | Como **encargada.norte**, abrí `/egresos/<id-de-Centro>` (o su detalle) | No muestra el egreso ajeno | |
-| A4 | Listado de ventas | Comparar `/ventas` entre las 2 encargadas | Cada una ve SOLO ventas de su sucursal | |
-| A5 | Listado de caja | Comparar `/caja` entre las 2 encargadas | Cierres separados por sucursal | |
+| A1 | Ventas cruzadas por URL | Como **encargada.norte**, abrí `/ventas/<id-de-Centro>` | "No encontrado" / redirige, **nunca** muestra la venta |✅|
+| A2 | Caja cruzada por URL | Como **encargada.norte**, abrí `/caja/<id-cierre-de-Centro>` | No muestra el cierre ajeno |✅|
+| A3 | Egreso cruzado por URL | Como **encargada.norte**, abrí `/egresos/<id-de-Centro>` (o su detalle) | No muestra el egreso ajeno |✅ |
+| A4 | Listado de ventas | Comparar `/ventas` entre las 2 encargadas | Cada una ve SOLO ventas de su sucursal | ✅|
+| A5 | Listado de caja | Comparar `/caja` entre las 2 encargadas | Cierres separados por sucursal |✅ |
 | A6 | Stock | Comparar `/stock` entre las 2 encargadas | Cantidades independientes por sucursal | |
 | A7 | Bancos / cuentas | Comparar `/bancos` y `/catalogos/cuentas-bancarias` | Cuentas y saldos no se cruzan | |
 | A8 | Reportes | Comparar `/reportes/*` entre encargadas | Cifras solo de su sucursal | |
