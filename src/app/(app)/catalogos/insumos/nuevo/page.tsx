@@ -17,6 +17,12 @@ export default async function NuevoInsumoPage() {
       getActiveSucursal(),
     ]);
 
+  // La compra inicial debe ir a la MISMA sucursal donde se crea el insumo
+  // (sucursales aisladas), así que el selector solo ofrece la sucursal activa.
+  const sucursalesParaCompra = sucursalActiva
+    ? sucursales.filter((s) => s.id === sucursalActiva.id)
+    : sucursales;
+
   async function action(_prev: unknown, formData: FormData) {
     "use server";
     return await createInsumo(formData);
@@ -31,7 +37,7 @@ export default async function NuevoInsumoPage() {
       </header>
       <InsumoForm
         proveedores={proveedores}
-        sucursales={sucursales}
+        sucursales={sucursalesParaCompra}
         mediosPago={mediosPago}
         defaultSucursalId={sucursalActiva?.id}
         action={action}
