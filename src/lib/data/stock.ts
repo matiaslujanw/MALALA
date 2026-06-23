@@ -7,6 +7,7 @@ import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   insumos as insumosTable,
+  insumoSucursal as insumoSucursalTable,
   movimientosStock as movimientosStockTable,
   profiles as profilesTable,
   stockSucursal as stockSucursalTable,
@@ -98,9 +99,17 @@ export async function listStockBySucursal(
     .from(stockSucursalTable)
     .where(eq(stockSucursalTable.sucursalId, sucursalId));
 
+  // Solo los insumos habilitados en esta sucursal (membresía insumo_sucursal).
+  const miembros = await db
+    .select({ insumoId: insumoSucursalTable.insumoId })
+    .from(insumoSucursalTable)
+    .where(eq(insumoSucursalTable.sucursalId, sucursalId));
+  const habilitados = new Set(miembros.map((m) => m.insumoId));
+
   const stockByInsumo = new Map(stockRows.map((item) => [item.insumoId, item]));
 
   return insumosRows
+    .filter((row) => habilitados.has(row.id))
     .map((row) => {
       const insumo = mapInsumo(row);
       const stock = stockByInsumo.get(insumo.id);
