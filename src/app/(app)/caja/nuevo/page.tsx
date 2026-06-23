@@ -6,7 +6,10 @@ import {
   getCierreDeFecha,
   getResumenDelDia,
 } from "@/lib/data/caja";
-import { getSugerenciasApertura } from "@/lib/data/apertura-caja";
+import {
+  getAperturaDeFecha,
+  getSugerenciasApertura,
+} from "@/lib/data/apertura-caja";
 import { formatARS } from "@/lib/utils";
 import { CierreCajaSimpleForm } from "@/components/forms/cierre-caja-simple-form";
 
@@ -34,6 +37,10 @@ export default async function NuevoCierrePage({
 
   const existente = await getCierreDeFecha(sucursal.id, fecha);
   if (existente) redirect(`/caja/${existente.id}`);
+
+  // No se puede cerrar una caja que no fue abierta (apertura obligatoria).
+  const apertura = await getAperturaDeFecha(sucursal.id, fecha);
+  if (!apertura) redirect("/caja/apertura");
 
   const resumen = await getResumenDelDia(sucursal.id, fecha);
   const cuentas = await getSugerenciasApertura(sucursal.id);

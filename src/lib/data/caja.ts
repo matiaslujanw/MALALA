@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
@@ -9,6 +9,7 @@ import {
   cierresCaja as cierresCajaTable,
   cierreCajaCuentas as cierreCajaCuentasTable,
   cuentasBancarias as cuentasBancariasTable,
+  movimientosBancarios as movimientosBancariosTable,
   profiles as profilesTable,
   sucursales as sucursalesTable,
 } from "@/lib/db/schema";
@@ -162,6 +163,106 @@ function mapCierre(row: typeof cierresCajaTable.$inferSelect): CierreCaja {
     cerrado_por: row.cerradoPor,
     fecha_cierre: row.fechaCierre.toISOString(),
   };
+}
+
+export interface EstadoCuentaDia {
+  cuenta: CuentaBancaria;
+  saldoInicial: number;
+  ingresos: number;
+  egresos: number;
+  saldoEsperado: number;
+}
+
+/**
+ * Estado de caja del día POR CUENTA: saldo inicial (lo declarado al abrir) +
+ * ingresos − egresos del día = saldo esperado actual. Es la foto que hace
+ * cuadrar la plata real, a diferencia del neto de movimientos que NO incluye
+ * el saldo de arranque. Excluye el ajuste de apertura (refTipo "apertura").
+ */
+export async function getEstadoCajaDelDia(
+  sucursalId: string,
+  fecha: string,
+): Promise<EstadoCuentaDia[]> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCaja || !isSucursalAllowed(scope, sucursalId)) {
+    throw new Error("No tienes acceso a esta caja");
+  }
+
+  const db = getDb();
+  const cuentasRows = await db
+    .select()
+    .from(cuentasBancariasTable)
+    .where(
+      and(
+        eq(cuentasBancariasTable.sucursalId, sucursalId),
+        eq(cuentasBancariasTable.activo, true),
+      ),
+    );
+  if (cuentasRows.length === 0) return [];
+
+  const apertura = await getAperturaDeFecha(sucursalId, fecha);
+  const declaradoByCuenta = new Map(
+    (apertura?.cuentas ?? []).map((l) => [l.cuenta_id, l.saldo_declarado]),
+  );
+
+  const movs = await db
+    .select({
+      cuentaId: movimientosBancariosTable.cuentaId,
+      monto: movimientosBancariosTable.monto,
+      refTipo: movimientosBancariosTable.refTipo,
+    })
+    .from(movimientosBancariosTable)
+    .where(
+      and(
+        eq(movimientosBancariosTable.sucursalId, sucursalId),
+        gte(movimientosBancariosTable.fecha, new Date(isoStartOfDay(fecha))),
+        lte(movimientosBancariosTable.fecha, new Date(isoEndOfDay(fecha))),
+      ),
+    );
+
+  const ingByCuenta = new Map<string, number>();
+  const egByCuenta = new Map<string, number>();
+  for (const m of movs) {
+    // El ajuste de apertura fija el saldo inicial, no es un movimiento del día.
+    if (m.refTipo === "apertura") continue;
+    if (m.monto >= 0) {
+      ingByCuenta.set(m.cuentaId, (ingByCuenta.get(m.cuentaId) ?? 0) + m.monto);
+    } else {
+      egByCuenta.set(
+        m.cuentaId,
+        (egByCuenta.get(m.cuentaId) ?? 0) + Math.abs(m.monto),
+      );
+    }
+  }
+
+  return cuentasRows
+    .map((row): EstadoCuentaDia => {
+      const cuenta: CuentaBancaria = {
+        id: row.id,
+        sucursal_id: row.sucursalId,
+        nombre: row.nombre,
+        tipo: row.tipo,
+        activo: row.activo,
+        observacion: row.observacion ?? undefined,
+      };
+      const saldoInicial = declaradoByCuenta.get(cuenta.id) ?? 0;
+      const ingresos = ingByCuenta.get(cuenta.id) ?? 0;
+      const egresos = egByCuenta.get(cuenta.id) ?? 0;
+      return {
+        cuenta,
+        saldoInicial,
+        ingresos,
+        egresos,
+        saldoEsperado: saldoInicial + ingresos - egresos,
+      };
+    })
+    .sort((a, b) => {
+      const ae = a.cuenta.tipo === "efectivo" ? 0 : 1;
+      const be = b.cuenta.tipo === "efectivo" ? 0 : 1;
+      if (ae !== be) return ae - be;
+      return a.cuenta.nombre.localeCompare(b.cuenta.nombre);
+    });
 }
 
 export async function getResumenDelDia(
