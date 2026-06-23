@@ -1,10 +1,14 @@
 import { TableActionLink } from "@/components/table-action-link";
 import { listRecetasResumen } from "@/lib/data/recetas";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 
 export default async function RecetasPage() {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const resumen = await listRecetasResumen();
 
   // Agrupar por rubro

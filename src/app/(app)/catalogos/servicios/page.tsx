@@ -2,11 +2,15 @@ import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
 import { listServicios } from "@/lib/data/servicios";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 
 export default async function ServiciosPage() {
   const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const servicios = await listServicios({ incluirInactivos: true });
 
   // Agrupar por rubro

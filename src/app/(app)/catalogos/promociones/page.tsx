@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { TableActionLink } from "@/components/table-action-link";
 import { listPromociones } from "@/lib/data/promociones";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 
 export default async function PromocionesPage() {
   const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const promociones = await listPromociones({ incluirInactivas: true });
 
   return (

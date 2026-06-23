@@ -12,6 +12,7 @@ import {
   TicketPercent,
   Tags,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import {
@@ -100,6 +101,7 @@ const items = [
 export default async function CatalogosPage() {
   const user = await requireUser();
   const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
 
   const servicios = await listServicios();
   const promociones = await listPromociones({ incluirInactivas: true });

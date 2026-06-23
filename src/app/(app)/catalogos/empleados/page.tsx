@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { TableActionLink } from "@/components/table-action-link";
+import { redirect } from "next/navigation";
 import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import { listEmpleados } from "@/lib/data/empleados";
@@ -24,6 +25,7 @@ export default async function EmpleadosPage({
 }) {
   const user = await requireUser();
   const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const sp = await searchParams;
 
   const sucursalesAll = await listSucursales();
