@@ -7,7 +7,8 @@ export const promocionSchema = z.object({
     .transform((s) => s.trim()),
   precio_lista: z.coerce.number().nonnegative("Debe ser ≥ 0"),
   precio_efectivo: z.coerce.number().nonnegative("Debe ser ≥ 0"),
-  comision_default_pct: z.coerce.number().min(0).max(100, "Máximo 100%"),
+  // La comisión la define el % del empleado; la promo ya no la maneja.
+  comision_default_pct: z.coerce.number().min(0).max(100).optional().default(0),
   duracion_min: z.coerce
     .number()
     .int()

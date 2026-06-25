@@ -124,15 +124,6 @@ export function PromocionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <Field
-          label="Comision default %"
-          name="comision_default_pct"
-          type="number"
-          step="0.01"
-          defaultValue={promocion?.comision_default_pct ?? 30}
-          error={errors.comision_default_pct}
-          required
-        />
-        <Field
           label="Duracion (min, opcional)"
           name="duracion_min"
           type="number"

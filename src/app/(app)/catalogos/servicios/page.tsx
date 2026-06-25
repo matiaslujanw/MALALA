@@ -58,7 +58,6 @@ export default async function ServiciosPage() {
                     <th className="text-left font-medium px-4 py-3">Nombre</th>
                     <th className="text-right font-medium px-4 py-3">P. lista</th>
                     <th className="text-right font-medium px-4 py-3">P. efectivo</th>
-                    <th className="text-right font-medium px-4 py-3">Comisión</th>
                     <th className="text-center font-medium px-4 py-3">Estado</th>
                     {user.rol === "admin" && (
                       <th className="px-4 py-3 w-44"></th>
@@ -74,9 +73,6 @@ export default async function ServiciosPage() {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatARS(s.precio_efectivo)}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
-                        {s.comision_default_pct}%
                       </td>
                       <td className="px-4 py-3 text-center">
                         {s.activo ? (

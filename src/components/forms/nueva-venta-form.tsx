@@ -348,7 +348,8 @@ export function NuevaVentaForm({
     updateLinea(idx, {
       servicio_id: servicioId,
       precio: l.precio_tipo === "efectivo" ? s.precio_efectivo : s.precio_lista,
-      comision_pct: empleado?.porcentaje_default ?? s.comision_default_pct,
+      // La comisión la define solo el % del empleado (el servicio ya no aporta %).
+      comision_pct: empleado?.porcentaje_default ?? 0,
     });
   }
 
@@ -419,7 +420,7 @@ export function NuevaVentaForm({
         empleado_id: "",
         precio,
         precio_tipo: "efectivo",
-        comision_pct: c.comision_default_pct,
+        comision_pct: 0, // la define el % del empleado al asignarlo a la línea
         soporta_descuento: true,
         promo_servicio_id: promo.id,
         promo_nombre: promo.nombre,

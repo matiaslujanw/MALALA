@@ -110,7 +110,6 @@ function parse(formData: FormData) {
     nombre: formData.get("nombre"),
     precio_lista: formData.get("precio_lista"),
     precio_efectivo: formData.get("precio_efectivo"),
-    comision_default_pct: formData.get("comision_default_pct"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
   });
 }
@@ -135,7 +134,7 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
     nombre: parsed.data.nombre,
     precioLista: parsed.data.precio_lista,
     precioEfectivo: parsed.data.precio_efectivo,
-    comisionDefaultPct: parsed.data.comision_default_pct,
+    comisionDefaultPct: 0, // la comisión la define el % del empleado
     activo: parsed.data.activo,
   });
 
@@ -186,7 +185,7 @@ export async function updateServicio(
       nombre: parsed.data.nombre,
       precioLista: parsed.data.precio_lista,
       precioEfectivo: parsed.data.precio_efectivo,
-      comisionDefaultPct: parsed.data.comision_default_pct,
+      // comisionDefaultPct ya no se gestiona desde el servicio.
       activo: parsed.data.activo,
     })
     .where(eq(serviciosTable.id, servicioId));
