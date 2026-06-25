@@ -61,15 +61,21 @@ export default async function TurnosPage({
   const fecha = sp.fecha ?? new Date().toISOString().slice(0, 10);
   const sucursalId = sp.sucursal ?? activeSucursal?.id ?? "";
   const vista = (sp.vista as VistaAgenda) || "diaria";
+  // La agenda diaria (KPIs, timeline, vista por profesional) solo se usa en las
+  // vistas diaria/actual. En semanal/mensual alcanza con los datos del rango,
+  // así que evitamos esa carga extra (contexto + turnos del día).
+  const necesitaAgendaDiaria = vista === "diaria" || vista === "actual";
 
   const [agenda, servicios, turnoSeleccionado, horarios] = await Promise.all([
-    getTurnosAgendaData({
-      fecha,
-      sucursalId,
-      profesionalId: sp.profesional || undefined,
-      estado: sp.estado || undefined,
-    }),
-    listServicios(),
+    necesitaAgendaDiaria
+      ? getTurnosAgendaData({
+          fecha,
+          sucursalId,
+          profesionalId: sp.profesional || undefined,
+          estado: sp.estado || undefined,
+        })
+      : Promise.resolve(null),
+    necesitaAgendaDiaria ? listServicios() : Promise.resolve([]),
     sp.turno ? getTurno(sp.turno) : Promise.resolve(null),
     vista === "diaria" ? getHorarios(sucursalId) : Promise.resolve([]),
   ]);
@@ -113,7 +119,8 @@ export default async function TurnosPage({
     });
   }
 
-  const turnosPorProfesional = agenda.turnos.reduce<Record<string, typeof agenda.turnos>>(
+  const turnosDiarios = agenda?.turnos ?? [];
+  const turnosPorProfesional = turnosDiarios.reduce<Record<string, typeof turnosDiarios>>(
     (acc, turno) => {
       (acc[turno.profesional_id] ??= []).push(turno);
       return acc;
@@ -121,6 +128,11 @@ export default async function TurnosPage({
     {},
   );
   const canManage = user.rol === "admin" || user.rol === "encargada";
+  // Sucursales y profesionales para el header, filtros y modal de turno salen
+  // de la agenda diaria o, en semanal/mensual, de los datos del rango.
+  const sucursales = agenda?.sucursales ?? rangeData?.sucursales ?? [];
+  const profesionalesParaSelects =
+    agenda?.profesionales ?? rangeData?.profesionales ?? [];
 
   const effectiveDateLabel = vista === "semanal" ? weekMonday : vista === "mensual" ? monthFirst : fecha;
 
@@ -135,7 +147,7 @@ export default async function TurnosPage({
             Turnos
           </h1>
           <p className="text-sm text-muted-foreground">
-            {agenda.sucursales.find((item) => item.id === sucursalId)?.nombre} ·{" "}
+            {sucursales.find((item) => item.id === sucursalId)?.nombre} ·{" "}
             {formatLongDate(`${fecha}T12:00:00`)}
           </p>
         </div>
@@ -146,7 +158,7 @@ export default async function TurnosPage({
         </div>
       </header>
 
-      {(vista === "diaria" || vista === "actual") && (
+      {(vista === "diaria" || vista === "actual") && agenda && (
         <div className="grid gap-4 md:grid-cols-4">
           <Kpi label="Turnos del dia" value={String(agenda.resumen.total)} hint="agenda activa" />
           <Kpi label="Pendientes" value={String(agenda.resumen.pendientes)} hint="web o recepcion" tone="warm" />
@@ -169,7 +181,7 @@ export default async function TurnosPage({
             defaultValue={sucursalId}
             className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
           >
-            {agenda.sucursales.map((item) => (
+            {sucursales.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.nombre}
               </option>
@@ -186,7 +198,7 @@ export default async function TurnosPage({
             className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
-            {agenda.profesionales.map((item) => (
+            {profesionalesParaSelects.map((item) => (
               <option key={item.id} value={item.empleado_id}>
                 {item.empleado.nombre}
               </option>
@@ -223,7 +235,7 @@ export default async function TurnosPage({
         </div>
       </form>
 
-      {vista === "diaria" && (
+      {vista === "diaria" && agenda && (
         <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
           <DailyTimelineView
             fecha={fecha}
@@ -255,7 +267,7 @@ export default async function TurnosPage({
         <MonthlyView fecha={monthFirst} turnosPorFecha={rangeData.turnosPorFecha} />
       )}
 
-      {vista === "actual" && (
+      {vista === "actual" && agenda && (
       <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
         <div className="space-y-6">
           <section className="rounded-[1.75rem] border border-border bg-card p-4">
@@ -509,7 +521,7 @@ export default async function TurnosPage({
                         defaultValue={turnoSeleccionado.profesional_id}
                         className="w-full rounded-xl border border-border bg-card px-3 py-2.5"
                       >
-                        {agenda.profesionales.map((item) => (
+                        {profesionalesParaSelects.map((item) => (
                           <option key={item.id} value={item.empleado_id}>
                             {item.empleado.nombre}
                           </option>
