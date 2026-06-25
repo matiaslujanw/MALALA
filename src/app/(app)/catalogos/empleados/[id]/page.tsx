@@ -26,7 +26,12 @@ import {
   listServiciosPublicosElegibles,
   replaceProfesionalServicios,
 } from "@/lib/data/profesionales-servicios";
+import {
+  createProfesionalAgenda,
+  toggleProfesionalAgendaActivo,
+} from "@/lib/data/profesionales-agenda";
 import { listSucursales } from "@/lib/data/sucursales";
+import { SubmitButton } from "@/components/forms/field";
 
 const ROL_LABEL: Record<string, string> = {
   empleado: "Empleado",
@@ -115,6 +120,23 @@ export default async function EditarEmpleadoPage({
     "use server";
     return await crearAccesoEmpleado(id, formData);
   }
+  async function habilitarProfesional(formData: FormData) {
+    "use server";
+    await createProfesionalAgenda(id, formData);
+  }
+  async function toggleAgenda(formData: FormData) {
+    "use server";
+    await toggleProfesionalAgendaActivo(String(formData.get("agenda_id") ?? ""));
+  }
+
+  // Sucursales (permitidas) donde el empleado todavía no está habilitado como
+  // profesional, para ofrecerlas en el alta de agenda.
+  const sucursalesConAgenda = new Set(
+    agendasConHorarios.map(({ agenda }) => agenda.sucursal_id),
+  );
+  const sucursalesParaHabilitar = sucursales.filter(
+    (s) => !sucursalesConAgenda.has(s.id),
+  );
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -140,6 +162,9 @@ export default async function EditarEmpleadoPage({
       <DisponibilidadPublicaPanel
         agendas={agendasConHorarios}
         serviciosPublicos={serviciosPublicos}
+        sucursalesParaHabilitar={sucursalesParaHabilitar}
+        habilitarProfesional={habilitarProfesional}
+        toggleAgenda={toggleAgenda}
       />
 
       <AnticiposPanel
@@ -165,6 +190,9 @@ export default async function EditarEmpleadoPage({
 function DisponibilidadPublicaPanel({
   agendas,
   serviciosPublicos,
+  sucursalesParaHabilitar,
+  habilitarProfesional,
+  toggleAgenda,
 }: {
   agendas: Array<{
     agenda: {
@@ -186,6 +214,9 @@ function DisponibilidadPublicaPanel({
     nombre: string;
     rubro: string;
   }>;
+  sucursalesParaHabilitar: Array<{ id: string; nombre: string }>;
+  habilitarProfesional: (formData: FormData) => Promise<void>;
+  toggleAgenda: (formData: FormData) => Promise<void>;
 }) {
   return (
     <section className="space-y-4 rounded-md border border-border bg-card p-5">
@@ -224,12 +255,22 @@ function DisponibilidadPublicaPanel({
                     {agenda.activo_publico ? "Visible en reserva" : "Oculta en reserva"}
                   </p>
                 </div>
-                <Link
-                  href={`/turnos/profesionales/${agenda.id}`}
-                  className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-                >
-                  Abrir vista completa
-                </Link>
+                <div className="flex items-center gap-4">
+                  <form action={toggleAgenda}>
+                    <input type="hidden" name="agenda_id" value={agenda.id} />
+                    <SubmitButton className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground">
+                      {agenda.activo_publico
+                        ? "Ocultar de reserva"
+                        : "Mostrar en reserva"}
+                    </SubmitButton>
+                  </form>
+                  <Link
+                    href={`/turnos/profesionales/${agenda.id}`}
+                    className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  >
+                    Abrir vista completa
+                  </Link>
+                </div>
               </div>
 
               <form
@@ -379,6 +420,79 @@ function DisponibilidadPublicaPanel({
             </div>
           ))}
         </div>
+      )}
+
+      {sucursalesParaHabilitar.length > 0 && (
+        <form
+          action={habilitarProfesional}
+          className="flex flex-wrap items-end gap-3 rounded-md border border-dashed border-border bg-cream/20 p-4"
+        >
+          <div className="w-full">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Habilitar como profesional
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Crea la agenda del empleado en una sucursal para que aparezca al
+              reservar online. Luego asignás servicios y franjas.
+            </p>
+          </div>
+          <label className="space-y-1.5 text-sm">
+            <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Sucursal
+            </span>
+            <select
+              name="sucursal_id"
+              required
+              className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+            >
+              {sucursalesParaHabilitar.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Especialidad
+            </span>
+            <input
+              name="especialidad"
+              required
+              placeholder="Ej: Manicura, Estilista"
+              className="rounded-md border border-border bg-card px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Color
+            </span>
+            <input
+              type="color"
+              name="color"
+              defaultValue="#8a9a5b"
+              className="h-10 w-16 rounded-md border border-border bg-card p-1"
+            />
+          </label>
+          <label className="space-y-1.5 text-sm">
+            <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Prioridad
+            </span>
+            <input
+              type="number"
+              name="prioridad"
+              min={0}
+              defaultValue={0}
+              className="w-24 rounded-md border border-border bg-card px-3 py-2 text-sm tabular-nums"
+            />
+          </label>
+          <SubmitButton
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            pendingLabel="Habilitando..."
+          >
+            Habilitar
+          </SubmitButton>
+        </form>
       )}
     </section>
   );
