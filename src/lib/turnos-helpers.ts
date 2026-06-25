@@ -101,7 +101,11 @@ export function listOpenDatesForSucursal(
   const cursor = new Date(start);
   cursor.setHours(0, 0, 0, 0);
 
-  while (dates.length < count) {
+  // Cota dura de días escaneados: si la sucursal no tiene horarios cargados
+  // (o ninguno con cierre > apertura) ningún día tiene ventana y, sin este
+  // límite, el while jamás alcanza `count` y cuelga el navegador.
+  let scanned = 0;
+  while (dates.length < count && scanned < 60) {
     const hasWindow = horarios.some(
       (item) =>
         item.sucursal_id === sucursalId &&
@@ -112,6 +116,7 @@ export function listOpenDatesForSucursal(
       dates.push(cursor.toISOString().slice(0, 10));
     }
     cursor.setDate(cursor.getDate() + 1);
+    scanned += 1;
   }
 
   return dates;
