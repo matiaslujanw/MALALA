@@ -23,6 +23,7 @@ import {
   listServicioHorarios,
   listServiciosHorariosAll,
 } from "@/lib/data/servicios-horarios";
+import { listServiciosSucursalesAll } from "@/lib/data/servicios";
 import {
   listProfesionalesHorariosAll,
   listProfesionalesHorariosBySucursal,
@@ -487,6 +488,7 @@ export async function getReservaPublicaSnapshot() {
     serviciosHorarios,
     profesionalesHorarios,
     profesionalesServicios,
+    serviciosSucursales,
   ] = await Promise.all([
     getSucursalesActivas(),
     getServiciosActivos(),
@@ -496,6 +498,7 @@ export async function getReservaPublicaSnapshot() {
     listServiciosHorariosAll(),
     listProfesionalesHorariosAll(),
     listProfesionalesServiciosAll(),
+    listServiciosSucursalesAll(),
   ]);
 
   return {
@@ -507,6 +510,7 @@ export async function getReservaPublicaSnapshot() {
     serviciosHorarios,
     profesionalesHorarios,
     profesionalesServicios,
+    serviciosSucursales,
   };
 }
 

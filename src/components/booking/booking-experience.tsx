@@ -47,6 +47,7 @@ interface Props {
     serviciosHorarios: ServicioHorario[];
     profesionalesHorarios: ProfesionalHorario[];
     profesionalesServicios: ProfesionalServicio[];
+    serviciosSucursales: { servicio_id: string; sucursal_id: string }[];
   };
   loggedInLabel?: string;
 }
@@ -99,14 +100,27 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   const bookingSucursal =
     snapshot.sucursales.find((item) => item.id === bookingSucursalId) ?? null;
 
+  // Aislamiento por sucursal: cada servicio se ofrece solo en las sucursales
+  // donde está habilitado (membresía servicio_sucursal). Sin sucursal elegida
+  // aún, no mostramos servicios.
+  const serviciosDeSucursal = useMemo(() => {
+    if (!bookingSucursalId) return [];
+    const habilitados = new Set(
+      snapshot.serviciosSucursales
+        .filter((m) => m.sucursal_id === bookingSucursalId)
+        .map((m) => m.servicio_id),
+    );
+    return snapshot.servicios.filter((item) => habilitados.has(item.id));
+  }, [bookingSucursalId, snapshot.servicios, snapshot.serviciosSucursales]);
+
   const categorias = useMemo(
-    () => ["TODOS", ...new Set(snapshot.servicios.map((item) => item.rubro))],
-    [snapshot.servicios],
+    () => ["TODOS", ...new Set(serviciosDeSucursal.map((item) => item.rubro))],
+    [serviciosDeSucursal],
   );
 
   const servicios = useMemo(
     () =>
-      snapshot.servicios.filter((item) => {
+      serviciosDeSucursal.filter((item) => {
         const matchesCategory = categoria === "TODOS" || item.rubro === categoria;
         const term = deferredSearch.trim().toLowerCase();
         const matchesText =
@@ -116,12 +130,12 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           item.descripcion_corta?.toLowerCase().includes(term);
         return matchesCategory && matchesText;
       }),
-    [categoria, deferredSearch, snapshot.servicios],
+    [categoria, deferredSearch, serviciosDeSucursal],
   );
 
   const destacados = useMemo(
-    () => snapshot.servicios.filter((item) => item.destacado_pct).slice(0, 3),
-    [snapshot.servicios],
+    () => serviciosDeSucursal.filter((item) => item.destacado_pct).slice(0, 3),
+    [serviciosDeSucursal],
   );
 
   const profesionales = useMemo(

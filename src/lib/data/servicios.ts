@@ -64,6 +64,26 @@ export async function listServicios(opts?: {
   return rows.map(mapServicio);
 }
 
+/**
+ * Membresía servicio↔sucursal para todo el catálogo. La usa la reserva pública
+ * para mostrar en cada sucursal solo los servicios habilitados ahí.
+ */
+export async function listServiciosSucursalesAll(): Promise<
+  { servicio_id: string; sucursal_id: string }[]
+> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      servicioId: servicioSucursalTable.servicioId,
+      sucursalId: servicioSucursalTable.sucursalId,
+    })
+    .from(servicioSucursalTable);
+  return rows.map((r) => ({
+    servicio_id: r.servicioId,
+    sucursal_id: r.sucursalId,
+  }));
+}
+
 /** Rubros ya usados por servicios (no promos), para elegir en el alta/edición. */
 export async function listRubrosServicios(): Promise<string[]> {
   const db = getDb();
@@ -110,6 +130,7 @@ function parse(formData: FormData) {
     nombre: formData.get("nombre"),
     precio_lista: formData.get("precio_lista"),
     precio_efectivo: formData.get("precio_efectivo"),
+    duracion_min: formData.get("duracion_min"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
   });
 }
@@ -135,6 +156,7 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
     precioLista: parsed.data.precio_lista,
     precioEfectivo: parsed.data.precio_efectivo,
     comisionDefaultPct: 0, // la comisión la define el % del empleado
+    duracionMin: parsed.data.duracion_min,
     activo: parsed.data.activo,
   });
 
@@ -186,6 +208,7 @@ export async function updateServicio(
       precioLista: parsed.data.precio_lista,
       precioEfectivo: parsed.data.precio_efectivo,
       // comisionDefaultPct ya no se gestiona desde el servicio.
+      duracionMin: parsed.data.duracion_min,
       activo: parsed.data.activo,
     })
     .where(eq(serviciosTable.id, servicioId));
