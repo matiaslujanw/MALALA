@@ -112,6 +112,22 @@ export function ServicioForm({
         />
       </div>
 
+      <Field
+        label="Duración (minutos)"
+        name="duracion_min"
+        type="number"
+        min={5}
+        max={600}
+        step={5}
+        defaultValue={servicio?.duracion_min ?? 60}
+        error={errors.duracion_min}
+        required
+      />
+      <p className="-mt-3 text-xs text-muted-foreground">
+        Cuánto ocupa el turno en la agenda: bloquea ese rango para que no se
+        reserve otro turno encima.
+      </p>
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
