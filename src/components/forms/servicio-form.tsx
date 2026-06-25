@@ -112,16 +112,6 @@ export function ServicioForm({
         />
       </div>
 
-      <Field
-        label="Comision default %"
-        name="comision_default_pct"
-        type="number"
-        step="0.01"
-        defaultValue={servicio?.comision_default_pct ?? 30}
-        error={errors.comision_default_pct}
-        required
-      />
-
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
