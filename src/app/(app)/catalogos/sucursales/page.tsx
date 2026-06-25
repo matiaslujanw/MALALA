@@ -2,16 +2,21 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowRight, Clock3 } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope, esAdmin, isSucursalAllowed } from "@/lib/auth/access";
 import { listSucursales } from "@/lib/data/sucursales";
 import { listSucursalHorarios } from "@/lib/data/sucursales-horarios";
 
 export default async function SucursalesHorariosPage() {
   const user = await requireUser();
-  if (user.rol !== "admin" && user.rol !== "superadmin") {
+  if (!esAdmin(user.rol) && user.rol !== "encargada") {
     redirect("/catalogos");
   }
 
-  const sucursales = await listSucursales();
+  // Aislamiento: cada usuario solo ve y edita los horarios de sus sucursales.
+  const scope = buildAccessScope(user);
+  const sucursales = (await listSucursales()).filter((s) =>
+    isSucursalAllowed(scope, s.id),
+  );
   const conHorarios = await Promise.all(
     sucursales.map(async (s) => ({
       sucursal: s,
