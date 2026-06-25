@@ -40,3 +40,17 @@ export async function listSucursales(opts?: {
 
   return rows.map(mapSucursal);
 }
+
+export async function getSucursal(id: string): Promise<Sucursal | null> {
+  requireSupabaseRuntime(
+    "Las sucursales solo se cargan desde la base real en este runtime.",
+  );
+
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(sucursalesTable)
+    .where(eq(sucursalesTable.id, id))
+    .limit(1);
+  return row ? mapSucursal(row) : null;
+}

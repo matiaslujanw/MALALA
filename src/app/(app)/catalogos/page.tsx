@@ -11,9 +11,11 @@ import {
   Landmark,
   TicketPercent,
   Tags,
+  Clock3,
 } from "lucide-react";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
+import { listSucursales } from "@/lib/data/sucursales";
 import {
   listClientes,
   listEmpleados,
@@ -95,6 +97,12 @@ const items = [
     Icon: TicketPercent,
     desc: "Publicidad, autoconsumo socios…",
   },
+  {
+    href: "/catalogos/sucursales",
+    label: "Horarios de sucursal",
+    Icon: Clock3,
+    desc: "Días y horarios de atención por sede",
+  },
 ];
 
 export default async function CatalogosPage() {
@@ -114,6 +122,7 @@ export default async function CatalogosPage() {
   const rubrosGasto = await listRubrosGasto({ sucursalId: sid });
   const motivosDescuento = await listMotivosDescuento({ sucursalId: sid });
   const cuentas = await listCuentas({ sucursalId: sid });
+  const sucursales = await listSucursales();
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
 
@@ -129,6 +138,7 @@ export default async function CatalogosPage() {
     "/catalogos/cuentas-bancarias": cuentas.length,
     "/catalogos/rubros-gasto": rubrosGasto.length,
     "/catalogos/motivos-descuento": motivosDescuento.length,
+    "/catalogos/sucursales": sucursales.length,
   };
 
   return (
