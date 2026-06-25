@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { SubmitButton } from "@/components/forms/field";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope, esAdmin, isSucursalAllowed } from "@/lib/auth/access";
 import { getSucursal } from "@/lib/data/sucursales";
 import {
   addSucursalHorario,
@@ -30,11 +31,17 @@ export default async function EditarHorariosSucursalPage({
   params: Promise<{ id: string }>;
 }) {
   const user = await requireUser();
-  if (user.rol !== "admin" && user.rol !== "superadmin") {
+  if (!esAdmin(user.rol) && user.rol !== "encargada") {
     redirect("/catalogos");
   }
 
   const { id } = await params;
+  // Aislamiento por sucursal: no se puede abrir el editor de una sede ajena.
+  const scope = buildAccessScope(user);
+  if (!isSucursalAllowed(scope, id)) {
+    redirect("/catalogos/sucursales");
+  }
+
   const [sucursal, horarios] = await Promise.all([
     getSucursal(id),
     listSucursalHorarios(id),

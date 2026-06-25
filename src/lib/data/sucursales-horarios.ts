@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { horariosSucursal as horariosSucursalTable } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/session";
-import type { HorarioSucursal } from "@/lib/types";
+import { buildAccessScope, esAdmin, isSucursalAllowed } from "@/lib/auth/access";
+import type { HorarioSucursal, Usuario } from "@/lib/types";
 
 function createId() {
   return crypto.randomUUID();
@@ -27,8 +28,25 @@ export type ActionResult =
   | { ok: true }
   | { ok: false; errors: Record<string, string[]> };
 
-function puedeEditarHorarios(rol: string) {
-  return rol === "admin" || rol === "superadmin";
+/** Solo admin/superadmin y encargada pueden tocar los horarios de sucursal. */
+function puedeEditarRol(rol: Usuario["rol"]) {
+  return esAdmin(rol) || rol === "encargada";
+}
+
+/**
+ * Autoriza por rol y por sucursal: un usuario de una sucursal no puede tocar
+ * los horarios de otra. Devuelve el error correspondiente o `null` si pasa.
+ */
+function authorizeHorario(
+  user: Usuario,
+  sucursalId: string,
+): Record<string, string[]> | null {
+  if (!puedeEditarRol(user.rol)) return { _: ["No autorizado"] };
+  const scope = buildAccessScope(user);
+  if (!isSucursalAllowed(scope, sucursalId)) {
+    return { _: ["No autorizado para esta sucursal"] };
+  }
+  return null;
 }
 
 /** Lista las franjas de atención de una sucursal, ordenadas por día y hora. */
@@ -55,9 +73,8 @@ export async function addSucursalHorario(
 ): Promise<ActionResult> {
   "use server";
   const user = await requireUser();
-  if (!puedeEditarHorarios(user.rol)) {
-    return { ok: false, errors: { _: ["No autorizado"] } };
-  }
+  const denied = authorizeHorario(user, sucursalId);
+  if (denied) return { ok: false, errors: denied };
 
   const diaSemana = Number(formData.get("dia_semana"));
   const apertura = String(formData.get("apertura") ?? "");
@@ -95,7 +112,7 @@ export async function deleteSucursalHorario(
 ): Promise<ActionResult> {
   "use server";
   const user = await requireUser();
-  if (!puedeEditarHorarios(user.rol)) {
+  if (!puedeEditarRol(user.rol)) {
     return { ok: false, errors: { _: ["No autorizado"] } };
   }
 
@@ -106,6 +123,10 @@ export async function deleteSucursalHorario(
     .where(eq(horariosSucursalTable.id, horarioId))
     .limit(1);
   if (!row) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  // Aislamiento: no se puede borrar una franja de una sucursal ajena.
+  const denied = authorizeHorario(user, row.sucursalId);
+  if (denied) return { ok: false, errors: denied };
 
   await db
     .delete(horariosSucursalTable)
