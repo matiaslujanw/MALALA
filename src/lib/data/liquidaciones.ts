@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { requireSupabaseRuntime } from "@/lib/db/env";
@@ -757,7 +757,7 @@ export async function marcarLiquidacionPagada(
   const [rubro] = await db
     .select({ id: rubrosGastoTable.id })
     .from(rubrosGastoTable)
-    .where(eq(rubrosGastoTable.rubro, "Sueldos"))
+    .where(ilike(rubrosGastoTable.rubro, "Sueldos"))
     .limit(1);
 
   if (!rubro) {
