@@ -53,8 +53,10 @@ export default async function VentasPage({
   const rango = sp.rango ?? "hoy";
   const { desde, hasta } = rangoToFechas(rango);
 
-  // Si es empleado, fuerzo el filtro a sus propias ventas y oculto métricas del local
-  const esEmpleado = user.rol === "empleado" && !!user.empleado_id;
+  // Si es empleado, fuerzo el filtro a sus propias ventas y oculto métricas del
+  // local. Si no tiene ficha vinculada (empleado_id), no ve nada (fail-closed),
+  // nunca las ventas de toda la sucursal.
+  const esEmpleado = user.rol === "empleado";
   const empleadoIdForzado = esEmpleado ? user.empleado_id : sp.empleado;
 
   const empleados = await listEmpleados({ sucursalId: sucursal.id });
