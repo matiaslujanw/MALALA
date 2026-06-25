@@ -5,6 +5,7 @@ import {
   toggleRubroGastoActivo,
 } from "@/lib/data/rubros-gasto";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { SubmitButton } from "@/components/forms/field";
 
 export default async function RubrosGastoPage() {
   const user = await requireUser();
@@ -60,12 +61,12 @@ export default async function RubrosGastoPage() {
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
-          <button
-            type="submit"
+          <SubmitButton
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+            pendingLabel="Agregando..."
           >
             Agregar
-          </button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -100,12 +101,9 @@ export default async function RubrosGastoPage() {
                 <td className="px-4 py-3 text-right">
                   <form action={toggle}>
                     <input type="hidden" name="id" value={r.id} />
-                    <button
-                      type="submit"
-                      className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-                    >
+                    <SubmitButton className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground">
                       {r.activo ? "Desactivar" : "Reactivar"}
-                    </button>
+                    </SubmitButton>
                   </form>
                 </td>
               </tr>

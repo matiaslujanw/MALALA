@@ -7,6 +7,7 @@ import {
 import { listSucursales } from "@/lib/data/sucursales";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
+import { SubmitButton } from "@/components/forms/field";
 
 export default async function CuentasBancariasPage() {
   const user = await requireUser();
@@ -98,12 +99,12 @@ export default async function CuentasBancariasPage() {
               <option value="efectivo">Efectivo</option>
             </select>
           </div>
-          <button
-            type="submit"
+          <SubmitButton
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+            pendingLabel="Agregando..."
           >
             Agregar
-          </button>
+          </SubmitButton>
           <div className="space-y-1.5 sm:col-span-5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Observación
@@ -166,12 +167,9 @@ export default async function CuentasBancariasPage() {
                   <td className="px-4 py-3 text-right">
                     <form action={toggle}>
                       <input type="hidden" name="id" value={c.id} />
-                      <button
-                        type="submit"
-                        className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground"
-                      >
+                      <SubmitButton className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground">
                         {c.activo ? "Desactivar" : "Reactivar"}
-                      </button>
+                      </SubmitButton>
                     </form>
                   </td>
                 </tr>
