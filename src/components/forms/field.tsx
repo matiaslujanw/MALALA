@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CurrencyInput } from "./currency-input";
@@ -241,5 +242,30 @@ export function LoadingButton({
         children
       )}
     </button>
+  );
+}
+
+/**
+ * Botón de submit para formularios que postean directo a un server action
+ * (sin useActionState/useTransition). Lee el estado de envío del <form> padre
+ * con useFormStatus, así muestra el spinner y se deshabilita mientras la acción
+ * está en curso — evitando envíos duplicados. Debe renderizarse dentro del
+ * <form> al que pertenece.
+ */
+export function SubmitButton({
+  pendingLabel,
+  children,
+  ...rest
+}: Omit<LoadingButtonProps, "pending" | "type">) {
+  const { pending } = useFormStatus();
+  return (
+    <LoadingButton
+      {...rest}
+      type="submit"
+      pending={pending}
+      pendingLabel={pendingLabel}
+    >
+      {children}
+    </LoadingButton>
   );
 }

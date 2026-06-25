@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { CheckCircle2, CircleAlert, X } from "lucide-react";
 
 type ToastType = "success" | "error";
@@ -81,6 +82,11 @@ export function ToastProvider({
     [notify],
   );
 
+  // El provider vive en el layout y NO se vuelve a montar en las navegaciones
+  // "soft" (router.push). Por eso releemos el flash toast en cada cambio de
+  // ruta: así el toast persistido antes de un redirect (p. ej. tras crear) se
+  // muestra al llegar a la pantalla destino, sin depender de un F5.
+  const pathname = usePathname();
   useEffect(() => {
     const raw = window.sessionStorage.getItem(FLASH_TOAST_KEY);
     if (!raw) return;
@@ -93,7 +99,7 @@ export function ToastProvider({
     } catch {
       // Ignorar payloads inválidos.
     }
-  }, [notify]);
+  }, [notify, pathname]);
 
   useEffect(() => {
     const timers = timersRef.current;
