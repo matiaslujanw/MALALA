@@ -573,28 +573,40 @@ export async function getTurnosAgendaData(args?: {
 }) {
   const user = await requireUser();
   const scope = buildAccessScope(user);
-  const sucursales = await getSucursalesActivas(scope.sucursalIdsPermitidas);
+  const employeeScopeId =
+    scope.rol === "empleado" ? scope.empleadoId : undefined;
+
+  // Un solo fetch de contexto (sucursales, servicios, profesionales): los
+  // turnos del día se arman con joins en memoria y la lista de profesionales
+  // de la sucursal se deriva de acá, evitando consultas duplicadas.
+  const { sucursales, servicios, profesionales } =
+    await getTurnoContextForScope(scope.sucursalIdsPermitidas);
   const sucursalId =
     clampSucursalId(scope, args?.sucursalId) ?? sucursales[0]?.id ?? "";
   const fecha = args?.fecha ?? new Date().toISOString().slice(0, 10);
-  const [turnos, profesionales] = await Promise.all([
-    buildAgendaTurnos({
-      scopeSucursalIds: scope.sucursalIdsPermitidas,
-      fecha,
-      sucursalId,
-      profesionalId: args?.profesionalId,
-      estado: args?.estado,
-      employeeScopeId: scope.rol === "empleado" ? scope.empleadoId : undefined,
-    }),
-    getProfesionalesReserva({
-      soloSucursalId: sucursalId,
-    }),
-  ]);
 
-  const profesionalesDeSucursal = profesionales.filter(
-    (item) =>
-      scope.rol !== "empleado" || item.empleado_id === scope.empleadoId,
-  );
+  const rawTurnos = await getTurnosRaw({
+    fecha,
+    sucursalIds: scope.sucursalIdsPermitidas,
+    sucursalId,
+    profesionalId: employeeScopeId ?? args?.profesionalId,
+    estado: args?.estado,
+  });
+  const turnos = (
+    employeeScopeId
+      ? rawTurnos.filter((item) => item.profesional_id === employeeScopeId)
+      : rawTurnos
+  )
+    .sort((a, b) => a.hora.localeCompare(b.hora))
+    .map((turno) =>
+      buildTurnoDetalle({ turno, servicios, sucursales, profesionales }),
+    );
+
+  const profesionalesDeSucursal = profesionales
+    .filter((item) => item.sucursal_id === sucursalId)
+    .filter(
+      (item) => scope.rol !== "empleado" || item.empleado_id === scope.empleadoId,
+    );
 
   const resumen = {
     total: turnos.length,
