@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { TableActionLink } from "@/components/table-action-link";
@@ -11,6 +11,7 @@ import {
 import { listEgresos } from "@/lib/data/egresos";
 import { listInsumosByProveedor } from "@/lib/data/insumos";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 import type { EgresoConDetalle } from "@/lib/data/egresos-helpers";
 
@@ -46,6 +47,8 @@ export default async function EditarProveedorPage({
   searchParams: Promise<SearchParams>;
 }) {
   const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const puedeRegistrarCompra = user.rol === "admin" || user.rol === "encargada";
   const { id } = await params;
   const sp = await searchParams;

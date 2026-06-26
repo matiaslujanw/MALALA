@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { listProveedoresConTotal } from "@/lib/data/proveedores";
+import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 
 export default async function ProveedoresPage() {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const sucursal = await getActiveSucursal();
   const proveedores = await listProveedoresConTotal({ sucursalId: sucursal?.id });
 
