@@ -507,6 +507,17 @@ export function seed(): Store {
     vendible: false,
   };
 
+  // Insumos y recetas son por sucursal: en el mock viven todos en la sucursal centro.
+  const insumos = [
+    insShampoo,
+    insTinturaCastano,
+    insOxidante20,
+    insEsmalteSemi,
+    insAlgodonDisco,
+    insAcetona,
+    insMascarillaFacial,
+  ].map((i) => ({ ...i, sucursal_id: sucCentro.id }));
+
   // Recetas
   const recetas = [
     { id: uid(), servicio_id: servCorteMujer.id, insumo_id: insShampoo.id, cantidad: 30 },
@@ -519,21 +530,14 @@ export function seed(): Store {
     { id: uid(), servicio_id: servPiesSemi.id, insumo_id: insEsmalteSemi.id, cantidad: 2 },
     { id: uid(), servicio_id: servManosEsmaltado.id, insumo_id: insAcetona.id, cantidad: 3 },
     { id: uid(), servicio_id: servFacial.id, insumo_id: insMascarillaFacial.id, cantidad: 1 },
-  ];
+  ].map((r) => ({ ...r, sucursal_id: sucCentro.id }));
 
-  const insumos = [
-    insShampoo,
-    insTinturaCastano,
-    insOxidante20,
-    insEsmalteSemi,
-    insAlgodonDisco,
-    insAcetona,
-    insMascarillaFacial,
-  ];
-  const stockSucursal = insumos.flatMap((i) => [
-    { id: uid(), insumo_id: i.id, sucursal_id: sucCentro.id, cantidad: i.umbral_stock_bajo * 3 },
-    { id: uid(), insumo_id: i.id, sucursal_id: sucBarrioNorte.id, cantidad: i.umbral_stock_bajo * 1.5 },
-  ]);
+  const stockSucursal = insumos.map((i) => ({
+    id: uid(),
+    insumo_id: i.id,
+    sucursal_id: i.sucursal_id,
+    cantidad: i.umbral_stock_bajo * 3,
+  }));
 
   // Ventas / ingresos de muestra
   const ingresos: Store["ingresos"] = [];

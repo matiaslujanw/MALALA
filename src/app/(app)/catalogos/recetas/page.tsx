@@ -1,10 +1,14 @@
 import { TableActionLink } from "@/components/table-action-link";
 import { listRecetasResumen } from "@/lib/data/recetas";
+import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
 
 export default async function RecetasPage() {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const sucursal = await getActiveSucursal();
   const resumen = await listRecetasResumen({ sucursalId: sucursal?.id });
 

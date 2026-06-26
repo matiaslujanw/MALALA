@@ -7,16 +7,12 @@ import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import {
   insumos as insumosTable,
-  insumoSucursal as insumoSucursalTable,
   movimientosStock as movimientosStockTable,
   profiles as profilesTable,
   stockSucursal as stockSucursalTable,
   sucursales as sucursalesTable,
 } from "@/lib/db/schema";
-import {
-  ajusteManualSchema,
-  transferenciaSchema,
-} from "@/lib/validations/stock";
+import { ajusteManualSchema } from "@/lib/validations/stock";
 import { failure, fieldErrors, requireRole, type ActionResult } from "./_helpers";
 import type {
   Insumo,
@@ -32,6 +28,7 @@ function createId() {
 function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     nombre: row.nombre,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
@@ -89,27 +86,25 @@ export async function listStockBySucursal(
   }
 
   const db = getDb();
+  // Cada insumo pertenece a una sola sucursal: el stock de la sede son sus insumos.
   const insumosRows = await db
     .select()
     .from(insumosTable)
-    .where(eq(insumosTable.activo, true))
+    .where(
+      and(
+        eq(insumosTable.activo, true),
+        eq(insumosTable.sucursalId, sucursalId),
+      ),
+    )
     .orderBy(asc(insumosTable.nombre));
   const stockRows = await db
     .select()
     .from(stockSucursalTable)
     .where(eq(stockSucursalTable.sucursalId, sucursalId));
 
-  // Solo los insumos habilitados en esta sucursal (membresía insumo_sucursal).
-  const miembros = await db
-    .select({ insumoId: insumoSucursalTable.insumoId })
-    .from(insumoSucursalTable)
-    .where(eq(insumoSucursalTable.sucursalId, sucursalId));
-  const habilitados = new Set(miembros.map((m) => m.insumoId));
-
   const stockByInsumo = new Map(stockRows.map((item) => [item.insumoId, item]));
 
   return insumosRows
-    .filter((row) => habilitados.has(row.id))
     .map((row) => {
       const insumo = mapInsumo(row);
       const stock = stockByInsumo.get(insumo.id);
@@ -238,54 +233,6 @@ export async function createAjusteManual(
     tipo: "ajuste_manual",
     motivo: parsed.data.motivo,
     usuario_id: user.id,
-  });
-
-  revalidatePath("/stock");
-  revalidatePath("/stock/movimientos");
-  revalidatePath("/dashboard");
-  return { ok: true };
-}
-
-export async function createTransferencia(
-  formData: FormData,
-): Promise<ActionResult> {
-  const user = await requireRole(["admin"]);
-  const parsed = transferenciaSchema.safeParse({
-    insumo_id: formData.get("insumo_id"),
-    sucursal_origen_id: formData.get("sucursal_origen_id"),
-    sucursal_destino_id: formData.get("sucursal_destino_id"),
-    cantidad: formData.get("cantidad"),
-    motivo: formData.get("motivo"),
-  });
-  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
-
-  if (parsed.data.sucursal_origen_id === parsed.data.sucursal_destino_id) {
-    return failure("La transferencia requiere sucursales distintas");
-  }
-
-  const refId = createId();
-  const db = getDb();
-  await db.transaction(async (tx) => {
-    await applyMovementTx(tx, {
-      insumo_id: parsed.data.insumo_id,
-      sucursal_id: parsed.data.sucursal_origen_id,
-      delta: -parsed.data.cantidad,
-      tipo: "transferencia_salida",
-      motivo: parsed.data.motivo,
-      ref_tipo: "transferencia",
-      ref_id: refId,
-      usuario_id: user.id,
-    });
-    await applyMovementTx(tx, {
-      insumo_id: parsed.data.insumo_id,
-      sucursal_id: parsed.data.sucursal_destino_id,
-      delta: parsed.data.cantidad,
-      tipo: "transferencia_entrada",
-      motivo: parsed.data.motivo,
-      ref_tipo: "transferencia",
-      ref_id: refId,
-      usuario_id: user.id,
-    });
   });
 
   revalidatePath("/stock");

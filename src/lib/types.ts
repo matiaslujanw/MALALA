@@ -244,6 +244,7 @@ export interface TurnoEvento {
 
 export interface Insumo {
   id: ID;
+  sucursal_id: ID;
   nombre: string;
   proveedor_ids?: ID[];
   unidad_medida: UnidadMedida;
@@ -259,6 +260,7 @@ export interface Insumo {
 
 export interface Receta {
   id: ID;
+  sucursal_id: ID;
   servicio_id: ID;
   insumo_id: ID;
   cantidad: number;

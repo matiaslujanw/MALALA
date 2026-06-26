@@ -5,6 +5,8 @@ import { listMediosPago } from "@/lib/data/medios-pago";
 import { listProveedores } from "@/lib/data/proveedores";
 import { listSucursales } from "@/lib/data/sucursales";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
+import { redirect } from "next/navigation";
 import { formatARS } from "@/lib/utils";
 import { RegistrarCompraInsumoModal } from "@/components/forms/registrar-compra-insumo-modal";
 
@@ -17,6 +19,8 @@ const UNIDAD_LABEL: Record<string, string> = {
 
 export default async function InsumosPage() {
   const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const sucursalActiva = await getActiveSucursal();
   const [insumos, proveedores, sucursales, mediosPago] = await Promise.all([
     listInsumos({ incluirInactivos: true, sucursalId: sucursalActiva?.id }),

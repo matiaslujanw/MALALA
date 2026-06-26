@@ -13,6 +13,7 @@ import {
   Tags,
   Clock3,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import { listSucursales } from "@/lib/data/sucursales";
@@ -108,6 +109,7 @@ const items = [
 export default async function CatalogosPage() {
   const user = await requireUser();
   const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
 
   const sucursal = await getActiveSucursal();
   const sid = sucursal?.id;

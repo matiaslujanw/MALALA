@@ -1,9 +1,13 @@
 import { ProveedorForm } from "@/components/forms/proveedor-form";
+import { redirect } from "next/navigation";
 import { createProveedor } from "@/lib/data/proveedores";
 import { requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 
 export default async function NuevoProveedorPage() {
-  await requireUser();
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
+  if (!scope.puedeVerCatalogos) redirect("/dashboard");
 
   async function action(_prev: unknown, formData: FormData) {
     "use server";

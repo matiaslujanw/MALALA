@@ -58,7 +58,7 @@
 |---|------|-------|----------|-----------|
 | B1 | Empleado sin caja | Como **anita** (empleado), abrí `/caja` | Bloqueado / sin acceso | ✅ (código) `caja/page.tsx:55` redirige si `!puedeVerCaja`; empleado tiene el flag en false (`access.ts:27`). |
 | B2 | Empleado sin reportes | Como **anita**, abrí `/reportes` | Bloqueado | ✅ (código) `reportes/page.tsx` redirige si `!puedeVerReportes`. |
-| B3 | Empleado sin catálogos | Como **anita**, abrí `/catalogos/servicios` | Bloqueado o solo lectura | ✅ (código) Solo lectura: escritura es admin-only (ver B5). ⚠️ El hub `/catalogos` y `/catalogos/servicios` NO redirigen, solo ocultan "Nuevo". No hay bloqueo duro de ruta. |
+| B3 | Empleado sin catálogos | Como **anita**, abrí `/catalogos/servicios` | Bloqueado o solo lectura | ✅ (corregido) Bloqueo duro de ruta: las páginas de catálogos redirigen a `/dashboard` si `!puedeVerCatalogos` (empleado). Excepción intencional: `/catalogos/clientes` queda accesible (lo necesita para ventas). |
 | B4 | Empleado: solo sus comisiones | Como **anita**, mirá ventas/comisiones | Solo ve las propias, no totales del local | ✅ (corregido) Fail-closed aplicado: con ficha vinculada ve solo lo suyo; sin `empleado_id` no ve nada (antes veía todo). Aplica a ventas y turnos. Ver nota ⚠️. |
 | B5 | Encargada no edita catálogos globales | Como **encargada.centro**, intentá editar un servicio | Sin permiso de edición global | ✅ (código) `create/update/toggleServicio` cortan con `user.rol !== "admin"` (`servicios.ts:107,138,179`). |
 | B6 | Empleado registra venta | Como **anita**, registrá una venta en Centro | Permitido (solo en su sucursal) | ✅ (código) `createIngreso` = `requireRole(["admin","encargada","empleado"])` + `isSucursalAllowed` (`ingresos.ts:453`). |
