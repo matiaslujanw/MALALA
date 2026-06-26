@@ -34,6 +34,15 @@ const UNIDAD_LABEL: Record<string, string> = {
   aplicacion: "apl.",
 };
 
+// Opción especial del selector de insumo para darlo de alta en el momento.
+const NUEVO_INSUMO = "__nuevo__";
+const UNIDAD_OPTIONS = [
+  { value: "ml", label: "ml (mililitros)" },
+  { value: "g", label: "g (gramos)" },
+  { value: "ud", label: "ud (unidades)" },
+  { value: "aplicacion", label: "aplicación" },
+];
+
 interface Props {
   defaultSucursalId: string;
   rubros: RubroGasto[];
@@ -75,6 +84,9 @@ export function EgresoForm({
   const sucursalId = defaultSucursalId;
   const [proveedorId, setProveedorId] = useState(defaultProveedorId ?? "");
   const [insumoId, setInsumoId] = useState("");
+  const [nuevoUnidad, setNuevoUnidad] = useState("ml");
+  const [nuevoTamano, setNuevoTamano] = useState<number>(0);
+  const esNuevoInsumo = insumoId === NUEVO_INSUMO;
 
   // Pago: monto total + hasta dos medios, cada uno con su cuenta (como en ventas).
   const [valorTotal, setValorTotal] = useState<number>(0);
@@ -207,53 +219,139 @@ export function EgresoForm({
       />
 
       {esCompraInsumo && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border border-border bg-card p-4">
-          <SelectField
-            label="Insumo"
-            name="insumo_id"
-            value={insumoId}
-            onChange={(e) => setInsumoId(e.currentTarget.value)}
-            error={errors.insumo_id}
-            options={insumosVisibles.map((i) => ({
-              value: i.id,
-              label: i.nombre,
-            }))}
-            placeholder={
-              insumosVisibles.length === 0
-                ? "No hay insumos cargados"
-                : "Seleccioná insumo"
-            }
-            required
-          />
-          <div className="space-y-1.5">
-            <label
-              htmlFor="cantidad"
-              className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
-            >
-              Cantidad de envases
-            </label>
-            <input
-              id="cantidad"
-              type="number"
-              name="cantidad"
-              min="1"
-              step="1"
-              defaultValue={1}
-              required={esCompraInsumo}
-              className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring tabular-nums text-right"
+        <div className="space-y-4 rounded-md border border-border bg-card p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SelectField
+              label="Insumo"
+              name="insumo_select_ui"
+              value={insumoId}
+              onChange={(e) => setInsumoId(e.currentTarget.value)}
+              error={errors.insumo_id}
+              options={[
+                { value: NUEVO_INSUMO, label: "➕ Crear insumo nuevo" },
+                ...insumosVisibles.map((i) => ({
+                  value: i.id,
+                  label: i.nombre,
+                })),
+              ]}
+              placeholder="Seleccioná insumo"
+              required
             />
-            {insumoSel && (
-              <p className="text-[10px] text-muted-foreground">
-                Cada envase trae {insumoSel.tamano_envase}{" "}
-                {UNIDAD_LABEL[insumoSel.unidad_medida] ?? insumoSel.unidad_medida}
-              </p>
-            )}
-            {errors.cantidad && (
-              <p className="text-xs text-destructive">
-                {errors.cantidad.join(", ")}
-              </p>
-            )}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="cantidad"
+                className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                Cantidad de envases
+              </label>
+              <input
+                id="cantidad"
+                type="number"
+                name="cantidad"
+                min="1"
+                step="1"
+                defaultValue={1}
+                required={esCompraInsumo}
+                className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring tabular-nums text-right"
+              />
+              {!esNuevoInsumo && insumoSel && (
+                <p className="text-[10px] text-muted-foreground">
+                  Cada envase trae {insumoSel.tamano_envase}{" "}
+                  {UNIDAD_LABEL[insumoSel.unidad_medida] ??
+                    insumoSel.unidad_medida}
+                </p>
+              )}
+              {esNuevoInsumo && nuevoTamano > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Cada envase trae {nuevoTamano}{" "}
+                  {UNIDAD_LABEL[nuevoUnidad] ?? nuevoUnidad}
+                </p>
+              )}
+              {errors.cantidad && (
+                <p className="text-xs text-destructive">
+                  {errors.cantidad.join(", ")}
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* Insumo existente: mandamos su id. */}
+          {!esNuevoInsumo && insumoId && (
+            <input type="hidden" name="insumo_id" value={insumoId} />
+          )}
+
+          {/* Alta inline del insumo nuevo. El precio sale de la compra. */}
+          {esNuevoInsumo && (
+            <div className="space-y-4 rounded-md border border-dashed border-border bg-cream/30 p-4">
+              <input type="hidden" name="nuevo_insumo" value="1" />
+              <p className="text-xs text-muted-foreground">
+                Se crea el insumo en esta sucursal y queda guardado para futuras
+                compras. El costo se calcula solo: monto ÷ cantidad de envases.
+              </p>
+              <Field
+                label="Nombre del insumo"
+                name="nuevo_nombre"
+                error={errors.nuevo_nombre}
+                required={esNuevoInsumo}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <SelectField
+                  label="Unidad de medida"
+                  name="nuevo_unidad_medida"
+                  value={nuevoUnidad}
+                  onChange={(e) => setNuevoUnidad(e.currentTarget.value)}
+                  error={errors.nuevo_unidad_medida}
+                  options={UNIDAD_OPTIONS}
+                  required={esNuevoInsumo}
+                />
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="nuevo_tamano_envase"
+                    className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    Contenido por envase ({UNIDAD_LABEL[nuevoUnidad] ?? nuevoUnidad})
+                  </label>
+                  <input
+                    id="nuevo_tamano_envase"
+                    type="number"
+                    name="nuevo_tamano_envase"
+                    min="0.01"
+                    step="0.01"
+                    value={nuevoTamano || ""}
+                    onChange={(e) => setNuevoTamano(Number(e.currentTarget.value))}
+                    required={esNuevoInsumo}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring tabular-nums text-right"
+                  />
+                  {errors.nuevo_tamano_envase && (
+                    <p className="text-xs text-destructive">
+                      {errors.nuevo_tamano_envase.join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="nuevo_umbral_stock_bajo"
+                  className="block text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                >
+                  Umbral de stock bajo (opcional)
+                </label>
+                <input
+                  id="nuevo_umbral_stock_bajo"
+                  type="number"
+                  name="nuevo_umbral_stock_bajo"
+                  min="0"
+                  step="0.01"
+                  defaultValue={0}
+                  className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring tabular-nums text-right"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Avisa cuando el stock baja de este valor. Podés ajustarlo
+                  después en Catálogos → Insumos.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

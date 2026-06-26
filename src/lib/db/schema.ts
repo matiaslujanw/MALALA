@@ -296,8 +296,13 @@ export const profesionalesServicios = pgTable(
   }),
 );
 
+// Cada insumo pertenece a una sola sucursal: la definición, el costo y el stock
+// son propios de esa sede (no hay producto "global" compartido entre sucursales).
 export const insumos = pgTable("insumos", {
   id: text("id").primaryKey(),
+  sucursalId: text("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id, { onDelete: "cascade" }),
   nombre: text("nombre").notNull(),
   unidadMedida: unidadMedidaEnum("unidad_medida").notNull(),
   tamanoEnvase: doublePrecision("tamano_envase").notNull(),
@@ -310,8 +315,13 @@ export const insumos = pgTable("insumos", {
   precioVenta: doublePrecision("precio_venta"),
 });
 
+// La receta también es por sucursal: el mismo servicio puede consumir distintos
+// insumos/cantidades en cada sede. El insumo referenciado pertenece a esa sucursal.
 export const recetas = pgTable("recetas", {
   id: text("id").primaryKey(),
+  sucursalId: text("sucursal_id")
+    .notNull()
+    .references(() => sucursales.id, { onDelete: "cascade" }),
   servicioId: text("servicio_id")
     .notNull()
     .references(() => servicios.id, { onDelete: "cascade" }),
@@ -338,28 +348,6 @@ export const insumoProveedores = pgTable(
     uniqueInsumoProveedor: uniqueIndex("insumo_proveedor_unique_idx").on(
       table.insumoId,
       table.proveedorId,
-    ),
-  }),
-);
-
-// Membresía de un insumo en una sucursal: la definición del insumo es global,
-// pero cada sucursal "habilita" los suyos y solo ve esos en su catálogo. El
-// stock y las recetas siguen funcionando con el insumo global.
-export const insumoSucursal = pgTable(
-  "insumo_sucursal",
-  {
-    id: text("id").primaryKey(),
-    insumoId: text("insumo_id")
-      .notNull()
-      .references(() => insumos.id, { onDelete: "cascade" }),
-    sucursalId: text("sucursal_id")
-      .notNull()
-      .references(() => sucursales.id, { onDelete: "cascade" }),
-  },
-  (table) => ({
-    uniqueInsumoSucursal: uniqueIndex("insumo_sucursal_uq").on(
-      table.insumoId,
-      table.sucursalId,
     ),
   }),
 );
@@ -427,8 +415,9 @@ export const motivosDescuento = pgTable("motivos_descuento", {
   activo: boolean("activo").notNull().default(true),
 });
 
-// Tablas puente de membresía por sucursal (mismo patrón que insumo_sucursal):
-// la definición es global, pero cada sucursal ve/gestiona solo las suyas.
+// Tablas puente de membresía por sucursal: la definición del catálogo es global,
+// pero cada sucursal ve/gestiona solo las suyas. (Insumos y recetas NO usan este
+// patrón: pertenecen directamente a una sucursal vía su columna sucursal_id.)
 export const proveedorSucursal = pgTable(
   "proveedor_sucursal",
   {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRightLeft, History, SlidersHorizontal } from "lucide-react";
+import { History, SlidersHorizontal } from "lucide-react";
 import { listStockBySucursal } from "@/lib/data/stock";
 import { getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -67,22 +67,13 @@ export default async function StockPage({
             Movimientos
           </Link>
           {scope.rol === "admin" && (
-            <>
-              <Link
-                href="/stock/transferencia"
-                className="border border-border px-3 py-2 rounded-md text-sm font-medium hover:bg-cream transition-colors flex items-center gap-2"
-              >
-                <ArrowRightLeft className="h-4 w-4 stroke-[1.5]" />
-                Transferir
-              </Link>
-              <Link
-                href="/stock/ajuste"
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
-              >
-                <SlidersHorizontal className="h-4 w-4 stroke-[1.5]" />
-                Ajuste manual
-              </Link>
-            </>
+            <Link
+              href="/stock/ajuste"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
+            >
+              <SlidersHorizontal className="h-4 w-4 stroke-[1.5]" />
+              Ajuste manual
+            </Link>
           )}
         </div>
       </header>
@@ -117,10 +108,19 @@ export default async function StockPage({
       </form>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard label="Valuacion estimada" value={formatARS(totalValuado)} />
+        <SummaryCard
+          label="Valor del stock"
+          value={formatARS(totalValuado)}
+          hint="a costo · lo que queda × $ unitario"
+        />
         <SummaryCard label="Stock bajo" value={String(bajos)} tone="warning" />
         <SummaryCard label="Stock negativo" value={String(negativos)} tone="danger" />
       </div>
+
+      <p className="-mt-4 text-xs text-muted-foreground">
+        <strong>Valor en stock</strong> es lo que te queda valuado a costo (stock ×
+        $ unitario), no lo que pagaste. Lo pagado queda en Gastos.
+      </p>
 
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -130,7 +130,7 @@ export default async function StockPage({
               <th className="text-right font-medium px-4 py-3">Stock</th>
               <th className="text-right font-medium px-4 py-3">Umbral</th>
               <th className="text-right font-medium px-4 py-3">$ unitario</th>
-              <th className="text-right font-medium px-4 py-3">Valor total</th>
+              <th className="text-right font-medium px-4 py-3">Valor en stock</th>
               <th className="text-center font-medium px-4 py-3 w-28">Estado</th>
             </tr>
           </thead>
@@ -214,10 +214,12 @@ function SummaryCard({
   label,
   value,
   tone,
+  hint,
 }: {
   label: string;
   value: string;
   tone?: "warning" | "danger";
+  hint?: string;
 }) {
   const className =
     tone === "danger"
@@ -229,6 +231,7 @@ function SummaryCard({
     <div className={`rounded-[1.4rem] border p-5 ${className}`}>
       <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">{label}</p>
       <p className="mt-2 font-display text-3xl tabular-nums">{value}</p>
+      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

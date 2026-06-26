@@ -161,6 +161,7 @@ function mapEmpleado(row: typeof empleadosTable.$inferSelect): Empleado {
 function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     nombre: row.nombre,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
@@ -177,6 +178,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
 function mapReceta(row: typeof recetasTable.$inferSelect): Receta {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     servicio_id: row.servicioId,
     insumo_id: row.insumoId,
     cantidad: row.cantidad,
@@ -207,6 +209,10 @@ async function loadIngresoCatalogs(args: {
   const empleadoIds = Array.from(
     new Set(args.lineas.map((item) => item.empleado_id).filter(Boolean)),
   ) as string[];
+  // Las recetas son por sucursal: solo las de las sucursales de estos ingresos.
+  const sucursalIds = Array.from(
+    new Set(args.ingresos.map((item) => item.sucursal_id).filter(Boolean)),
+  ) as string[];
 
   const [clientesRows, mediosPagoRows, serviciosRows, empleadosRows, recetasRows] =
     await Promise.all([
@@ -234,11 +240,16 @@ async function loadIngresoCatalogs(args: {
             .from(empleadosTable)
             .where(inArray(empleadosTable.id, empleadoIds))
         : Promise.resolve([]),
-      servicioIds.length > 0
+      servicioIds.length > 0 && sucursalIds.length > 0
         ? db
             .select()
             .from(recetasTable)
-            .where(inArray(recetasTable.servicioId, servicioIds))
+            .where(
+              and(
+                inArray(recetasTable.servicioId, servicioIds),
+                inArray(recetasTable.sucursalId, sucursalIds),
+              ),
+            )
         : Promise.resolve([]),
     ]);
 
@@ -295,12 +306,16 @@ function buildIngresosConDetalle(args: {
   }
 
   return args.ingresos.map((ingreso): IngresoConDetalle => {
-    const lineas = detallarLineas(lineasByIngreso.get(ingreso.id) ?? [], {
-      serviciosById: args.serviciosById,
-      insumosById: args.insumosById,
-      empleadosById: args.empleadosById,
-      costoInsumosByServicio: args.costoInsumosByServicio,
-    });
+    const lineas = detallarLineas(
+      lineasByIngreso.get(ingreso.id) ?? [],
+      {
+        serviciosById: args.serviciosById,
+        insumosById: args.insumosById,
+        empleadosById: args.empleadosById,
+        costoInsumosByServicio: args.costoInsumosByServicio,
+      },
+      ingreso.sucursal_id,
+    );
     return {
       ingreso,
       cliente: ingreso.cliente_id
@@ -737,7 +752,12 @@ export async function createIngreso(
           ? await tx
               .select()
               .from(recetasTable)
-              .where(inArray(recetasTable.servicioId, servicioIds))
+              .where(
+                and(
+                  inArray(recetasTable.servicioId, servicioIds),
+                  eq(recetasTable.sucursalId, data.sucursal_id),
+                ),
+              )
           : [];
       const recetaMap = new Map<string, Array<(typeof recetasTable.$inferSelect)>>(
         servicioIds.map((servicioId) => [servicioId, []]),

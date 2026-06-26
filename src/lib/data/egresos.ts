@@ -98,6 +98,7 @@ function mapSucursal(row: typeof sucursalesTable.$inferSelect): Sucursal {
 function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     nombre: row.nombre,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,

@@ -144,6 +144,15 @@ interface IngresoLookups {
   costoInsumosByServicio: Map<string, number>;
 }
 
+/**
+ * Las recetas son por sucursal, así que el costo de un servicio depende de la
+ * sede. El mapa se keyea por (sucursal, servicio) para no mezclar costos entre
+ * sucursales al reportar ventas de varias sedes a la vez.
+ */
+export function costoServicioKey(sucursalId: string, servicioId: string): string {
+  return `${sucursalId}::${servicioId}`;
+}
+
 export function buildCostoInsumosByServicio(
   recetas: Receta[],
   insumos: Insumo[],
@@ -154,10 +163,10 @@ export function buildCostoInsumosByServicio(
   for (const receta of recetas) {
     const insumo = insumosById.get(receta.insumo_id);
     if (!insumo || insumo.precio_unitario == null) continue;
+    const key = costoServicioKey(receta.sucursal_id, receta.servicio_id);
     costoByServicio.set(
-      receta.servicio_id,
-      (costoByServicio.get(receta.servicio_id) ?? 0) +
-        receta.cantidad * insumo.precio_unitario,
+      key,
+      (costoByServicio.get(key) ?? 0) + receta.cantidad * insumo.precio_unitario,
     );
   }
 
@@ -165,10 +174,11 @@ export function buildCostoInsumosByServicio(
 }
 
 export function costoInsumosDeServicio(
+  sucursalId: string,
   servicioId: string,
   costoInsumosByServicio: Map<string, number>,
 ): number {
-  return costoInsumosByServicio.get(servicioId) ?? 0;
+  return costoInsumosByServicio.get(costoServicioKey(sucursalId, servicioId)) ?? 0;
 }
 
 export function computeBreakdown(
@@ -189,6 +199,7 @@ export function computeBreakdown(
 export function detallarLineas(
   lineas: IngresoLinea[],
   lookups: IngresoLookups,
+  sucursalId: string,
 ): IngresoLineaConDetalle[] {
   return lineas.map((linea) => {
     const servicio = linea.servicio_id
@@ -204,8 +215,11 @@ export function detallarLineas(
     let costoInsumos = 0;
     if (linea.servicio_id) {
       costoInsumos =
-        (lookups.costoInsumosByServicio.get(linea.servicio_id) ?? 0) *
-        linea.cantidad;
+        costoInsumosDeServicio(
+          sucursalId,
+          linea.servicio_id,
+          lookups.costoInsumosByServicio,
+        ) * linea.cantidad;
     } else if (insumo && insumo.precio_unitario != null) {
       // Para productos vendidos, el "costo" del local es el precio unitario × cantidad
       costoInsumos = insumo.precio_unitario * linea.cantidad;

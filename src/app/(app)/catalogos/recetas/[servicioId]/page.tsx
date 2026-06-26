@@ -8,7 +8,7 @@ import {
 } from "@/lib/data/recetas";
 import { getServicio } from "@/lib/data/servicios";
 import { listInsumos } from "@/lib/data/insumos";
-import { requireUser } from "@/lib/auth/session";
+import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 
 const UNIDAD_LABEL: Record<string, string> = {
@@ -26,10 +26,14 @@ export default async function EditarRecetaPage({
   const user = await requireUser();
   const { servicioId } = await params;
 
+  // La receta y los insumos disponibles son los de la sucursal activa.
+  const sucursal = await getActiveSucursal();
+  if (!sucursal) redirect("/catalogos/recetas");
+
   const [servicio, items, insumos] = await Promise.all([
     getServicio(servicioId),
-    getRecetaItems(servicioId),
-    listInsumos(),
+    getRecetaItems(servicioId, sucursal.id),
+    listInsumos({ sucursalId: sucursal.id }),
   ]);
   if (!servicio) notFound();
 

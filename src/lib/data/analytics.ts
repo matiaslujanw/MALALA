@@ -26,6 +26,7 @@ import {
   turnos as turnosTable,
 } from "@/lib/db/schema";
 import type { AccessScope, TurnoEstado } from "@/lib/types";
+import { costoServicioKey } from "./ingresos-helpers";
 
 export interface AnalyticsFilters {
   desde?: string;
@@ -244,13 +245,19 @@ export async function getAnalyticsSnapshot(
   const sucursalMap = new Map(sucursalesRows.map((item) => [item.id, item.nombre]));
   const empleadoMap = new Map(empleadosRows.map((item) => [item.id, item.nombre]));
 
+  // Recetas por sucursal: el costo se keyea por (sucursal, servicio) para no
+  // mezclar costos entre sedes cuando el reporte es consolidado.
+  const ingresoSucursalById = new Map(
+    ingresosRows.map((item) => [item.id, item.sucursalId]),
+  );
   const costoInsumosByServicio = new Map<string, number>();
   for (const receta of recetasRows) {
     const insumo = insumoMap.get(receta.insumoId);
     if (!insumo || insumo.precioUnitario == null) continue;
+    const key = costoServicioKey(receta.sucursalId, receta.servicioId);
     costoInsumosByServicio.set(
-      receta.servicioId,
-      (costoInsumosByServicio.get(receta.servicioId) ?? 0) +
+      key,
+      (costoInsumosByServicio.get(key) ?? 0) +
         receta.cantidad * insumo.precioUnitario,
     );
   }
@@ -262,7 +269,10 @@ export async function getAnalyticsSnapshot(
   const costoInsumosTotal = sum(
     ingresoLineasRows.map((item) => {
       if (!item.servicioId) return 0;
-      return (costoInsumosByServicio.get(item.servicioId) ?? 0) * item.cantidad;
+      const sucursalId = ingresoSucursalById.get(item.ingresoId);
+      if (!sucursalId) return 0;
+      const key = costoServicioKey(sucursalId, item.servicioId);
+      return (costoInsumosByServicio.get(key) ?? 0) * item.cantidad;
     }),
   );
   const netoTotal = ingresosTotal - comisionesTotal - costoInsumosTotal;

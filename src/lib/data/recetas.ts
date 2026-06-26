@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/schema";
 import type { Insumo, Receta, Servicio } from "@/lib/types";
 import { recetaItemSchema } from "@/lib/validations/receta";
+import { getActiveSucursalForUser } from "@/lib/auth/session";
 import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
 
 export interface RecetaResumen {
@@ -44,6 +45,7 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
 function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     nombre: row.nombre,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
@@ -60,21 +62,29 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
 function mapReceta(row: typeof recetasTable.$inferSelect): Receta {
   return {
     id: row.id,
+    sucursal_id: row.sucursalId,
     servicio_id: row.servicioId,
     insumo_id: row.insumoId,
     cantidad: row.cantidad,
   };
 }
 
-async function loadCatalogs() {
+async function loadCatalogs(sucursalId?: string) {
   const db = getDb();
   const [serviciosRows, insumosRows, recetasRows] = await Promise.all([
     db
       .select()
       .from(serviciosTable)
       .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre)),
-    db.select().from(insumosTable).orderBy(asc(insumosTable.nombre)),
-    db.select().from(recetasTable),
+    db
+      .select()
+      .from(insumosTable)
+      .where(sucursalId ? eq(insumosTable.sucursalId, sucursalId) : undefined)
+      .orderBy(asc(insumosTable.nombre)),
+    db
+      .select()
+      .from(recetasTable)
+      .where(sucursalId ? eq(recetasTable.sucursalId, sucursalId) : undefined),
   ]);
 
   return {
@@ -91,7 +101,7 @@ export async function listRecetasResumen(opts?: {
     "Las recetas del sistema solo se cargan desde Supabase.",
   );
 
-  const { servicios, insumos, recetas } = await loadCatalogs();
+  const { servicios, insumos, recetas } = await loadCatalogs(opts?.sucursalId);
   const insumoMap = new Map(insumos.map((item) => [item.id, item]));
 
   let serviciosVisibles = servicios;
@@ -119,6 +129,7 @@ export async function listRecetasResumen(opts?: {
 
 export async function getRecetaItems(
   servicioId: string,
+  sucursalId: string,
 ): Promise<RecetaItemDetalle[]> {
   requireSupabaseRuntime(
     "Las recetas del sistema solo se cargan desde Supabase.",
@@ -128,7 +139,12 @@ export async function getRecetaItems(
   const recetaRows = await db
     .select()
     .from(recetasTable)
-    .where(eq(recetasTable.servicioId, servicioId));
+    .where(
+      and(
+        eq(recetasTable.servicioId, servicioId),
+        eq(recetasTable.sucursalId, sucursalId),
+      ),
+    );
   if (recetaRows.length === 0) return [];
 
   const insumoIds = recetaRows.map((item) => item.insumoId);
@@ -154,8 +170,9 @@ export async function getRecetaItems(
 
 export async function listRecetasByServicio(
   servicioId: string,
+  sucursalId: string,
 ): Promise<Receta[]> {
-  const items = await getRecetaItems(servicioId);
+  const items = await getRecetaItems(servicioId, sucursalId);
   return items.map((item) => item.receta);
 }
 
@@ -209,7 +226,7 @@ export async function listServiciosByInsumo(
 export async function upsertRecetaItem(
   formData: FormData,
 ): Promise<ActionResult> {
-  await requireRole(["admin"]);
+  const user = await requireRole(["admin"]);
   requireSupabaseRuntime(
     "La edicion de recetas requiere Supabase configurado.",
   );
@@ -220,11 +237,35 @@ export async function upsertRecetaItem(
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
+  // La receta se carga en la sucursal activa: cada sede tiene la suya.
+  const sucursalActiva = await getActiveSucursalForUser(user);
+  if (!sucursalActiva) {
+    return { ok: false, errors: { _: ["No hay una sucursal activa seleccionada"] } };
+  }
+
   const db = getDb();
+  // El insumo debe pertenecer a la sucursal activa (no se mezclan sedes).
+  const [insumoRow] = await db
+    .select({ sucursalId: insumosTable.sucursalId })
+    .from(insumosTable)
+    .where(eq(insumosTable.id, parsed.data.insumo_id))
+    .limit(1);
+  if (!insumoRow || insumoRow.sucursalId !== sucursalActiva.id) {
+    return {
+      ok: false,
+      errors: { insumo_id: ["El insumo no pertenece a la sucursal activa"] },
+    };
+  }
+
   const existingRows = await db
     .select()
     .from(recetasTable)
-    .where(eq(recetasTable.servicioId, parsed.data.servicio_id))
+    .where(
+      and(
+        eq(recetasTable.servicioId, parsed.data.servicio_id),
+        eq(recetasTable.sucursalId, sucursalActiva.id),
+      ),
+    )
     .limit(500);
   const duplicate = existingRows.find(
     (item) => item.insumoId === parsed.data.insumo_id,
@@ -238,6 +279,7 @@ export async function upsertRecetaItem(
   } else {
     await db.insert(recetasTable).values({
       id: crypto.randomUUID(),
+      sucursalId: sucursalActiva.id,
       servicioId: parsed.data.servicio_id,
       insumoId: parsed.data.insumo_id,
       cantidad: parsed.data.cantidad,
@@ -278,6 +320,7 @@ export async function removeRecetaItem(
 
 export async function replaceRecetasServicio(
   servicioId: string,
+  sucursalId: string,
   items: Array<{ insumo_id: string; cantidad: number }>,
 ): Promise<ActionResult> {
   await requireRole(["admin"]);
@@ -287,11 +330,19 @@ export async function replaceRecetasServicio(
 
   const db = getDb();
   await db.transaction(async (tx) => {
-    await tx.delete(recetasTable).where(eq(recetasTable.servicioId, servicioId));
+    await tx
+      .delete(recetasTable)
+      .where(
+        and(
+          eq(recetasTable.servicioId, servicioId),
+          eq(recetasTable.sucursalId, sucursalId),
+        ),
+      );
     if (items.length > 0) {
       await tx.insert(recetasTable).values(
         items.map((item) => ({
           id: crypto.randomUUID(),
+          sucursalId,
           servicioId,
           insumoId: item.insumo_id,
           cantidad: item.cantidad,
