@@ -753,6 +753,12 @@ export const turnos = pgTable(
   (table) => ({
     tokenAccesoIdx: uniqueIndex("turnos_token_acceso_uq").on(table.tokenAcceso),
     clienteIdx: index("turnos_cliente_id_idx").on(table.clienteId),
+    // La agenda filtra siempre por sucursal + fecha (día y rangos semanal/
+    // mensual). Índice compuesto para evitar scans secuenciales al crecer.
+    sucursalFechaIdx: index("turnos_sucursal_fecha_idx").on(
+      table.sucursalId,
+      table.fechaTurno,
+    ),
   }),
 );
 
