@@ -14,6 +14,11 @@ import {
   listServiciosPublicosElegibles,
   replaceProfesionalServicios,
 } from "@/lib/data/profesionales-servicios";
+import {
+  removeProfesionalAvatar,
+  setProfesionalAvatar,
+} from "@/lib/data/profesionales-agenda";
+import { SubmitButton } from "@/components/forms/field";
 
 const DIAS = [
   { value: 1, label: "Lunes" },
@@ -67,6 +72,14 @@ export default async function ProfesionalAgendaPage({
     "use server";
     await replaceProfesionalServicios(id, formData);
   }
+  async function subirAvatar(formData: FormData) {
+    "use server";
+    await setProfesionalAvatar(id, formData);
+  }
+  async function quitarAvatar() {
+    "use server";
+    await removeProfesionalAvatar(id);
+  }
 
   const serviciosAsignadosIds = new Set(
     serviciosAsignados.map((item) => item.servicio_id),
@@ -104,6 +117,64 @@ export default async function ProfesionalAgendaPage({
             value={agenda.activo_publico ? "Activa" : "Oculta"}
           />
         </dl>
+      </section>
+
+      <section className="space-y-3 border-t border-border pt-6">
+        <div className="space-y-1">
+          <h2 className="font-display text-xl tracking-[0.15em] uppercase">
+            Foto de perfil
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Se muestra en la reserva online al elegir profesional. Si no cargás
+            una, se usan las iniciales. Máx. 4 MB.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-card p-4">
+          {agenda.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={agenda.avatar_url}
+              alt={agenda.empleado_nombre}
+              className="h-16 w-16 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="flex h-16 w-16 items-center justify-center rounded-full text-lg font-semibold text-white"
+              style={{ backgroundColor: agenda.color }}
+            >
+              {agenda.empleado_nombre
+                .split(" ")
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join("")}
+            </span>
+          )}
+
+          <form action={subirAvatar} className="flex flex-wrap items-center gap-3">
+            <input
+              type="file"
+              name="avatar"
+              accept="image/*"
+              required
+              className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-sage-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sage-900 hover:file:bg-sage-100"
+            />
+            <SubmitButton
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              pendingLabel="Subiendo..."
+            >
+              Subir foto
+            </SubmitButton>
+          </form>
+
+          {agenda.avatar_url && (
+            <form action={quitarAvatar}>
+              <SubmitButton className="text-xs uppercase tracking-wider text-muted-foreground hover:text-destructive">
+                Quitar foto
+              </SubmitButton>
+            </form>
+          )}
+        </div>
       </section>
 
       <section className="space-y-3 border-t border-border pt-6">

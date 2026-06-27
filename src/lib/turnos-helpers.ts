@@ -217,6 +217,14 @@ export function buildAvailableSlots(args: {
     : profesionalesElegibles;
 
   const duration = service.duracion_min ?? 60;
+  // La grilla de horarios arranca en la apertura y avanza de a la duración del
+  // servicio: cada turno empieza justo cuando terminaría el anterior (ej. un
+  // servicio de 45': 10:00, 10:45, 11:30…), igual que el sistema de referencia.
+  // Como el chequeo de colisión usa fin exclusivo, un turno que termina a las
+  // 11:00 deja libre el slot de las 11:00.
+  const slotStep = duration;
+  const MAX_SLOTS_PER_DATE = 48;
+
   const blocked = args.turnos.filter(
     (turno) =>
       turno.sucursal_id === args.sucursalId &&
@@ -260,7 +268,7 @@ export function buildAvailableSlots(args: {
       const end = timeToMinutes(window.cierre);
       while (cursor + duration <= end) {
         if (isToday && cursor <= currentMinutes) {
-          cursor += 45;
+          cursor += slotStep;
           continue;
         }
 
@@ -279,7 +287,7 @@ export function buildAvailableSlots(args: {
             profesional_color: prof.color,
           });
         }
-        cursor += 45;
+        cursor += slotStep;
       }
     }
   }
@@ -297,7 +305,7 @@ export function buildAvailableSlots(args: {
             ) === index,
         );
 
-  return deduped.slice(0, 18);
+  return deduped.slice(0, MAX_SLOTS_PER_DATE);
 }
 
 export function listReservableDates(args: {
