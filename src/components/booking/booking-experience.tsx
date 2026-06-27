@@ -1252,16 +1252,25 @@ function renderStepContent(args: {
               )}
             >
               <div className="flex items-center gap-3">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-white"
-                  style={{ backgroundColor: prof.color }}
-                >
-                  {prof.empleado.nombre
-                    .split(" ")
-                    .map((item) => item[0])
-                    .slice(0, 2)
-                    .join("")}
-                </span>
+                {prof.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={prof.avatar_url}
+                    alt={prof.empleado.nombre}
+                    className="h-11 w-11 rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold text-white"
+                    style={{ backgroundColor: prof.color }}
+                  >
+                    {prof.empleado.nombre
+                      .split(" ")
+                      .map((item) => item[0])
+                      .slice(0, 2)
+                      .join("")}
+                  </span>
+                )}
                 <span>
                   <span className="block font-medium text-ink">
                     {prof.empleado.nombre}
