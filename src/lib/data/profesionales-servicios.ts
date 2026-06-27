@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db/client/postgres";
 import {
   profesionalesServicios as profesionalesServiciosTable,
   servicios as serviciosTable,
+  servicioSucursal as servicioSucursalTable,
 } from "@/lib/db/schema";
 import type { ProfesionalServicio, Servicio } from "@/lib/types";
 import { getProfesionalAgendaConfig } from "./profesionales-horarios";
@@ -96,7 +97,9 @@ export async function listProfesionalesServiciosAll(): Promise<
   }
 }
 
-export async function listServiciosPublicosElegibles(): Promise<Servicio[]> {
+export async function listServiciosPublicosElegibles(
+  sucursalId?: string,
+): Promise<Servicio[]> {
   const db = getDb();
   const rows = await db
     .select()
@@ -104,7 +107,19 @@ export async function listServiciosPublicosElegibles(): Promise<Servicio[]> {
     .where(and(eq(serviciosTable.activo, true), eq(serviciosTable.esPromo, false)))
     .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
 
-  return rows.map((row) => ({
+  // Membresía por sucursal: un profesional solo puede hacer servicios
+  // habilitados en su sucursal. Sin sucursalId se devuelven todos (compat).
+  let visibles = rows;
+  if (sucursalId) {
+    const miembros = await db
+      .select({ servicioId: servicioSucursalTable.servicioId })
+      .from(servicioSucursalTable)
+      .where(eq(servicioSucursalTable.sucursalId, sucursalId));
+    const habilitados = new Set(miembros.map((m) => m.servicioId));
+    visibles = rows.filter((row) => habilitados.has(row.id));
+  }
+
+  return visibles.map((row) => ({
     id: row.id,
     rubro: row.rubro,
     nombre: row.nombre,

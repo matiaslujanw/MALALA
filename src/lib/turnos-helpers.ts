@@ -273,20 +273,30 @@ export function buildAvailableSlots(args: {
         }
 
         const slotEnd = cursor + duration;
-        const hasCollision = profTurnos.some((turno) => {
+        const colisiones = profTurnos.filter((turno) => {
           const bookedStart = timeToMinutes(turno.hora);
           const bookedEnd = bookedStart + turno.duracion_min;
           return overlaps(cursor, slotEnd, bookedStart, bookedEnd);
         });
-        if (!hasCollision) {
-          slots.push({
-            fecha: args.fecha,
-            hora: minutesToTime(cursor),
-            profesional_id: prof.empleado_id,
-            profesional_nombre: prof.empleado.nombre,
-            profesional_color: prof.color,
-          });
+        if (colisiones.length > 0) {
+          // Reanudar la grilla justo cuando termina el último turno que se
+          // solapa, para que el siguiente arranque pegado (sin huecos) en vez
+          // de saltar al próximo punto de la grilla anclada a la apertura.
+          cursor = Math.max(
+            ...colisiones.map(
+              (turno) => timeToMinutes(turno.hora) + turno.duracion_min,
+            ),
+          );
+          continue;
         }
+
+        slots.push({
+          fecha: args.fecha,
+          hora: minutesToTime(cursor),
+          profesional_id: prof.empleado_id,
+          profesional_nombre: prof.empleado.nombre,
+          profesional_color: prof.color,
+        });
         cursor += slotStep;
       }
     }
