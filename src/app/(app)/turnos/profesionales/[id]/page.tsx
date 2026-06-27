@@ -55,7 +55,7 @@ export default async function ProfesionalAgendaPage({
 
   const [horarios, servicios, serviciosAsignados] = await Promise.all([
     listProfesionalHorarios(agenda.empleado_id, agenda.sucursal_id),
-    listServiciosPublicosElegibles(),
+    listServiciosPublicosElegibles(agenda.sucursal_id),
     listProfesionalServicios(agenda.empleado_id, agenda.sucursal_id),
   ]);
 

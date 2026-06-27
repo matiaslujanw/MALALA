@@ -74,7 +74,7 @@ export default async function EditarEmpleadoPage({
   );
   const sucursal = await getActiveSucursal();
 
-  const [anticipos, mediosPago, acceso, agendas, serviciosPublicos] = await Promise.all([
+  const [anticipos, mediosPago, acceso, agendas] = await Promise.all([
     listAnticipos(id),
     sucursal
       ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
@@ -83,8 +83,10 @@ export default async function EditarEmpleadoPage({
     listProfesionalAgendaConfigsByEmpleado(id, {
       sucursalIds: sucursales.map((item) => item.id),
     }),
-    listServiciosPublicosElegibles(),
   ]);
+  // Los servicios elegibles se filtran por la sucursal de cada agenda
+  // (membresía servicio_sucursal): un profesional solo ve los servicios
+  // habilitados en su sucursal, no los de otras.
   const agendasConHorarios = await Promise.all(
     agendas.map(async (agenda) => ({
       agenda,
@@ -94,6 +96,9 @@ export default async function EditarEmpleadoPage({
       ),
       servicios: await listProfesionalServicios(
         agenda.empleado_id,
+        agenda.sucursal_id,
+      ),
+      serviciosPublicos: await listServiciosPublicosElegibles(
         agenda.sucursal_id,
       ),
     })),
@@ -161,7 +166,6 @@ export default async function EditarEmpleadoPage({
 
       <DisponibilidadPublicaPanel
         agendas={agendasConHorarios}
-        serviciosPublicos={serviciosPublicos}
         sucursalesParaHabilitar={sucursalesParaHabilitar}
         habilitarProfesional={habilitarProfesional}
         toggleAgenda={toggleAgenda}
@@ -189,7 +193,6 @@ export default async function EditarEmpleadoPage({
 
 function DisponibilidadPublicaPanel({
   agendas,
-  serviciosPublicos,
   sucursalesParaHabilitar,
   habilitarProfesional,
   toggleAgenda,
@@ -208,12 +211,8 @@ function DisponibilidadPublicaPanel({
         cierre: string;
       }>;
       servicios: Array<{ servicio_id: string }>;
+      serviciosPublicos: Array<{ id: string; nombre: string; rubro: string }>;
     }>;
-  serviciosPublicos: Array<{
-    id: string;
-    nombre: string;
-    rubro: string;
-  }>;
   sucursalesParaHabilitar: Array<{ id: string; nombre: string }>;
   habilitarProfesional: (formData: FormData) => Promise<void>;
   toggleAgenda: (formData: FormData) => Promise<void>;
@@ -236,7 +235,7 @@ function DisponibilidadPublicaPanel({
         </div>
       ) : (
         <div className="space-y-4">
-          {agendas.map(({ agenda, horarios, servicios }) => (
+          {agendas.map(({ agenda, horarios, servicios, serviciosPublicos }) => (
             <div
               key={agenda.id}
               className="space-y-4 rounded-md border border-border p-4"
