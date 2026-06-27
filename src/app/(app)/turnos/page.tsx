@@ -75,7 +75,9 @@ export default async function TurnosPage({
           estado: sp.estado || undefined,
         })
       : Promise.resolve(null),
-    necesitaAgendaDiaria ? listServicios() : Promise.resolve([]),
+    necesitaAgendaDiaria
+      ? listServicios({ sucursalId: sucursalId || undefined })
+      : Promise.resolve([]),
     sp.turno ? getTurno(sp.turno) : Promise.resolve(null),
     vista === "diaria" ? getHorarios(sucursalId) : Promise.resolve([]),
   ]);
