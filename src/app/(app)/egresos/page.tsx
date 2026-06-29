@@ -3,6 +3,7 @@ import { Check, Clock, Plus } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
+import { inicioDeDiaArISO } from "@/lib/fecha-ar";
 import { listEgresos } from "@/lib/data/egresos";
 import { aggregateEgresos } from "@/lib/data/egresos-helpers";
 import { listProveedores } from "@/lib/data/proveedores";
@@ -28,9 +29,12 @@ const RANGOS: Array<{ value: NonNullable<SearchParams["rango"]>; label: string }
 
 function rangoToFechas(rango: NonNullable<SearchParams["rango"]>) {
   const now = new Date();
+  if (rango === "hoy") {
+    // Día calendario en horario de Argentina, no medianoche UTC del server.
+    return { desde: inicioDeDiaArISO(), hasta: now.toISOString() };
+  }
   const desde = new Date(now);
-  if (rango === "hoy") desde.setHours(0, 0, 0, 0);
-  else if (rango === "semana") desde.setDate(desde.getDate() - 7);
+  if (rango === "semana") desde.setDate(desde.getDate() - 7);
   else if (rango === "mes") desde.setDate(desde.getDate() - 30);
   else return { desde: undefined, hasta: undefined };
   return { desde: desde.toISOString(), hasta: now.toISOString() };

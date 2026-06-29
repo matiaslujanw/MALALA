@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
@@ -103,12 +104,12 @@ export default async function AperturaCajaPage() {
           )}
 
           <div className="flex items-center gap-3">
-            <a
+            <Link
               href="/caja"
               className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
             >
               Volver a caja
-            </a>
+            </Link>
             {user.rol === "admin" && (
               <ReabrirAperturaButton aperturaId={existente.apertura.id} />
             )}

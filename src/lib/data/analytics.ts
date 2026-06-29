@@ -9,6 +9,7 @@ import {
 import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client/postgres";
+import { hoyAr } from "@/lib/fecha-ar";
 import {
   empleados as empleadosTable,
   egresos as egresosTable,
@@ -105,7 +106,8 @@ function endOfDay(date: Date) {
 }
 
 function resolveDateRange(filters: AnalyticsFilters) {
-  const today = new Date();
+  // Ancla "hoy" en horario de Argentina (el server corre en UTC).
+  const today = new Date(`${hoyAr()}T12:00:00`);
   const desde = filters.desde
     ? startOfDay(new Date(`${filters.desde}T00:00:00`))
     : startOfDay(
