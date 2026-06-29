@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
+import { hoyAr } from "@/lib/fecha-ar";
 import {
   cierresCaja as cierresCajaTable,
   cierreCajaCuentas as cierreCajaCuentasTable,
@@ -102,7 +103,7 @@ function ymdLocal(d: Date): string {
 }
 
 function todayYMD(): string {
-  return ymdLocal(new Date());
+  return hoyAr();
 }
 
 function addDaysYMD(fecha: string, delta: number): string {

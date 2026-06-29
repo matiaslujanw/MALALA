@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import {
@@ -7,13 +8,10 @@ import {
 import { AperturaCajaForm } from "@/components/forms/apertura-caja-form";
 import { ReabrirAperturaButton } from "./reabrir-apertura-button";
 import { formatARS } from "@/lib/utils";
+import { hoyAr } from "@/lib/fecha-ar";
 
 function todayYMD(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return hoyAr();
 }
 
 export default async function AperturaCajaPage() {
@@ -106,12 +104,12 @@ export default async function AperturaCajaPage() {
           )}
 
           <div className="flex items-center gap-3">
-            <a
+            <Link
               href="/caja"
               className="px-4 py-2 rounded-md text-sm font-medium border border-border hover:bg-cream transition-colors"
             >
               Volver a caja
-            </a>
+            </Link>
             {user.rol === "admin" && (
               <ReabrirAperturaButton aperturaId={existente.apertura.id} />
             )}

@@ -20,12 +20,14 @@ import { formatARS } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+// El server corre en UTC; los turnos se guardan en hora de Argentina. Calcular
+// fecha y hora "de hoy" en esa zona para no descartar próximos turnos por el
+// desfasaje de 3 horas.
+const TZ = "America/Argentina/Buenos_Aires";
+
 function todayYMD(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // en-CA formatea como YYYY-MM-DD.
+  return new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 }
 
 function fmtFechaLarga(d: Date): string {
@@ -33,12 +35,18 @@ function fmtFechaLarga(d: Date): string {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: TZ,
   });
 }
 
 function hhmmActual(): string {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  // en-GB 24h da "HH:MM".
+  return new Date().toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ,
+  });
 }
 
 const ESTADO_COLOR: Record<string, string> = {

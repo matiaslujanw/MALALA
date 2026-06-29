@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
+import { inicioDeDiaArISO } from "@/lib/fecha-ar";
 import { listIngresos } from "@/lib/data/ingresos";
 import {
   aggregate,
@@ -27,10 +28,12 @@ const RANGOS: Array<{ value: NonNullable<SearchParams["rango"]>; label: string }
 
 function rangoToFechas(rango: NonNullable<SearchParams["rango"]>) {
   const now = new Date();
-  const desde = new Date(now);
   if (rango === "hoy") {
-    desde.setHours(0, 0, 0, 0);
-  } else if (rango === "semana") {
+    // Día calendario en horario de Argentina, no medianoche UTC del server.
+    return { desde: inicioDeDiaArISO(), hasta: now.toISOString() };
+  }
+  const desde = new Date(now);
+  if (rango === "semana") {
     desde.setDate(desde.getDate() - 7);
   } else if (rango === "mes") {
     desde.setDate(desde.getDate() - 30);

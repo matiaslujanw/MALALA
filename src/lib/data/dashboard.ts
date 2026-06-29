@@ -8,29 +8,14 @@ import { computeBreakdown } from "./ingresos-helpers";
 import { listIngresos } from "./ingresos";
 import { listStockBySucursal } from "./stock";
 import type { Empleado, Servicio } from "@/lib/types";
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
-}
-
-function ymd(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import {
+  finDeDiaArISO,
+  fechaArDeISO,
+  hoyAr,
+  hoyArMenosDias,
+  inicioDeDiaArISO,
+  inicioDeMesArISO,
+} from "@/lib/fecha-ar";
 
 export interface DashboardKpis {
   ventasHoy: number;
@@ -81,10 +66,11 @@ export async function getDashboardData(
   }
 
   const now = new Date();
-  const inicioHoy = startOfDay(now).toISOString();
-  const finHoy = endOfDay(now).toISOString();
-  const inicioMes = startOfMonth(now).toISOString();
-  const inicio14 = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 13)).toISOString();
+  // Ventanas en horario de Argentina (el server corre en UTC).
+  const inicioHoy = inicioDeDiaArISO();
+  const finHoy = finDeDiaArISO();
+  const inicioMes = inicioDeMesArISO();
+  const inicio14 = inicioDeDiaArISO(hoyArMenosDias(13));
 
   const ingresosHoy = await listIngresos({
     sucursalId,
@@ -111,7 +97,7 @@ export async function getDashboardData(
     soloPendientes: true,
   });
   const stockRows = await listStockBySucursal(sucursalId);
-  const cierreHoy = await getCierreDeFecha(sucursalId, ymd(now));
+  const cierreHoy = await getCierreDeFecha(sucursalId, hoyAr());
 
   const detalleHoy = ingresosHoy.map((row) => ({
     ingreso: row.ingreso,
@@ -147,11 +133,9 @@ export async function getDashboardData(
 
   const ventasUltimos14 = [];
   for (let i = 13; i >= 0; i -= 1) {
-    const fecha = new Date(now);
-    fecha.setDate(fecha.getDate() - i);
-    const fechaYmd = ymd(fecha);
+    const fechaYmd = hoyArMenosDias(i);
     const delDia = ingresosUltimos14.filter(
-      (row) => row.ingreso.fecha.slice(0, 10) === fechaYmd,
+      (row) => fechaArDeISO(row.ingreso.fecha) === fechaYmd,
     );
     ventasUltimos14.push({
       fecha: fechaYmd,

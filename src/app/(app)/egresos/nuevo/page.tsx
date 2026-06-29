@@ -8,13 +8,10 @@ import { listInsumos } from "@/lib/data/insumos";
 import { listCuentas } from "@/lib/data/cuentas-bancarias";
 import { createEgreso } from "@/lib/data/egresos";
 import { registrarCompraInsumo } from "@/lib/data/insumos";
+import { hoyAr } from "@/lib/fecha-ar";
 
 function todayYMD(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return hoyAr();
 }
 
 export default async function NuevoEgresoPage({

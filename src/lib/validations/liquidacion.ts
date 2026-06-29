@@ -1,13 +1,13 @@
 import { z } from "zod";
+import { hoyAr } from "@/lib/fecha-ar";
 
 const ymd = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)");
 
-// "Hoy" según el servidor (UTC). Como Argentina va detrás de UTC, este tope
-// nunca rechaza el día en curso local; solo bloquea fechas claramente futuras.
+// "Hoy" en horario de Argentina, como tope para no permitir fechas futuras.
 function todayYMD(): string {
-  return new Date().toISOString().slice(0, 10);
+  return hoyAr();
 }
 
 export const liquidacionPreviewSchema = z
