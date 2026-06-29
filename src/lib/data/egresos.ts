@@ -8,6 +8,7 @@ import {
   isSucursalAllowed,
 } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
+import { hoyAr } from "@/lib/fecha-ar";
 import {
   aperturasCaja as aperturasCajaTable,
   cierresCaja as cierresCajaTable,
@@ -334,7 +335,7 @@ export async function createEgreso(
   const ymdFecha =
     data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)
       ? data.fecha
-      : new Date().toISOString().slice(0, 10);
+      : hoyAr();
 
   let fechaIso: string;
   if (data.fecha && /^\d{4}-\d{2}-\d{2}$/.test(data.fecha)) {

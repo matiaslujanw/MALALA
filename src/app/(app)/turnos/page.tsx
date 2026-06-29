@@ -14,6 +14,7 @@ import {
   submitUpdateTurnoEstadoAction,
 } from "@/lib/data/turnos-actions";
 import { listServicios } from "@/lib/data/servicios";
+import { hoyAr } from "@/lib/fecha-ar";
 import { formatARS, formatLongDate } from "@/lib/utils";
 import { DateSelector } from "./date-selector";
 import { ViewSelector, type VistaAgenda } from "./view-selector";
@@ -58,7 +59,7 @@ export default async function TurnosPage({
     getActiveSucursal(),
     searchParams,
   ]);
-  const fecha = sp.fecha ?? new Date().toISOString().slice(0, 10);
+  const fecha = sp.fecha ?? hoyAr();
   const sucursalId = sp.sucursal ?? activeSucursal?.id ?? "";
   const vista = (sp.vista as VistaAgenda) || "diaria";
   // La agenda diaria (KPIs, timeline, vista por profesional) solo se usa en las

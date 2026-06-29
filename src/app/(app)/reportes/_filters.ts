@@ -3,6 +3,7 @@
  * Limita los valores al scope del usuario.
  */
 import type { AccessScope } from "@/lib/types";
+import { hoyAr } from "@/lib/fecha-ar";
 
 export interface ReporteFiltrosInput {
   desde?: string;
@@ -41,7 +42,7 @@ export function parseReporteFiltros(
   input: ReporteFiltrosInput,
   scope: AccessScope,
 ): ReporteFiltros {
-  const hoy = new Date();
+  const hoy = new Date(`${hoyAr()}T00:00:00`);
   const hace30 = new Date(hoy);
   hace30.setDate(hace30.getDate() - 29);
 

@@ -24,6 +24,7 @@ import {
   listServiciosHorariosAll,
 } from "@/lib/data/servicios-horarios";
 import { listServiciosSucursalesAll } from "@/lib/data/servicios";
+import { hoyAr } from "@/lib/fecha-ar";
 import {
   listProfesionalesHorariosAll,
   listProfesionalesHorariosBySucursal,
@@ -478,7 +479,7 @@ async function buildAgendaTurnos(args: {
 }
 
 export async function getReservaPublicaSnapshot() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyAr();
   const [
     sucursales,
     servicios,
@@ -588,7 +589,7 @@ export async function getTurnosAgendaData(args?: {
     await getTurnoContextForScope(scope.sucursalIdsPermitidas);
   const sucursalId =
     clampSucursalId(scope, args?.sucursalId) ?? sucursales[0]?.id ?? "";
-  const fecha = args?.fecha ?? new Date().toISOString().slice(0, 10);
+  const fecha = args?.fecha ?? hoyAr();
 
   // Fail-closed: un empleado sin ficha vinculada (empleado_id) no ve ningún
   // turno, en vez de los de toda la sucursal.

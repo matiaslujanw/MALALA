@@ -2,6 +2,7 @@ import type OpenAI from "openai";
 import { eq } from "drizzle-orm";
 import type { Rol } from "@/lib/types";
 import { getDb } from "@/lib/db/client/postgres";
+import { hoyAr } from "@/lib/fecha-ar";
 import { turnos as turnosTable } from "@/lib/db/schema";
 import { listTurnos } from "@/lib/data/turnos";
 import { listIngresos } from "@/lib/data/ingresos";
@@ -377,8 +378,7 @@ const REGISTRY: Record<string, ToolEntry> = {
     roles: GESTION,
     mode: "read",
     execute: (a, ctx) => {
-      const fecha =
-        (a.fecha as string | undefined) ?? new Date().toISOString().slice(0, 10);
+      const fecha = (a.fecha as string | undefined) ?? hoyAr();
       return getResumenDelDia(ctx.sucursalId, fecha);
     },
     def: {
