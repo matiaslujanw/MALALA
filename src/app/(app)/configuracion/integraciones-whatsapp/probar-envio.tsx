@@ -1,16 +1,24 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   enviarMensajePruebaAction,
   type PruebaResult,
 } from "@/lib/data/integraciones-manychat";
 
 export function ProbarEnvioForm({ sucursalId }: { sucursalId: string }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<PruebaResult | null, FormData>(
     enviarMensajePruebaAction,
     null,
   );
+
+  // Al terminar un envío (ok o error) refrescamos para que "Últimos envíos"
+  // muestre la fila recién registrada sin recargar a mano.
+  useEffect(() => {
+    if (state) router.refresh();
+  }, [state, router]);
 
   return (
     <form
@@ -48,9 +56,7 @@ export function ProbarEnvioForm({ sucursalId }: { sucursalId: string }) {
         </p>
       )}
       {state?.ok && (
-        <p className="text-xs text-emerald-700">
-          Enviado ✓ (subscriber {state.subscriberId})
-        </p>
+        <p className="text-xs text-emerald-700">Enviado ✓</p>
       )}
 
       <button

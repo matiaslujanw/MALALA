@@ -1,0 +1,5 @@
+node_modules/
+# Credenciales de las sesiones de WhatsApp vinculadas (una carpeta por sucursal).
+# SENSIBLE: dan acceso a la cuenta de WhatsApp. Nunca commitear.
+auth/
+package-lock.json

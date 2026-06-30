@@ -20,21 +20,13 @@ import {
   pruebaManychatSchema,
 } from "@/lib/validations/integracion-manychat";
 import { normalizarTelefonoAR } from "@/lib/phone";
-import {
-  sendManychatFlow,
-  buildMagicLink,
-  splitName,
-} from "@/lib/integraciones/manychat";
+import { sendWhatsappMessage, splitName } from "@/lib/integraciones/whatsapp";
+import { buildMensaje } from "@/lib/integraciones/notificaciones-turno";
 
 export interface IntegracionManychatRow {
   sucursal_id: string;
   sucursal_nombre: string;
-  api_key_set: boolean;
   numero_whatsapp_e164: string | null;
-  flow_ns_confirmacion: string | null;
-  flow_ns_recordatorio_2h: string | null;
-  flow_ns_cancelacion: string | null;
-  flow_ns_reprogramacion: string | null;
   activo: boolean;
   actualizado_en?: string;
 }
@@ -68,12 +60,7 @@ export async function listIntegracionesManychat(): Promise<IntegracionManychatRo
     return {
       sucursal_id: s.id,
       sucursal_nombre: s.nombre,
-      api_key_set: Boolean(integ?.apiKey),
       numero_whatsapp_e164: integ?.numeroWhatsappE164 ?? null,
-      flow_ns_confirmacion: integ?.flowNsConfirmacion ?? null,
-      flow_ns_recordatorio_2h: integ?.flowNsRecordatorio2h ?? null,
-      flow_ns_cancelacion: integ?.flowNsCancelacion ?? null,
-      flow_ns_reprogramacion: integ?.flowNsReprogramacion ?? null,
       activo: integ?.activo ?? false,
       actualizado_en: integ?.actualizadoEn?.toISOString(),
     };
@@ -92,7 +79,6 @@ export async function upsertIntegracionManychatAction(
     return failure("No tenés acceso a esa sucursal");
   }
 
-  // Si el campo api_key viene vacío, conservar el anterior (no pisarlo con blank).
   const db = getDb();
   const [actual] = await db
     .select()
@@ -100,17 +86,9 @@ export async function upsertIntegracionManychatAction(
     .where(eq(integracionesManychatTable.sucursalId, sucursalId))
     .limit(1);
 
-  const apiKeyInput = String(formData.get("api_key") ?? "").trim();
-  const apiKey = apiKeyInput || actual?.apiKey || "";
-
   const parsed = integracionManychatSchema.safeParse({
     sucursal_id: sucursalId,
-    api_key: apiKey,
     numero_whatsapp: formData.get("numero_whatsapp"),
-    flow_ns_confirmacion: formData.get("flow_ns_confirmacion"),
-    flow_ns_recordatorio_2h: formData.get("flow_ns_recordatorio_2h"),
-    flow_ns_cancelacion: formData.get("flow_ns_cancelacion"),
-    flow_ns_reprogramacion: formData.get("flow_ns_reprogramacion"),
     activo:
       formData.get("activo") === "on" || formData.get("activo") === "true",
   });
@@ -126,12 +104,7 @@ export async function upsertIntegracionManychatAction(
     await db
       .update(integracionesManychatTable)
       .set({
-        apiKey: parsed.data.api_key,
         numeroWhatsappE164: numeroE164,
-        flowNsConfirmacion: parsed.data.flow_ns_confirmacion ?? null,
-        flowNsRecordatorio2h: parsed.data.flow_ns_recordatorio_2h ?? null,
-        flowNsCancelacion: parsed.data.flow_ns_cancelacion ?? null,
-        flowNsReprogramacion: parsed.data.flow_ns_reprogramacion ?? null,
         activo: parsed.data.activo,
         actualizadoEn: now,
       })
@@ -139,12 +112,10 @@ export async function upsertIntegracionManychatAction(
   } else {
     await db.insert(integracionesManychatTable).values({
       sucursalId,
-      apiKey: parsed.data.api_key,
+      // apiKey/flowNs quedaron obsoletos con Baileys; la columna apiKey es
+      // NOT NULL en el schema, así que insertamos vacío.
+      apiKey: "",
       numeroWhatsappE164: numeroE164,
-      flowNsConfirmacion: parsed.data.flow_ns_confirmacion ?? null,
-      flowNsRecordatorio2h: parsed.data.flow_ns_recordatorio_2h ?? null,
-      flowNsCancelacion: parsed.data.flow_ns_cancelacion ?? null,
-      flowNsReprogramacion: parsed.data.flow_ns_reprogramacion ?? null,
       activo: parsed.data.activo,
     });
   }
@@ -154,7 +125,7 @@ export async function upsertIntegracionManychatAction(
 }
 
 export type PruebaResult =
-  | { ok: true; subscriberId: string }
+  | { ok: true }
   | { ok: false; errors: Record<string, string[]> };
 
 export async function enviarMensajePruebaAction(
@@ -178,25 +149,27 @@ export async function enviarMensajePruebaAction(
   }
 
   const telefono = normalizarTelefonoAR(parsed.data.telefono_destino);
-  const { primer, apellido } = splitName(parsed.data.nombre_destino);
+  const { primer } = splitName(parsed.data.nombre_destino);
 
-  const res = await sendManychatFlow({
+  const res = await sendWhatsappMessage({
     sucursalId: parsed.data.sucursal_id,
     telefonoE164: telefono,
-    primerNombre: primer,
-    apellido,
     tipo: "prueba",
-    customFields: {
+    mensaje: buildMensaje("prueba", {
       nombre: primer,
-      link_magico: buildMagicLink("prueba"),
-      mensaje: "Mensaje de prueba MALALA",
-    },
+      sucursal: "",
+      servicio: "",
+      fecha: "",
+      hora: "",
+      duracionMin: 0,
+      link: "",
+    }),
   });
 
   if (!res.ok) {
     return { ok: false, errors: { _: [res.error ?? "Error al enviar"] } };
   }
-  return { ok: true, subscriberId: String(res.subscriberId ?? "") };
+  return { ok: true };
 }
 
 export interface UltimoEnvioRow {
