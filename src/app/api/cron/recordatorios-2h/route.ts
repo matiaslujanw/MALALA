@@ -16,27 +16,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { eq, inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client/postgres";
-import {
-  clientes as clientesTable,
-  servicios as serviciosTable,
-  sucursales as sucursalesTable,
-  turnos as turnosTable,
-} from "@/lib/db/schema";
-import {
-  buildMagicLink,
-  sendManychatFlow,
-  splitName,
-} from "@/lib/integraciones/manychat";
+import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function formatFechaAR(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
 
 export async function POST(request: Request) {
   const auth = request.headers.get("authorization") ?? "";
@@ -67,47 +52,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, claimed: 0, sent: 0, errors: 0 });
   }
 
-  const rows = await db
-    .select({
-      turno: turnosTable,
-      cliente: clientesTable,
-      servicio: serviciosTable,
-      sucursal: sucursalesTable,
-    })
-    .from(turnosTable)
-    .innerJoin(clientesTable, eq(turnosTable.clienteId, clientesTable.id))
-    .innerJoin(serviciosTable, eq(turnosTable.servicioId, serviciosTable.id))
-    .innerJoin(sucursalesTable, eq(turnosTable.sucursalId, sucursalesTable.id))
-    .where(inArray(turnosTable.id, idList));
-
   let sent = 0;
   let errors = 0;
 
+  // Reusa la costura central: arma el mensaje y envía por el worker Baileys.
   await Promise.all(
-    rows.map(async (row) => {
-      if (!row.cliente.telefonoE164) {
-        errors++;
-        return;
-      }
-      const { primer, apellido } = splitName(row.cliente.nombre);
-      const res = await sendManychatFlow({
-        sucursalId: row.turno.sucursalId,
-        telefonoE164: row.cliente.telefonoE164,
-        primerNombre: primer,
-        apellido,
-        tipo: "recordatorio_2h",
-        turnoId: row.turno.id,
-        clienteId: row.cliente.id,
-        customFields: {
-          nombre: row.cliente.nombre,
-          sucursal: row.sucursal.nombre,
-          servicio: row.servicio.nombre,
-          fecha: formatFechaAR(row.turno.fechaTurno),
-          hora: row.turno.hora,
-          duracion_min: row.turno.duracionMin,
-          link_magico: buildMagicLink(row.turno.tokenAcceso),
-        },
-      });
+    idList.map(async (id) => {
+      const res = await notificarTurno({ turnoId: id, tipo: "recordatorio_2h" });
       if (res.ok) sent++;
       else errors++;
     }),

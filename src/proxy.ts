@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/dev/login", "/dev/styleguide"];
+// Rutas accesibles sin sesión. `/turno` es la landing pública del link mágico
+// que llega por WhatsApp (el cliente no está logueado).
+const PUBLIC_PATHS = ["/dev/login", "/dev/styleguide", "/turno"];
 
 function hasSupabaseSessionCookie(req: NextRequest) {
   return req.cookies

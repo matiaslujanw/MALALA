@@ -62,49 +62,14 @@ export function IntegracionManychatForm({ integ }: Props) {
       <input type="hidden" name="sucursal_id" value={integ.sucursal_id} />
 
       <Field
-        label="API key de ManyChat"
-        name="api_key"
-        type="password"
-        placeholder={integ.api_key_set ? "••••••• (dejar vacío para conservar)" : "Bearer token"}
-        hint="Se conserva la actual si lo dejás vacío"
-        error={fieldErrors.api_key}
-      />
-      <Field
         label="Número de WhatsApp"
         name="numero_whatsapp"
         defaultValue={integ.numero_whatsapp_e164}
         placeholder="+5493815557777"
+        hint="El número del local desde el que salen las notificaciones (el que vinculás con el QR)"
         required
         error={fieldErrors.numero_whatsapp}
       />
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field
-          label="Flow confirmación"
-          name="flow_ns_confirmacion"
-          defaultValue={integ.flow_ns_confirmacion}
-          placeholder="content20240101000000_000000"
-          error={fieldErrors.flow_ns_confirmacion}
-        />
-        <Field
-          label="Flow recordatorio 2h"
-          name="flow_ns_recordatorio_2h"
-          defaultValue={integ.flow_ns_recordatorio_2h}
-          error={fieldErrors.flow_ns_recordatorio_2h}
-        />
-        <Field
-          label="Flow cancelación"
-          name="flow_ns_cancelacion"
-          defaultValue={integ.flow_ns_cancelacion}
-          error={fieldErrors.flow_ns_cancelacion}
-        />
-        <Field
-          label="Flow reprogramación"
-          name="flow_ns_reprogramacion"
-          defaultValue={integ.flow_ns_reprogramacion}
-          error={fieldErrors.flow_ns_reprogramacion}
-        />
-      </div>
 
       <label className="flex items-center gap-2 text-sm">
         <input

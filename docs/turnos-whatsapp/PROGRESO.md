@@ -266,9 +266,61 @@ Debería responder `{ "ok": true, "claimed": N, "sent": N, "errors": 0 }`.
 - `supabase/migrations/202605200001_pgcron_recordatorios_2h.sql` — habilita
   extensiones y agenda el job.
 
-## Listo
+## Fase 5 — Migración a Baileys (reemplazo de ManyChat)
 
-Las 4 fases del feature están terminadas. Pasos pendientes del lado del usuario:
+Se reemplazó ManyChat por **Baileys** (WhatsApp Web vía WebSocket, escaneando un
+QR). No requiere WhatsApp Business ni aprobación de Meta. `tsc --noEmit` pasa.
+
+### Por qué un worker aparte
+
+Baileys necesita un proceso Node persistente (socket vivo + credenciales en
+disco). Vercel (serverless) no puede alojarlo, así que vive en `worker/`, un
+paquete Node independiente que se corre con `npm run worker`. La app de Next le
+pega por HTTP.
+
+### Arquitectura
+
+- **`worker/`** — multi-sesión: una sesión de WhatsApp **por sucursal**
+  (`auth/<sucursalId>/`, gitignored). Endpoints: `GET /status[?sucursal]`,
+  `GET /qr?sucursal`, `POST /send` (auth `Bearer WORKER_SECRET`),
+  `POST /logout?sucursal`. Reconecta solo salvo logout. Ver `worker/README.md`.
+- **`src/lib/integraciones/whatsapp.ts`** — reemplaza a `manychat.ts`.
+  `sendWhatsappMessage` chequea el flag `activo` por sucursal (tabla
+  `integraciones_manychat`, reusada sólo como on/off), postea al worker y
+  registra en `whatsapp_envios`. Best-effort, nunca tira.
+- **`notificaciones-turno.ts`** — `buildMensaje(tipo, data)` arma el texto plano
+  por tipo (plantillas en código). `notificarTurno` mantiene su firma, así los
+  call sites (turnos-actions, turnos-publico) no cambiaron.
+- **Cron** `recordatorios-2h` — ahora reusa `notificarTurno` (sin duplicar el
+  armado del mensaje); el claim atómico sigue igual.
+- **UI** `/configuracion/integraciones-whatsapp` — el form pasó a **número +
+  activo**; se agregó el bloque **Conexión WhatsApp** (estado + QR) que consume
+  los proxies `GET /api/whatsapp/{status,qr}` (gateados a admin/encargada).
+
+### Variables de entorno nuevas
+
+```
+WHATSAPP_WORKER_URL=http://localhost:8787
+WHATSAPP_WORKER_SECRET=<secreto largo>   # igual al WORKER_SECRET del worker
+MALALA_PUBLIC_BASE_URL=...               # para el link mágico (ya existía)
+```
+
+### Producción (importante)
+
+El worker debe estar **prendido 24/7** en un host persistente (Railway/Fly/VPS)
+y la carpeta `auth/` en **disco persistente** (volumen). El QR se escanea una
+sola vez por sucursal; WhatsApp desvincula dispositivos inactivos ~14 días.
+
+### Quitado
+
+- `src/lib/integraciones/manychat.ts` (cliente ManyChat).
+- Campos `api_key` y `flow_ns_*` del form/validación (columnas siguen en la DB,
+  sin uso, para no hacer migración destructiva).
+
+## Listo (ManyChat — histórico)
+
+Las 4 fases originales del feature (con ManyChat) están terminadas. Pasos
+pendientes del lado del usuario (ahora aplican a Baileys, ver Fase 5):
 
 1. Aplicar `drizzle/0000_turnos_whatsapp.sql` a la DB.
 2. Configurar variables de entorno (`MALALA_PUBLIC_BASE_URL`, `CRON_SECRET`).

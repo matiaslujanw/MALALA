@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Worker Baileys: paquete Node aparte, no es parte del app de Next.
+    "worker/**",
   ]),
 ]);
 

@@ -3,33 +3,12 @@ import { tryNormalizarTelefonoAR } from "@/lib/phone";
 
 export const integracionManychatSchema = z.object({
   sucursal_id: z.string().min(1, "Sucursal requerida"),
-  api_key: z.string().min(10, "API key requerida"),
   numero_whatsapp: z
     .string()
     .min(8, "Número requerido")
     .refine((v) => tryNormalizarTelefonoAR(v) !== null, {
       message: "Número argentino inválido",
     }),
-  flow_ns_confirmacion: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => v || undefined),
-  flow_ns_recordatorio_2h: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => v || undefined),
-  flow_ns_cancelacion: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => v || undefined),
-  flow_ns_reprogramacion: z
-    .string()
-    .trim()
-    .optional()
-    .transform((v) => v || undefined),
   activo: z.coerce.boolean().default(true),
 });
 

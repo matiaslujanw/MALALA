@@ -5,6 +5,7 @@ import {
 } from "@/lib/data/integraciones-manychat";
 import { IntegracionManychatForm } from "./form";
 import { ProbarEnvioForm } from "./probar-envio";
+import { ConexionWhatsapp } from "./conexion-whatsapp";
 
 export const metadata: Metadata = {
   title: "MALALA — Integraciones WhatsApp",
@@ -19,11 +20,12 @@ export default async function IntegracionesWhatsappPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold text-ink">
-          Integraciones WhatsApp (ManyChat)
+          Integraciones WhatsApp
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Configurá la cuenta de ManyChat de cada sucursal. Los mensajes salen
-          desde el número asociado a esa cuenta.
+          Vinculá el WhatsApp de cada sucursal escaneando el QR. Las
+          notificaciones salen directo desde ese número (vía Baileys), sin
+          ManyChat ni WhatsApp Business.
         </p>
       </header>
 
@@ -57,10 +59,12 @@ async function SucursalCard({
             {integ.sucursal_nombre}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {integ.api_key_set ? (
-              <span className="text-emerald-700">API key configurada</span>
+            {integ.numero_whatsapp_e164 ? (
+              <span className="text-emerald-700">
+                Número {integ.numero_whatsapp_e164}
+              </span>
             ) : (
-              <span className="text-amber-700">Sin API key — pendiente</span>
+              <span className="text-amber-700">Sin número — pendiente</span>
             )}
             {integ.actualizado_en && (
               <>
@@ -82,7 +86,10 @@ async function SucursalCard({
       </div>
 
       <div className="mt-5 grid gap-6 lg:grid-cols-2">
-        <IntegracionManychatForm integ={integ} />
+        <div className="space-y-4">
+          <IntegracionManychatForm integ={integ} />
+          <ConexionWhatsapp sucursalId={integ.sucursal_id} />
+        </div>
         <div className="space-y-4">
           <ProbarEnvioForm sucursalId={integ.sucursal_id} />
           <div className="rounded-xl border border-border bg-muted/40 p-4">

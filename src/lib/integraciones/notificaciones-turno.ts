@@ -1,10 +1,9 @@
 /**
- * Disparadores de notificaciones de turno por WhatsApp (ManyChat).
+ * Disparadores de notificaciones de turno por WhatsApp (worker Baileys).
  *
- * Cada función arma los custom fields esperados por los flows configurados
- * en ManyChat y llama a `sendManychatFlow`. Si la sucursal no tiene
- * integración activa o falla el envío, queda en `whatsapp_envios` pero no
- * rompe la operación principal sobre el turno.
+ * Cada función arma el TEXTO del mensaje según el tipo y lo manda con
+ * `sendWhatsappMessage`. Si la sucursal no tiene integración activa o falla el
+ * envío, queda en `whatsapp_envios` pero no rompe la operación sobre el turno.
  */
 
 import { eq } from "drizzle-orm";
@@ -16,20 +15,64 @@ import {
   turnos as turnosTable,
 } from "@/lib/db/schema";
 import {
-  sendManychatFlow,
+  sendWhatsappMessage,
   buildMagicLink,
-  splitName,
-  type ManychatEnvioTipo,
-} from "./manychat";
+  type WhatsappEnvioTipo,
+} from "./whatsapp";
 
 function formatFechaAR(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
+interface MensajeData {
+  nombre: string;
+  sucursal: string;
+  servicio: string;
+  fecha: string;
+  hora: string;
+  duracionMin: number;
+  link: string;
+}
+
+/** Plantillas de texto por tipo de notificación. */
+export function buildMensaje(tipo: WhatsappEnvioTipo, d: MensajeData): string {
+  switch (tipo) {
+    case "confirmacion":
+      return (
+        `Hola ${d.nombre} 👋 Confirmamos tu turno en *${d.sucursal}*.\n` +
+        `📅 ${d.fecha} a las ${d.hora} hs\n` +
+        `💇 ${d.servicio} (${d.duracionMin} min)\n\n` +
+        `Gestioná tu turno acá: ${d.link}`
+      );
+    case "recordatorio_2h":
+      return (
+        `Hola ${d.nombre} ⏰ Te recordamos tu turno de hoy en *${d.sucursal}*.\n` +
+        `📅 ${d.fecha} a las ${d.hora} hs\n` +
+        `💇 ${d.servicio}\n\n` +
+        `Si no podés venir, avisanos acá: ${d.link}`
+      );
+    case "cancelacion":
+      return (
+        `Hola ${d.nombre}, tu turno en *${d.sucursal}* del ${d.fecha} a las ` +
+        `${d.hora} hs (${d.servicio}) fue *cancelado*.\n\n` +
+        `Para sacar uno nuevo: ${d.link}`
+      );
+    case "reprogramacion":
+      return (
+        `Hola ${d.nombre}, tu turno en *${d.sucursal}* fue *reprogramado*.\n` +
+        `📅 Nueva fecha: ${d.fecha} a las ${d.hora} hs\n` +
+        `💇 ${d.servicio}\n\n` +
+        `Ver detalle: ${d.link}`
+      );
+    case "prueba":
+      return `Mensaje de prueba MALALA ✅ Hola ${d.nombre}, la integración de WhatsApp funciona.`;
+  }
+}
+
 export async function notificarTurno(args: {
   turnoId: string;
-  tipo: ManychatEnvioTipo;
+  tipo: WhatsappEnvioTipo;
 }) {
   const db = getDb();
   const [row] = await db
@@ -53,25 +96,23 @@ export async function notificarTurno(args: {
     return { ok: false, error: "El cliente no tiene teléfono normalizado" };
   }
 
-  const { primer, apellido } = splitName(row.cliente.nombre);
+  const mensaje = buildMensaje(args.tipo, {
+    nombre: row.cliente.nombre,
+    sucursal: row.sucursal.nombre,
+    servicio: row.servicio.nombre,
+    fecha: formatFechaAR(row.turno.fechaTurno),
+    hora: row.turno.hora,
+    duracionMin: row.turno.duracionMin,
+    link: await buildMagicLink(row.turno.tokenAcceso),
+  });
 
-  const result = await sendManychatFlow({
+  const result = await sendWhatsappMessage({
     sucursalId: row.turno.sucursalId,
     telefonoE164: telefono,
-    primerNombre: primer,
-    apellido,
+    mensaje,
     tipo: args.tipo,
     turnoId: row.turno.id,
     clienteId: row.cliente.id,
-    customFields: {
-      nombre: row.cliente.nombre,
-      sucursal: row.sucursal.nombre,
-      servicio: row.servicio.nombre,
-      fecha: formatFechaAR(row.turno.fechaTurno),
-      hora: row.turno.hora,
-      duracion_min: row.turno.duracionMin,
-      link_magico: buildMagicLink(row.turno.tokenAcceso),
-    },
   });
 
   if (result.ok && args.tipo === "confirmacion") {
