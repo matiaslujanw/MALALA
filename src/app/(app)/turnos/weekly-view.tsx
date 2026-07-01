@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { TurnoDetalle } from "@/lib/turnos-helpers";
-
-const STATUS_DOT: Record<string, string> = {
-  pendiente: "bg-[#c9a961]",
-  confirmado: "bg-sage-500",
-  en_curso: "bg-[#1f5d99]",
-  completado: "bg-stone-500",
-  cancelado: "bg-[#a84a3d]",
-  ausente: "bg-stone-400",
-};
+import { ESTADO_DOT, estadoEfectivo } from "@/lib/turno-estado";
 
 interface Props {
   fecha: string; // Monday of the week
@@ -187,7 +179,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                       <span className="text-xs text-stone-600 truncate flex-1">
                         {turno.cliente_nombre}
                       </span>
-                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[turno.estado]}`} />
+                      <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${ESTADO_DOT[estadoEfectivo(turno)]}`} />
                     </Link>
                   ))}
                   {dayTurnos.length > MAX_VISIBLE && (

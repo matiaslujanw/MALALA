@@ -261,7 +261,9 @@ async function createTurnoInternal(
         fechaTurno: parsed.data.fecha_turno,
         hora: parsed.data.hora,
         duracionMin: servicio.duracion_min ?? 60,
-        estado: access === "publico" ? "pendiente" : "confirmado",
+        // El turno nace "pendiente" (la reserva ya ES el turno); pasa a
+        // "realizado" solo cuando llega su hora (calculado al mostrar).
+        estado: "pendiente",
         canal: parsed.data.canal,
         observacion: parsed.data.observacion ?? null,
         creadoEn: now,
@@ -505,7 +507,7 @@ export async function reprogramTurnoAction(
           fechaTurno: parsed.data.fecha_turno,
           hora: parsed.data.hora,
           profesionalId: parsed.data.profesional_id,
-          estado: "confirmado",
+          estado: "pendiente",
           actualizadoEn: now,
           actualizadoPorUsuarioId: user.id,
           tokenExpiraEn: tokenExpiraEnDate(

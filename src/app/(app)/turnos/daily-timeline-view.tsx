@@ -6,24 +6,11 @@ import { useEffect, useState } from "react";
 import type { HorarioSucursal } from "@/lib/types";
 import type { TurnoDetalle } from "@/lib/turnos-helpers";
 import type { ProfesionalReserva } from "@/lib/turnos-helpers";
-
-const STATUS_CLASS: Record<string, string> = {
-  pendiente: "bg-[#fff5dd] text-[#8c6b11] border-[#f1ddab]",
-  confirmado: "bg-sage-50 text-sage-900 border-sage-200",
-  en_curso: "bg-[#e9f2ff] text-[#1f5d99] border-[#c5d9f1]",
-  completado: "bg-stone-100 text-stone-700 border-stone-200",
-  cancelado: "bg-[#fff1ef] text-[#8a3b31] border-[#f1c5bf]",
-  ausente: "bg-stone-200 text-stone-700 border-stone-300",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  pendiente: "Pendiente",
-  confirmado: "Confirmado",
-  en_curso: "En curso",
-  completado: "Completado",
-  cancelado: "Cancelado",
-  ausente: "Ausente",
-};
+import {
+  ESTADO_BADGE_BORDE,
+  ESTADO_LABEL,
+  estadoEfectivo,
+} from "@/lib/turno-estado";
 
 interface Props {
   fecha: string;
@@ -186,7 +173,7 @@ export function DailyTimelineView({ fecha, turnos, profesionales, horarios }: Pr
                     <Link
                       key={turno.id}
                       href={buildTurnoHref(turno.id)}
-                      className={`absolute left-1 right-1 rounded-xl border px-2 py-1 transition hover:shadow-md hover:scale-[1.02] cursor-pointer overflow-hidden ${STATUS_CLASS[turno.estado]}`}
+                      className={`absolute left-1 right-1 rounded-xl border px-2 py-1 transition hover:shadow-md hover:scale-[1.02] cursor-pointer overflow-hidden ${ESTADO_BADGE_BORDE[estadoEfectivo(turno)]}`}
                       style={{ top, height }}
                     >
                       <div className={`${isSmall ? "flex items-center gap-2" : ""}`}>
@@ -203,7 +190,7 @@ export function DailyTimelineView({ fecha, turnos, profesionales, horarios }: Pr
                             {turno.servicio?.nombre}
                           </p>
                           <p className="text-[10px] opacity-60">
-                            {turno.duracion_min} min · {STATUS_LABEL[turno.estado]}
+                            {turno.duracion_min} min · {ESTADO_LABEL[estadoEfectivo(turno)]}
                           </p>
                         </>
                       )}

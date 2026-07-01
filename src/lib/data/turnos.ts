@@ -25,6 +25,7 @@ import {
 } from "@/lib/data/servicios-horarios";
 import { listServiciosSucursalesAll } from "@/lib/data/servicios";
 import { hoyAr } from "@/lib/fecha-ar";
+import { normalizeEstado, estadoEfectivo } from "@/lib/turno-estado";
 import {
   listProfesionalesHorariosAll,
   listProfesionalesHorariosBySucursal,
@@ -194,7 +195,7 @@ export function mapTurno(
     fecha_turno: row.fechaTurno,
     hora: row.hora,
     duracion_min: row.duracionMin,
-    estado: row.estado,
+    estado: normalizeEstado(row.estado),
     canal: row.canal,
     observacion: row.observacion ?? undefined,
     creado_en: row.creadoEn.toISOString(),
@@ -620,12 +621,13 @@ export async function getTurnosAgendaData(args?: {
       (item) => scope.rol !== "empleado" || item.empleado_id === scope.empleadoId,
     );
 
+  const efectivos = turnos.map((item) => estadoEfectivo(item));
   const resumen = {
     total: turnos.length,
-    pendientes: turnos.filter((item) => item.estado === "pendiente").length,
-    confirmados: turnos.filter((item) => item.estado === "confirmado").length,
-    enCurso: turnos.filter((item) => item.estado === "en_curso").length,
-    completados: turnos.filter((item) => item.estado === "completado").length,
+    pendientes: efectivos.filter((e) => e === "pendiente").length,
+    realizados: efectivos.filter((e) => e === "realizado").length,
+    ausentes: efectivos.filter((e) => e === "ausente").length,
+    cancelados: efectivos.filter((e) => e === "cancelado").length,
   };
 
   return {

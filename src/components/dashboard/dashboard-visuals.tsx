@@ -39,7 +39,7 @@ export function DashboardVisuals({
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <DonutChartCard
           title={isEmployee ? "Mi agenda por estado" : "Distribucion de estados"}
-          description="Lectura rapida del equilibrio entre turnos completados, pendientes y cancelados."
+          description="Lectura rapida del equilibrio entre turnos realizados, pendientes y cancelados."
           data={analytics.charts.turnosPorEstado}
         />
         <ColumnChartCard
@@ -700,11 +700,9 @@ function formatShortDate(label: string) {
 function formatStateLabel(label: string) {
   const labels: Record<string, string> = {
     pendiente: "Pendiente",
-    confirmado: "Confirmado",
-    en_curso: "En curso",
-    completado: "Completado",
-    cancelado: "Cancelado",
+    realizado: "Realizado",
     ausente: "Ausente",
+    cancelado: "Cancelado",
   };
   return labels[label] ?? label;
 }

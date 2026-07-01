@@ -15,6 +15,12 @@ import {
 } from "@/lib/data/turnos-actions";
 import { listServicios } from "@/lib/data/servicios";
 import { hoyAr } from "@/lib/fecha-ar";
+import {
+  ESTADO_BADGE,
+  ESTADO_LABEL,
+  ESTADOS_SETEABLES,
+  estadoEfectivo,
+} from "@/lib/turno-estado";
 import { formatARS, formatLongDate } from "@/lib/utils";
 import { DateSelector } from "./date-selector";
 import { ViewSelector, type VistaAgenda } from "./view-selector";
@@ -30,24 +36,6 @@ interface SearchParams {
   turno?: string;
   vista?: string;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  pendiente: "Pendiente",
-  confirmado: "Confirmado",
-  en_curso: "En curso",
-  completado: "Completado",
-  cancelado: "Cancelado",
-  ausente: "Ausente",
-};
-
-const STATUS_CLASS: Record<string, string> = {
-  pendiente: "bg-[#fff5dd] text-[#8c6b11]",
-  confirmado: "bg-sage-50 text-sage-900",
-  en_curso: "bg-[#e9f2ff] text-[#1f5d99]",
-  completado: "bg-stone-100 text-stone-700",
-  cancelado: "bg-[#fff1ef] text-[#8a3b31]",
-  ausente: "bg-stone-200 text-stone-700",
-};
 
 export default async function TurnosPage({
   searchParams,
@@ -164,9 +152,9 @@ export default async function TurnosPage({
       {(vista === "diaria" || vista === "actual") && agenda && (
         <div className="grid gap-4 md:grid-cols-4">
           <Kpi label="Turnos del dia" value={String(agenda.resumen.total)} hint="agenda activa" />
-          <Kpi label="Pendientes" value={String(agenda.resumen.pendientes)} hint="web o recepcion" tone="warm" />
-          <Kpi label="Confirmados" value={String(agenda.resumen.confirmados)} hint="listos para asistir" tone="sage" />
-          <Kpi label="En curso / completados" value={`${agenda.resumen.enCurso} / ${agenda.resumen.completados}`} hint="seguimiento del dia" />
+          <Kpi label="Pendientes" value={String(agenda.resumen.pendientes)} hint="aun no llegan" tone="warm" />
+          <Kpi label="Realizados" value={String(agenda.resumen.realizados)} hint="ya pasaron su hora" tone="sage" />
+          <Kpi label="Ausentes / cancelados" value={`${agenda.resumen.ausentes} / ${agenda.resumen.cancelados}`} hint="no asistieron" />
         </div>
       )}
 
@@ -218,7 +206,7 @@ export default async function TurnosPage({
             className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
-            {Object.entries(STATUS_LABEL).map(([value, label]) => (
+            {Object.entries(ESTADO_LABEL).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -324,9 +312,9 @@ export default async function TurnosPage({
                               <div className="flex items-center justify-between gap-3">
                                 <p className="text-lg font-semibold text-ink">{turno.hora}</p>
                                 <span
-                                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[turno.estado]}`}
+                                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_BADGE[estadoEfectivo(turno)]}`}
                                 >
-                                  {STATUS_LABEL[turno.estado]}
+                                  {ESTADO_LABEL[estadoEfectivo(turno)]}
                                 </span>
                               </div>
                               <p className="mt-2 font-medium text-ink">{turno.cliente_nombre}</p>
@@ -380,9 +368,9 @@ export default async function TurnosPage({
                         <td className="px-4 py-3">{turno.profesional?.empleado.nombre}</td>
                         <td className="px-4 py-3">
                           <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[turno.estado]}`}
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_BADGE[estadoEfectivo(turno)]}`}
                           >
-                            {STATUS_LABEL[turno.estado]}
+                            {ESTADO_LABEL[estadoEfectivo(turno)]}
                           </span>
                         </td>
                       </tr>
@@ -461,9 +449,9 @@ export default async function TurnosPage({
                     </p>
                   </div>
                   <span
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${STATUS_CLASS[turnoSeleccionado.estado]}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${ESTADO_BADGE[estadoEfectivo(turnoSeleccionado)]}`}
                   >
-                    {STATUS_LABEL[turnoSeleccionado.estado]}
+                    {ESTADO_LABEL[estadoEfectivo(turnoSeleccionado)]}
                   </span>
                 </div>
                 <div className="mt-5 space-y-2.5 text-sm text-stone-700">
@@ -494,7 +482,7 @@ export default async function TurnosPage({
                       Cambiar estado
                     </p>
                     <div className="grid gap-2 sm:grid-cols-3">
-                      {Object.entries(STATUS_LABEL).map(([value, label]) => (
+                      {ESTADOS_SETEABLES.map((value) => (
                         <button
                           key={value}
                           type="submit"
@@ -506,7 +494,7 @@ export default async function TurnosPage({
                               : "border-border hover:border-sage-200 hover:bg-sage-50"
                           }`}
                         >
-                          {label}
+                          {ESTADO_LABEL[value]}
                         </button>
                       ))}
                     </div>

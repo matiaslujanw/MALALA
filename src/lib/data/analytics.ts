@@ -10,6 +10,7 @@ import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client/postgres";
 import { hoyAr } from "@/lib/fecha-ar";
+import { estadoEfectivo } from "@/lib/turno-estado";
 import {
   empleados as empleadosTable,
   egresos as egresosTable,
@@ -303,7 +304,12 @@ export async function getAnalyticsSnapshot(
 
   const byTurnoEstado = new Map<string, number>();
   for (const turno of turnosRows) {
-    byTurnoEstado.set(turno.estado, (byTurnoEstado.get(turno.estado) ?? 0) + 1);
+    const ef = estadoEfectivo({
+      estado: turno.estado,
+      fecha_turno: turno.fechaTurno,
+      hora: turno.hora,
+    });
+    byTurnoEstado.set(ef, (byTurnoEstado.get(ef) ?? 0) + 1);
   }
 
   const bySucursalIngresos = new Map<string, number>();
