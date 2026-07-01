@@ -300,18 +300,18 @@ function statusPayload(s: Session) {
 }
 
 /**
- * Resuelve el JID de envío. `onWhatsApp` es la autoridad: devuelve el JID
- * canónico con el que ese número está registrado (en AR puede ser con o sin el
- * "9" — depende de cuándo se registró). Si no resuelve, caemos al número tal
- * cual. Mandar al JID que onWhatsApp confirma es lo que entrega de verdad.
+ * Direcciones candidatas a probar, en orden. En Argentina un mismo número puede
+ * ser entregable por el JID con "9", sin "9", o por su LID — y cuál funciona
+ * varía por contacto (sobre todo en el primer mensaje, cuando se arma la sesión
+ * Signal). Probamos varias y nos quedamos con la que WhatsApp acepte.
  */
-async function resolveSendJid(
+async function candidateJids(
   sock: WASocket,
   telefonoE164: string,
   sucursalId: string,
-): Promise<string> {
+): Promise<string[]> {
   const numero = telefonoE164.replace(/\D/g, "");
-  const fallback = `${numero}@s.whatsapp.net`;
+  const cands: string[] = [];
   try {
     const found = await sock.onWhatsApp(numero);
     const hit = found?.[0] as
@@ -319,16 +319,17 @@ async function resolveSendJid(
       | undefined;
     log(sucursalId, `onWhatsApp(${numero}) → ${JSON.stringify(hit ?? null)}`);
     if (hit?.exists) {
-      // WhatsApp está migrando contactos a LID (id@lid). Si onWhatsApp expone el
-      // LID, hay que mandar ahí: el JID viejo (numero@s.whatsapp.net) de una
-      // cuenta migrada no entrega (queda sin acuse).
-      if (hit.lid) return hit.lid;
-      if (hit.jid) return hit.jid;
+      if (hit.jid) cands.push(hit.jid);
+      if (hit.lid) cands.push(hit.lid);
     }
   } catch (e) {
-    log(sucursalId, `onWhatsApp falló (${e instanceof Error ? e.message : e}); uso ${fallback}`);
+    log(sucursalId, `onWhatsApp falló (${e instanceof Error ? e.message : e})`);
   }
-  return fallback;
+  // Respaldo: variantes AR con/sin el "9".
+  cands.push(`${numero}@s.whatsapp.net`);
+  if (numero.startsWith("549")) cands.push(`54${numero.slice(3)}@s.whatsapp.net`);
+  else if (numero.startsWith("54")) cands.push(`549${numero.slice(2)}@s.whatsapp.net`);
+  return Array.from(new Set(cands));
 }
 
 const RECEIPT_STATUS: Record<number, string> = {
@@ -366,31 +367,30 @@ async function handleSend(req: IncomingMessage, res: ServerResponse) {
   }
 
   try {
-    const jid = await resolveSendJid(session.sock, telefonoE164, sucursalId);
-    const sent = await session.sock.sendMessage(jid, { text: mensaje });
-    const id = sent?.key?.id;
-    log(sucursalId, `✉ Enviado a ${telefonoE164} → ${jid} (id: ${id ?? "?"}). Esperando acuse…`);
+    // Probamos las variantes de dirección (JID onWhatsApp / LID / con-sin 9) y
+    // nos quedamos con la primera que WhatsApp acepte (SERVER/DELIVERY ack). Un
+    // intento por variante: si da ERROR, ese destino no es entregable en frío
+    // (típico de un contacto que nunca escribió al negocio).
+    const cands = await candidateJids(session.sock, telefonoE164, sucursalId);
 
-    // Esperamos el acuse para reportar honestamente: WhatsApp puede aceptar el
-    // sendMessage y después rechazarlo (status ERROR). Si no llega en el tiempo
-    // dado, lo damos por en tránsito (la app lo verá como ok).
-    const ack = id ? await waitForAck(id, 6000) : undefined;
+    for (const jid of cands) {
+      const sent = await session.sock.sendMessage(jid, { text: mensaje });
+      const id = sent?.key?.id;
+      log(sucursalId, `✉ Intento a ${telefonoE164} → ${jid} (id: ${id ?? "?"}). Esperando acuse…`);
+      const ack = id ? await waitForAck(id, 5000) : undefined;
 
-    if (ack === 0) {
-      const msg = `WhatsApp rechazó el mensaje (acuse ERROR). Verificá que ${telefonoE164} tenga WhatsApp.`;
-      log(sucursalId, `✖ ${msg}`);
-      return json(res, 502, { ok: false, error: msg, jid, id });
+      if (ack != null && ack >= 2) {
+        log(sucursalId, `✅ Aceptado a ${telefonoE164} vía ${jid} (${RECEIPT_STATUS[ack]}).`);
+        return json(res, 200, { ok: true, jid, id, ack });
+      }
+
+      const motivo = ack === 0 ? "ERROR" : ack === undefined ? "sin acuse" : `status ${ack}`;
+      log(sucursalId, `✖ ${jid} no aceptado (${motivo}). Probando siguiente variante…`);
     }
 
-    if (ack === undefined) {
-      // Sin acuse: en una sesión sana el SERVER_ACK llega al instante. Que no
-      // llegue nada suele indicar sesión conectada pero no funcional.
-      const msg = `Sin acuse de WhatsApp en 6s (ni SERVER_ACK). La sesión puede estar conectada pero no funcional — probá reconectar/re-vincular.`;
-      log(sucursalId, `⏳ ${msg}`);
-      return json(res, 504, { ok: false, error: msg, jid, id });
-    }
-
-    return json(res, 200, { ok: true, jid, id, ack });
+    const msg = `No se pudo entregar a ${telefonoE164}: WhatsApp rechazó todas las variantes (${cands.join(", ")}). Suele pasar si el número nunca escribió al negocio.`;
+    log(sucursalId, `✖ ${msg}`);
+    return json(res, 502, { ok: false, error: msg, tried: cands });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error al enviar";
     log(sucursalId, `✖ Error al enviar a ${telefonoE164}: ${msg}`);
