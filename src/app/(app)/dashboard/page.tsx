@@ -16,6 +16,7 @@ import { listSaldos } from "@/lib/data/cuentas-bancarias";
 import { listTurnos } from "@/lib/data/turnos";
 import { getVapidPublicKey, isWebPushConfigured } from "@/lib/db/env";
 import { aggregate, comisionesPorEmpleado } from "@/lib/data/ingresos-helpers";
+import { ESTADO_BADGE, ESTADO_LABEL, estadoEfectivo } from "@/lib/turno-estado";
 import { formatARS } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -49,15 +50,6 @@ function hhmmActual(): string {
   });
 }
 
-const ESTADO_COLOR: Record<string, string> = {
-  pendiente: "bg-amber-100 text-amber-900",
-  confirmado: "bg-sage-100 text-sage-900",
-  en_curso: "bg-blue-100 text-blue-900",
-  completado: "bg-stone-100 text-stone-600",
-  cancelado: "bg-rose-100 text-rose-900",
-  ausente: "bg-rose-100 text-rose-900",
-};
-
 export default async function DashboardPage() {
   const user = await requireUser();
   const scope = buildAccessScope(user);
@@ -89,15 +81,9 @@ export default async function DashboardPage() {
   const totalSaldos = saldos.reduce((acc, s) => acc + s.saldo, 0);
   const topEmpleadasHoy = comisionesPorEmpleado(ingresosHoy).slice(0, 3);
 
-  // Próximos turnos: futuros (hora >= ahora), no cancelados/completados
+  // Próximos turnos: futuros (hora >= ahora) que siguen pendientes.
   const proximos = turnosHoy
-    .filter(
-      (t) =>
-        t.hora >= horaActual &&
-        t.estado !== "cancelado" &&
-        t.estado !== "completado" &&
-        t.estado !== "ausente",
-    )
+    .filter((t) => t.hora >= horaActual && estadoEfectivo(t) === "pendiente")
     .slice(0, 10);
 
   return (
@@ -259,10 +245,10 @@ export default async function DashboardPage() {
                   </div>
                   <span
                     className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded ${
-                      ESTADO_COLOR[t.estado] ?? "bg-stone-100 text-stone-600"
+                      ESTADO_BADGE[estadoEfectivo(t)]
                     }`}
                   >
-                    {t.estado}
+                    {ESTADO_LABEL[estadoEfectivo(t)]}
                   </span>
                 </div>
               );

@@ -19,6 +19,7 @@ import { listProfesionalesHorariosBySucursal } from "@/lib/data/profesionales-ho
 import { listProfesionalesServiciosBySucursal } from "@/lib/data/profesionales-servicios";
 import { turnoReprogramacionSchema } from "@/lib/validations/turno";
 import { notificarTurno } from "@/lib/integraciones/notificaciones-turno";
+import { estadoEfectivo } from "@/lib/turno-estado";
 import { fieldErrors } from "./_helpers";
 import {
   mapEmpleado,
@@ -28,7 +29,6 @@ import {
   mapSucursal,
   mapTurno,
 } from "./turnos";
-import type { TurnoEstado } from "@/lib/types";
 
 export type TurnoTokenResult =
   | {
@@ -43,13 +43,6 @@ export type TurnoTokenResult =
       motivo: "estado_terminal" | "expirado";
     }
   | { status: "no_encontrado" };
-
-const estadosNoModificables: TurnoEstado[] = [
-  "completado",
-  "cancelado",
-  "ausente",
-  "en_curso",
-];
 
 export async function getTurnoPorToken(token: string): Promise<TurnoTokenResult> {
   if (!token || token.length < 8) return { status: "no_encontrado" };
@@ -100,7 +93,9 @@ export async function getTurnoPorToken(token: string): Promise<TurnoTokenResult>
   if (expirado) {
     return { status: "ok_bloqueado", detalle, bloqueado: true, motivo: "expirado" };
   }
-  if (estadosNoModificables.includes(turno.estado)) {
+  // El cliente solo puede tocar un turno que sigue pendiente (aún no llegó su
+  // hora y no fue cancelado/ausente). Realizado/cancelado/ausente → bloqueado.
+  if (estadoEfectivo(turno) !== "pendiente") {
     return {
       status: "ok_bloqueado",
       detalle,
@@ -205,7 +200,13 @@ async function loadActiveTurnoByToken(token: string) {
   if (row.tokenExpiraEn.getTime() <= Date.now()) {
     return { error: "El link ya expiró" as const, row: null };
   }
-  if (estadosNoModificables.includes(row.estado)) {
+  if (
+    estadoEfectivo({
+      estado: row.estado,
+      fecha_turno: row.fechaTurno,
+      hora: row.hora,
+    }) !== "pendiente"
+  ) {
     return { error: "Este turno ya no se puede modificar" as const, row: null };
   }
   return { error: null, row };
@@ -342,7 +343,7 @@ export async function reprogramarTurnoPorTokenAction(
           fechaTurno: parsed.data.fecha_turno,
           hora: parsed.data.hora,
           profesionalId: parsed.data.profesional_id,
-          estado: "confirmado",
+          estado: "pendiente",
           actualizadoEn: now,
           tokenExpiraEn: nuevoExpira,
           recordatorio2hEnviadoEn: null,

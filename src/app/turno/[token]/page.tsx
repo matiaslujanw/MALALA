@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTurnoPorToken } from "@/lib/data/turnos-publico";
+import { ESTADO_LABEL, estadoEfectivo } from "@/lib/turno-estado";
 import { TurnoAcciones } from "./turno-acciones";
 
 export const metadata: Metadata = {
@@ -17,15 +18,6 @@ interface Props {
 const formatFecha = (iso: string) => {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
-};
-
-const estadoLabel: Record<string, string> = {
-  pendiente: "Pendiente de confirmación",
-  confirmado: "Confirmado",
-  en_curso: "En curso",
-  completado: "Completado",
-  cancelado: "Cancelado",
-  ausente: "No asististe",
 };
 
 export default async function TurnoPublicPage({ params }: Props) {
@@ -83,7 +75,7 @@ export default async function TurnoPublicPage({ params }: Props) {
             <div className="flex items-center justify-between gap-3">
               <dt className="text-muted-foreground">Estado</dt>
               <dd className="font-medium text-ink">
-                {estadoLabel[detalle.estado] ?? detalle.estado}
+                {ESTADO_LABEL[estadoEfectivo(detalle)]}
               </dd>
             </div>
           </dl>

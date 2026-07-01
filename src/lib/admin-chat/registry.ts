@@ -190,14 +190,7 @@ const REGISTRY: Record<string, ToolEntry> = {
             profesionalId: { type: "string" },
             estado: {
               type: "string",
-              enum: [
-                "pendiente",
-                "confirmado",
-                "en_curso",
-                "completado",
-                "cancelado",
-                "ausente",
-              ],
+              enum: ["pendiente", "realizado", "ausente", "cancelado"],
             },
           },
         },
@@ -505,21 +498,14 @@ const REGISTRY: Record<string, ToolEntry> = {
       function: {
         name: "cambiar_estado_turno",
         description:
-          "Cambia el estado de un turno de tu sucursal activa (confirmar, completar, cancelar, etc.). Requiere confirmación del usuario.",
+          "Cambia el estado de un turno de tu sucursal activa (marcar ausente, cancelar, o volver a pendiente). 'realizado' es automático al llegar la hora, no se setea. Requiere confirmación del usuario.",
         parameters: {
           type: "object",
           properties: {
             turno_id: { type: "string" },
             estado: {
               type: "string",
-              enum: [
-                "pendiente",
-                "confirmado",
-                "en_curso",
-                "completado",
-                "cancelado",
-                "ausente",
-              ],
+              enum: ["pendiente", "cancelado", "ausente"],
             },
           },
           required: ["turno_id", "estado"],

@@ -32,16 +32,11 @@ export const turnoCreateSchema = z.object({
   origen: z.enum(["publico", "interno"]).default("publico"),
 });
 
+// Solo los estados que un operador setea a mano. "realizado" es automático
+// (calculado al llegar la hora), por eso no es seteable.
 export const turnoEstadoSchema = z.object({
   turno_id: z.string().min(1),
-  estado: z.enum([
-    "pendiente",
-    "confirmado",
-    "en_curso",
-    "completado",
-    "cancelado",
-    "ausente",
-  ]),
+  estado: z.enum(["pendiente", "cancelado", "ausente"]),
 });
 
 export const turnoReprogramacionSchema = z.object({

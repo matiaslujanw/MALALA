@@ -27,6 +27,9 @@ export const tipoComisionEnum = pgEnum("tipo_comision", [
   "sueldo_fijo",
 ]);
 export const unidadMedidaEnum = pgEnum("unidad_medida", ["ud", "ml", "g", "aplicacion"]);
+// Modelo nuevo (4 estados): pendiente | realizado | ausente | cancelado.
+// confirmado/en_curso/completado quedan por compatibilidad con datos viejos
+// (migración pragmática); el código solo usa los 4 nuevos.
 export const turnoEstadoEnum = pgEnum("turno_estado", [
   "pendiente",
   "confirmado",
@@ -34,6 +37,7 @@ export const turnoEstadoEnum = pgEnum("turno_estado", [
   "completado",
   "cancelado",
   "ausente",
+  "realizado",
 ]);
 export const turnoCanalEnum = pgEnum("turno_canal", ["web", "recepcion"]);
 export const turnoEventoTipoEnum = pgEnum("turno_evento_tipo", [

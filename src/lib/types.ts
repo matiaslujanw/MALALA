@@ -8,13 +8,8 @@ export type ID = string;
 export type Rol = "superadmin" | "admin" | "encargada" | "empleado";
 export type TipoComision = "porcentaje" | "mixto" | "sueldo_fijo";
 export type UnidadMedida = "ud" | "ml" | "g" | "aplicacion";
-export type TurnoEstado =
-  | "pendiente"
-  | "confirmado"
-  | "en_curso"
-  | "completado"
-  | "cancelado"
-  | "ausente";
+import type { TurnoEstado } from "./turno-estado";
+export type { TurnoEstado };
 export type TurnoCanal = "web" | "recepcion";
 export type TurnoEventoTipo =
   | "creado"

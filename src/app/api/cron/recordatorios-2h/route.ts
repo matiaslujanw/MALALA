@@ -6,7 +6,7 @@
  *
  * Estrategia:
  *  1. Atomicamente marca `recordatorio_2h_enviado_en = NOW()` para los turnos
- *     elegibles (estado pendiente/confirmado, sin recordatorio enviado y con
+ *     elegibles (estado pendiente, sin recordatorio enviado y con
  *     hora dentro de la ventana [now+90min, now+150min]).
  *  2. Para los ids retornados, dispara el flow ManyChat de tipo
  *     `recordatorio_2h`. Si falla, el error queda registrado en
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const claimed = await db.execute<{ id: string }>(sql`
     UPDATE turnos
     SET recordatorio_2h_enviado_en = NOW()
-    WHERE estado IN ('pendiente', 'confirmado')
+    WHERE estado = 'pendiente'
       AND recordatorio_2h_enviado_en IS NULL
       AND ((fecha_turno || ' ' || hora || ':00')::timestamp AT TIME ZONE 'America/Argentina/Buenos_Aires')
             BETWEEN NOW() + interval '90 minutes' AND NOW() + interval '150 minutes'

@@ -685,7 +685,7 @@ export function seed(): Store {
       fecha_turno: toIsoDate(today),
       hora: "10:00",
       duracion_min: 45,
-      estado: "confirmado",
+      estado: "pendiente",
       canal: "web",
       observacion: "Quiere tono nude.",
       creado_en: toIsoDateTime(addDays(today, -2), 18, 30),
@@ -722,7 +722,7 @@ export function seed(): Store {
       fecha_turno: toIsoDate(today),
       hora: "15:00",
       duracion_min: 30,
-      estado: "en_curso",
+      estado: "pendiente",
       canal: "recepcion",
       creado_en: toIsoDateTime(today, 9, 45),
       creado_por_usuario_id: userEncargadaCentro.id,
@@ -741,7 +741,7 @@ export function seed(): Store {
       fecha_turno: toIsoDate(today),
       hora: "16:15",
       duracion_min: 75,
-      estado: "confirmado",
+      estado: "pendiente",
       canal: "web",
       creado_en: toIsoDateTime(addDays(today, -3), 13, 15),
       creado_por_usuario_id: userEncargadaNorte.id,
@@ -758,7 +758,7 @@ export function seed(): Store {
       fecha_turno: toIsoDate(addDays(today, 1)),
       hora: "12:15",
       duracion_min: 60,
-      estado: "confirmado",
+      estado: "pendiente",
       canal: "web",
       creado_en: toIsoDateTime(addDays(today, -1), 10, 0),
       creado_por_usuario_id: userAdmin.id,
@@ -852,26 +852,6 @@ export function seed(): Store {
       },
     ];
 
-    if (turno.estado === "confirmado" || turno.estado === "en_curso" || turno.estado === "completado") {
-      eventos.push({
-        id: uid(),
-        turno_id: turno.id,
-        tipo: "confirmado" as const,
-        actor_usuario_id: turno.actualizado_por_usuario_id ?? turno.creado_por_usuario_id,
-        fecha: turno.actualizado_en ?? turno.creado_en,
-        detalle: "Turno confirmado",
-      });
-    }
-    if (turno.estado === "en_curso") {
-      eventos.push({
-        id: uid(),
-        turno_id: turno.id,
-        tipo: "en_curso" as const,
-        actor_usuario_id: turno.actualizado_por_usuario_id ?? turno.creado_por_usuario_id,
-        fecha: turno.actualizado_en ?? turno.creado_en,
-        detalle: "Servicio iniciado",
-      });
-    }
     if (turno.estado === "cancelado") {
       eventos.push({
         id: uid(),
