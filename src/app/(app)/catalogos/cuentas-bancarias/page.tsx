@@ -4,10 +4,23 @@ import {
   listCuentas,
   toggleCuentaActiva,
 } from "@/lib/data/cuentas-bancarias";
+import {
+  createImpuesto,
+  deleteImpuesto,
+  listImpuestosByCuentas,
+  toggleImpuestoActivo,
+} from "@/lib/data/cuenta-impuestos";
 import { listSucursales } from "@/lib/data/sucursales";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import { SubmitButton } from "@/components/forms/field";
+import type { ImpuestoBase } from "@/lib/types";
+
+const BASE_LABEL: Record<ImpuestoBase, string> = {
+  credito: "Ingresos (lo que entra)",
+  debito: "Egresos (lo que sale)",
+  ambos: "Todo (entra y sale)",
+};
 
 export default async function CuentasBancariasPage() {
   const user = await requireUser();
@@ -27,6 +40,9 @@ export default async function CuentasBancariasPage() {
   const sucursalNombreById = new Map(
     sucursalesPermitidas.map((s) => [s.id, s.nombre]),
   );
+  const impuestosByCuenta = await listImpuestosByCuentas(
+    cuentas.map((c) => c.id),
+  );
 
   async function create(formData: FormData) {
     "use server";
@@ -36,6 +52,20 @@ export default async function CuentasBancariasPage() {
     "use server";
     const id = formData.get("id");
     if (typeof id === "string") await toggleCuentaActiva(id);
+  }
+  async function crearImpuesto(formData: FormData) {
+    "use server";
+    await createImpuesto(formData);
+  }
+  async function toggleImpuesto(formData: FormData) {
+    "use server";
+    const id = formData.get("id");
+    if (typeof id === "string") await toggleImpuestoActivo(id);
+  }
+  async function borrarImpuesto(formData: FormData) {
+    "use server";
+    const id = formData.get("id");
+    if (typeof id === "string") await deleteImpuesto(id);
   }
 
   return (
@@ -178,6 +208,141 @@ export default async function CuentasBancariasPage() {
           </tbody>
         </table>
       </div>
+
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground">
+            Impuestos por cuenta
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Cada cobro o pago en la cuenta descuenta automáticamente estos
+            impuestos y queda registrado como movimiento aparte, para saber
+            cuánto te come cada cuenta. Ej.: “Débito y crédito” 0,6% sobre todo;
+            “Ingresos brutos” 2,5% solo sobre lo que entra.
+          </p>
+        </div>
+
+        {cuentas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Cargá una cuenta para poder configurarle impuestos.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {cuentas.map((c) => {
+              const impuestos = impuestosByCuenta.get(c.id) ?? [];
+              return (
+                <div
+                  key={c.id}
+                  className="bg-card border border-border rounded-md p-4 space-y-3"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{c.nombre}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {sucursalNombreById.get(c.sucursal_id) ?? c.sucursal_id}
+                    </span>
+                  </div>
+
+                  {impuestos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Sin impuestos configurados.
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-border border border-border rounded-md">
+                      {impuestos.map((imp) => (
+                        <li
+                          key={imp.id}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{imp.nombre}</span>
+                            <span className="tabular-nums text-muted-foreground">
+                              {imp.alicuota_pct}%
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                              {BASE_LABEL[imp.base]}
+                            </span>
+                            {!imp.activo && (
+                              <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">
+                                Inactivo
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <form action={toggleImpuesto}>
+                              <input type="hidden" name="id" value={imp.id} />
+                              <SubmitButton className="text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground">
+                                {imp.activo ? "Desactivar" : "Reactivar"}
+                              </SubmitButton>
+                            </form>
+                            <form action={borrarImpuesto}>
+                              <input type="hidden" name="id" value={imp.id} />
+                              <SubmitButton className="text-xs uppercase tracking-wider text-destructive hover:opacity-80">
+                                Quitar
+                              </SubmitButton>
+                            </form>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <form
+                    action={crearImpuesto}
+                    className="grid grid-cols-1 sm:grid-cols-[1fr_120px_1fr_auto] gap-2 items-end border-t border-border pt-3"
+                  >
+                    <input type="hidden" name="cuenta_id" value={c.id} />
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Nombre
+                      </label>
+                      <input
+                        name="nombre"
+                        required
+                        placeholder="Débito y crédito, Ingresos brutos…"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Alícuota %
+                      </label>
+                      <input
+                        name="alicuota_pct"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        required
+                        placeholder="0,6"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm text-right tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        Aplica sobre
+                      </label>
+                      <select
+                        name="base"
+                        defaultValue="ambos"
+                        className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="ambos">{BASE_LABEL.ambos}</option>
+                        <option value="credito">{BASE_LABEL.credito}</option>
+                        <option value="debito">{BASE_LABEL.debito}</option>
+                      </select>
+                    </div>
+                    <SubmitButton
+                      className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+                      pendingLabel="Agregando..."
+                    >
+                      Agregar
+                    </SubmitButton>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

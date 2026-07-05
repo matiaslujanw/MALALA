@@ -74,6 +74,18 @@ export const tipoMovBancarioEnum = pgEnum("tipo_mov_bancario", [
   "transferencia_entrada",
   "transferencia_salida",
   "ajuste",
+  // Impuesto retenido/debitado automáticamente sobre un movimiento de la cuenta
+  // (ej. 0,6% débito y crédito, 2,5% ingresos brutos). Siempre es un egreso.
+  "impuesto",
+]);
+// Sobre qué movimientos aplica un impuesto de cuenta:
+//   - "credito": solo sobre ingresos (lo que entra).
+//   - "debito": solo sobre egresos (lo que sale).
+//   - "ambos": sobre todo movimiento (entra y sale).
+export const impuestoBaseEnum = pgEnum("impuesto_base", [
+  "credito",
+  "debito",
+  "ambos",
 ]);
 export const whatsappEnvioTipoEnum = pgEnum("whatsapp_envio_tipo", [
   "confirmacion",
@@ -411,6 +423,27 @@ export const movimientosBancarios = pgTable(
       table.fecha,
     ),
     refIdx: index("mov_bancarios_ref_idx").on(table.refTipo, table.refId),
+  }),
+);
+
+// Impuestos configurables por cuenta (autogestionables). Cada ingreso/egreso
+// real que impacta una cuenta genera automáticamente un movimiento de tipo
+// "impuesto" por cada impuesto activo cuya `base` aplique. Ver
+// emitMovimientoBancarioTx.
+export const cuentaImpuestos = pgTable(
+  "cuenta_impuestos",
+  {
+    id: text("id").primaryKey(),
+    cuentaId: text("cuenta_id")
+      .notNull()
+      .references(() => cuentasBancarias.id, { onDelete: "cascade" }),
+    nombre: text("nombre").notNull(),
+    alicuotaPct: doublePrecision("alicuota_pct").notNull(),
+    base: impuestoBaseEnum("base").notNull(),
+    activo: boolean("activo").notNull().default(true),
+  },
+  (table) => ({
+    cuentaIdx: index("cuenta_impuestos_cuenta_idx").on(table.cuentaId),
   }),
 );
 
@@ -1033,6 +1066,7 @@ export const schema = {
   mediosPago,
   cuentasBancarias,
   movimientosBancarios,
+  cuentaImpuestos,
   rubrosGasto,
   motivosDescuento,
   stockSucursal,

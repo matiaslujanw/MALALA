@@ -37,6 +37,7 @@ const tipoLabel: Record<string, string> = {
   transferencia_entrada: "Transf. entrada",
   transferencia_salida: "Transf. salida",
   ajuste: "Ajuste",
+  impuesto: "Impuesto",
 };
 
 interface PageProps {
@@ -84,6 +85,12 @@ export default async function BancosPage({ searchParams }: PageProps) {
   }
 
   const totalGeneral = saldos.reduce((acc, s) => acc + s.saldo, 0);
+  // Trazabilidad: cuánto se llevaron los impuestos entre los movimientos listados.
+  const totalImpuestos = movimientos.reduce(
+    (acc, m) =>
+      acc + (m.movimiento.tipo === "impuesto" ? Math.abs(m.movimiento.monto) : 0),
+    0,
+  );
 
   async function transferir(formData: FormData): Promise<void> {
     "use server";
@@ -223,6 +230,11 @@ export default async function BancosPage({ searchParams }: PageProps) {
             Movimientos {cuentaFiltro ? "de la cuenta" : "recientes"}
           </h2>
           <span className="text-xs text-muted-foreground">
+            {totalImpuestos > 0 && (
+              <span className="text-amber-700 mr-3">
+                Impuestos en la vista: {fmtMoney(totalImpuestos)}
+              </span>
+            )}
             {movimientos.length} mov.
           </span>
         </div>

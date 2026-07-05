@@ -281,7 +281,19 @@ export type TipoMovBancario =
   | "egreso"
   | "transferencia_entrada"
   | "transferencia_salida"
-  | "ajuste";
+  | "ajuste"
+  | "impuesto";
+
+export type ImpuestoBase = "credito" | "debito" | "ambos";
+
+export interface CuentaImpuesto {
+  id: ID;
+  cuenta_id: ID;
+  nombre: string;
+  alicuota_pct: number;
+  base: ImpuestoBase;
+  activo: boolean;
+}
 
 export interface CuentaBancaria {
   id: ID;

@@ -22,3 +22,15 @@ export const transferenciaSchema = z
   });
 
 export type TransferenciaInput = z.infer<typeof transferenciaSchema>;
+
+export const cuentaImpuestoSchema = z.object({
+  cuenta_id: z.string().min(1, "Cuenta requerida"),
+  nombre: z.string().min(1, "Nombre requerido").transform((s) => s.trim()),
+  alicuota_pct: z.coerce
+    .number()
+    .positive("La alícuota debe ser mayor a 0")
+    .max(100, "La alícuota no puede superar 100%"),
+  base: z.enum(["credito", "debito", "ambos"]),
+});
+
+export type CuentaImpuestoInput = z.infer<typeof cuentaImpuestoSchema>;
