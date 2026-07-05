@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Plus } from "lucide-react";
 import { CierresAnteriores } from "./cierres-anteriores";
+import { DesgloseCaja } from "./desglose-caja";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -316,6 +317,12 @@ export default async function CajaPage({
           {resumen.cantEgresos} egreso{resumen.cantEgresos !== 1 ? "s" : ""} hoy.
         </p>
       </section>
+
+      {/* Desglose de la jornada en curso (mismo componente que las cajas
+          cerradas). Rentabilidad y comisiones solo para admin. */}
+      {(resumen.cantIngresos > 0 || resumen.cantEgresos > 0) && (
+        <DesgloseCaja resumen={resumen} isAdmin={user.rol === "admin"} />
+      )}
 
       {resumen.fiado.total > 0 && (
         <section className="space-y-3">

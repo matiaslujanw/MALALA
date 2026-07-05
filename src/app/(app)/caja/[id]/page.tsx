@@ -1,10 +1,9 @@
-import { TableActionLink } from "@/components/table-action-link";
-
 import { notFound } from "next/navigation";
 import { getCierre, getCierreCuentas, getResumenDelDia } from "@/lib/data/caja";
 import { requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
 import { ReabrirCierreButton } from "./reabrir-button";
+import { DesgloseCaja } from "../desglose-caja";
 
 function formatYMD(ymd: string): string {
   const [y, m, d] = ymd.split("-");
@@ -23,6 +22,7 @@ export default async function CierreDetallePage({
   if (!data) notFound();
 
   const { cierre, sucursal_nombre, cerrado_por_nombre, efectivoEsperado } = data;
+  const isAdmin = user.rol === "admin";
 
   const resumen = await getResumenDelDia(cierre.sucursal_id, cierre.fecha);
   const arqueo = await getCierreCuentas(cierre.id);
@@ -46,25 +46,14 @@ export default async function CierreDetallePage({
               })}
             </p>
           </div>
-          {user.rol === "admin" && (
-            <ReabrirCierreButton cierreId={cierre.id} />
-          )}
+          {isAdmin && <ReabrirCierreButton cierreId={cierre.id} />}
         </div>
       </header>
 
-      {/* Efectivo esperado (conciliación de caja) + neto por cada medio real
-          del día. El efectivo va aparte porque suma el saldo inicial. */}
+      {/* Conciliación del cierre: efectivo esperado (suma el saldo inicial). El
+          resto del desglose por medio va en <DesgloseCaja />. */}
       <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <SummaryBox label="Efectivo esperado" value={formatARS(efectivoEsperado)} />
-        {resumen.porMp
-          .filter((row) => row.mp.codigo !== "EF")
-          .map((row) => (
-            <SummaryBox
-              key={row.mp.id}
-              label={row.mp.nombre}
-              value={formatARS(row.neto)}
-            />
-          ))}
       </section>
 
       {/* Arqueo por cuenta: esperado vs contado al cerrar (fase 2). */}
@@ -129,139 +118,9 @@ export default async function CierreDetallePage({
         </section>
       )}
 
-      {/* Tickets del día */}
-      {resumen.tickets.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-            Tickets del día
-          </h2>
-          <div className="bg-card border border-border rounded-md overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="text-left font-medium px-4 py-3">Hora</th>
-                  <th className="text-left font-medium px-4 py-3">Cliente</th>
-                  <th className="text-left font-medium px-4 py-3">Equipo</th>
-                  <th className="text-right font-medium px-4 py-3">Líneas</th>
-                  <th className="text-right font-medium px-4 py-3">Total</th>
-                  <th className="text-right font-medium px-4 py-3">Comisión</th>
-                  <th className="px-4 py-3 w-16"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {resumen.tickets.map((t) => (
-                  <tr key={t.id}>
-                    <td className="px-4 py-3 text-muted-foreground tabular-nums">
-                      {new Date(t.fecha).toLocaleTimeString("es-AR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
-                      {t.cliente?.nombre ?? "Consumidor Final"}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {t.empleados.length > 0 ? t.empleados.join(", ") : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {t.cantLineas}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-medium">
-                      {formatARS(t.total)}
-                    </td>
-                    <td
-                      className="px-4 py-3 text-right tabular-nums"
-                      style={{ color: "var(--sage-700)" }}
-                    >
-                      {formatARS(t.comisiones)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <TableActionLink href={`/ventas/${t.id}`} />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-cream/40 font-medium">
-                  <td className="px-4 py-3" colSpan={4}>
-                    Totales
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatARS(resumen.totalIngresos)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-right tabular-nums"
-                    style={{ color: "var(--sage-700)" }}
-                  >
-                    {formatARS(resumen.totalComisiones)}
-                  </td>
-                  <td></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Movimientos por medio, recalculado en vivo para incluir todos los
-          medios reales del día (no solo EF/TR/TC/TD). */}
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
-          Movimientos del día
-        </h2>
-        <div className="overflow-hidden rounded-md border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium">Medio</th>
-                <th className="px-4 py-3 text-right font-medium">Ingresos</th>
-                <th className="px-4 py-3 text-right font-medium">Egresos</th>
-                <th className="px-4 py-3 text-right font-medium">Neto</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {resumen.porMp.map((row) => (
-                <tr key={row.mp.id}>
-                  <td className="px-4 py-3 font-medium">
-                    {row.mp.nombre}
-                    <span className="ml-1 text-xs text-muted-foreground">
-                      ({row.mp.codigo})
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatARS(row.ingresos)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                    {formatARS(row.egresos)}
-                  </td>
-                  <td
-                    className="px-4 py-3 text-right font-medium tabular-nums"
-                    style={{ color: row.neto >= 0 ? "var(--ink)" : "var(--danger)" }}
-                  >
-                    {formatARS(row.neto)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-cream/40 font-medium">
-                <td className="px-4 py-3">Totales</td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(resumen.totalIngresos)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatARS(resumen.totalEgresos)}
-                </td>
-                <td
-                  className="px-4 py-3 text-right tabular-nums"
-                  style={{
-                    color:
-                      resumen.totalNeto >= 0 ? "var(--sage-700)" : "var(--danger)",
-                  }}
-                >
-                  {formatARS(resumen.totalNeto)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+      {/* Desglose de la jornada (mismo componente que la caja en curso).
+          Rentabilidad y comisiones solo para admin. */}
+      <DesgloseCaja resumen={resumen} isAdmin={isAdmin} />
 
       {cierre.observacion && (
         <section className="bg-cream/40 border border-border rounded-md p-4">
