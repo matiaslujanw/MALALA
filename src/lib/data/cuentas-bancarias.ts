@@ -130,6 +130,48 @@ export async function listSaldos(
   }));
 }
 
+/**
+ * Suma de impuestos retenidos (movimientos tipo "impuesto") por cuenta en un
+ * período. Devuelve montos positivos (lo que se llevó cada cuenta). Respeta el
+ * scope: solo cuentas accesibles por el usuario.
+ */
+export async function sumImpuestosByCuenta(
+  opts: { sucursalId?: string; desde?: string; hasta?: string } = {},
+): Promise<Map<string, number>> {
+  const db = getDb();
+  const cuentas = await listCuentas(
+    opts.sucursalId ? { sucursalId: opts.sucursalId } : {},
+  );
+  const map = new Map<string, number>();
+  if (cuentas.length === 0) return map;
+
+  const filters = [
+    inArray(
+      movimientosBancariosTable.cuentaId,
+      cuentas.map((c) => c.id),
+    ),
+    eq(movimientosBancariosTable.tipo, "impuesto"),
+  ];
+  if (opts.desde) {
+    filters.push(gte(movimientosBancariosTable.fecha, new Date(opts.desde)));
+  }
+  if (opts.hasta) {
+    filters.push(lte(movimientosBancariosTable.fecha, new Date(opts.hasta)));
+  }
+
+  const rows = await db
+    .select({
+      cuentaId: movimientosBancariosTable.cuentaId,
+      total: sql<number>`coalesce(sum(${movimientosBancariosTable.monto}), 0)`,
+    })
+    .from(movimientosBancariosTable)
+    .where(and(...filters))
+    .groupBy(movimientosBancariosTable.cuentaId);
+
+  for (const r of rows) map.set(r.cuentaId, Math.abs(Number(r.total)));
+  return map;
+}
+
 export interface MovFiltros {
   cuentaId?: string;
   sucursalId?: string;

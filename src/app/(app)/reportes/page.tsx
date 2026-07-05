@@ -4,6 +4,7 @@ import {
   BarChart3,
   ClipboardList,
   Coins,
+  CreditCard,
   FileText,
   ListChecks,
   Rows3,
@@ -90,6 +91,12 @@ export default async function ReportesHubPage({ searchParams }: PageProps) {
       label: "Flujo de caja",
       desc: "Ingresos por método de pago, egresos por rubro, neto del período",
       Icon: Coins,
+    },
+    {
+      href: "/reportes/medios-pago",
+      label: "Medios de pago",
+      desc: "Cobros por medio: operaciones, ticket promedio, recargo y cuenta destino",
+      Icon: CreditCard,
     },
     {
       href: "/reportes/descuentos",
