@@ -45,7 +45,7 @@ export function InsumoForm({
   action,
   submitLabel,
 }: Props) {
-  const [vendible, setVendible] = useState<boolean>(insumo?.vendible ?? false);
+  const [tipo, setTipo] = useState<"bacha" | "venta">(insumo?.tipo ?? "bacha");
   const mostrarCompraInicial =
     !insumo &&
     sucursales !== undefined &&
@@ -156,13 +156,24 @@ export function InsumoForm({
           />
 
           <div className="pt-2 border-t border-border space-y-3">
-            <CheckboxField
-              label="También se vende al público"
-              name="vendible"
-              defaultChecked={vendible}
-              onChange={(e) => setVendible(e.currentTarget.checked)}
+            <SelectField
+              label="Tipo de producto"
+              name="tipo"
+              defaultValue={tipo}
+              onChange={(e) =>
+                setTipo(e.currentTarget.value === "venta" ? "venta" : "bacha")
+              }
+              options={[
+                { value: "bacha", label: "Bacha — uso interno (recetas)" },
+                { value: "venta", label: "Venta — venta directa al público" },
+              ]}
             />
-            {vendible && (
+            <p className="text-[11px] text-muted-foreground">
+              {tipo === "venta"
+                ? "Producto de venta: envase chico que se vende directo. No se usa en recetas."
+                : "Producto de bacha: envase grande de uso interno. Solo estos alimentan las recetas."}
+            </p>
+            {tipo === "venta" && (
               <CurrencyField
                 label="Precio de venta"
                 name="precio_venta"

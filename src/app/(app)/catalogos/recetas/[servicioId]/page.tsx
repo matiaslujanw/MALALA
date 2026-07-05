@@ -33,7 +33,8 @@ export default async function EditarRecetaPage({
   const [servicio, items, insumos] = await Promise.all([
     getServicio(servicioId),
     getRecetaItems(servicioId, sucursal.id),
-    listInsumos({ sucursalId: sucursal.id }),
+    // Las recetas solo consumen productos de bacha (uso interno).
+    listInsumos({ sucursalId: sucursal.id, tipo: "bacha" }),
   ]);
   if (!servicio) notFound();
 

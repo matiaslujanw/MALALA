@@ -31,6 +31,7 @@ function mapInsumo(
     rinde: row.rinde ?? undefined,
     umbral_stock_bajo: row.umbralStockBajo,
     activo: row.activo,
+    tipo: row.tipo,
     vendible: row.vendible,
     precio_venta: row.precioVenta ?? undefined,
   };
@@ -85,6 +86,11 @@ export async function listInsumos(opts?: {
    * pertenece a una sola sucursal (columna insumos.sucursal_id).
    */
   sucursalId?: string;
+  /**
+   * Filtra por tipo. "bacha" = insumos de recetas / uso interno;
+   * "venta" = productos de venta directa. Sin filtro devuelve ambos.
+   */
+  tipo?: "bacha" | "venta";
 }): Promise<Insumo[]> {
   requireSupabaseRuntime(
     "Los insumos del sistema solo se cargan desde Supabase.",
@@ -94,6 +100,7 @@ export async function listInsumos(opts?: {
   const filtros = [];
   if (!opts?.incluirInactivos) filtros.push(eq(insumosTable.activo, true));
   if (opts?.sucursalId) filtros.push(eq(insumosTable.sucursalId, opts.sucursalId));
+  if (opts?.tipo) filtros.push(eq(insumosTable.tipo, opts.tipo));
 
   const rows = await db
     .select()
@@ -131,8 +138,7 @@ function parse(formData: FormData) {
     rinde: formData.get("rinde"),
     umbral_stock_bajo: formData.get("umbral_stock_bajo"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
-    vendible:
-      formData.get("vendible") === "on" || formData.get("vendible") === "true",
+    tipo: formData.get("tipo") === "venta" ? "venta" : "bacha",
     precio_venta: formData.get("precio_venta"),
   });
 }
@@ -224,6 +230,8 @@ export async function registrarCompraInsumo(
       rinde: null,
       umbralStockBajo: umbral,
       activo: true,
+      // Alta inline desde una compra: siempre nace como producto de bacha.
+      tipo: "bacha",
       vendible: false,
       precioVenta: null,
     });
@@ -355,7 +363,7 @@ export async function aumentarPreciosProveedor(
 
   if (target === "venta") {
     const vendibles = rows.filter(
-      (r) => r.vendible && r.precioVenta != null,
+      (r) => r.tipo === "venta" && r.precioVenta != null,
     );
     if (vendibles.length === 0) {
       return {
@@ -430,7 +438,7 @@ export async function listInsumosVendibles(
     "Los insumos del sistema solo se cargan desde Supabase.",
   );
   const db = getDb();
-  const filtros = [eq(insumosTable.vendible, true)];
+  const filtros = [eq(insumosTable.tipo, "venta")];
   if (sucursalId) filtros.push(eq(insumosTable.sucursalId, sucursalId));
   const rows = await db
     .select()
@@ -471,6 +479,7 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
     rinde: parsed.data.rinde ?? null,
     umbralStockBajo: parsed.data.umbral_stock_bajo,
     activo: parsed.data.activo,
+    tipo: parsed.data.tipo,
     vendible: parsed.data.vendible,
     precioVenta: parsed.data.precio_venta ?? null,
   });
@@ -546,6 +555,7 @@ export async function updateInsumo(
       rinde: parsed.data.rinde ?? null,
       umbralStockBajo: parsed.data.umbral_stock_bajo,
       activo: parsed.data.activo,
+      tipo: parsed.data.tipo,
       vendible: parsed.data.vendible,
       precioVenta: parsed.data.precio_venta ?? null,
     })

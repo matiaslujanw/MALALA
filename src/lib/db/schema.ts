@@ -27,6 +27,10 @@ export const tipoComisionEnum = pgEnum("tipo_comision", [
   "sueldo_fijo",
 ]);
 export const unidadMedidaEnum = pgEnum("unidad_medida", ["ud", "ml", "g", "aplicacion"]);
+// Separa los dos usos de un insumo (excluyentes):
+//   - "bacha": envases grandes de uso interno; SOLO estos alimentan recetas.
+//   - "venta": envases chicos que se venden directo al público.
+export const insumoTipoEnum = pgEnum("insumo_tipo", ["bacha", "venta"]);
 // Modelo nuevo (4 estados): pendiente | realizado | ausente | cancelado.
 // confirmado/en_curso/completado quedan por compatibilidad con datos viejos
 // (migración pragmática); el código solo usa los 4 nuevos.
@@ -315,6 +319,10 @@ export const insumos = pgTable("insumos", {
   rinde: doublePrecision("rinde"),
   umbralStockBajo: doublePrecision("umbral_stock_bajo").notNull(),
   activo: boolean("activo").notNull().default(true),
+  // Clasificación bacha/venta (fuente de verdad de "para qué sirve el insumo").
+  tipo: insumoTipoEnum("tipo").notNull().default("bacha"),
+  // Legacy: se mantiene sincronizado (vendible = tipo === "venta") por compat
+  // con lecturas existentes. El código nuevo clasifica por `tipo`.
   vendible: boolean("vendible").notNull().default(false),
   precioVenta: doublePrecision("precio_venta"),
 });

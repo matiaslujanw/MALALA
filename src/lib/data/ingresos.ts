@@ -170,6 +170,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     rinde: row.rinde ?? undefined,
     umbral_stock_bajo: row.umbralStockBajo,
     activo: row.activo,
+    tipo: row.tipo,
     vendible: row.vendible,
     precio_venta: row.precioVenta ?? undefined,
   };
@@ -687,7 +688,7 @@ export async function createIngreso(
         (l): l is Extract<typeof l, { tipo: "producto" }> => l.tipo === "producto",
       );
 
-      // Validar que los insumos vendidos sigan siendo vendibles y activos
+      // Validar que los insumos vendidos sigan siendo de venta y activos
       const insumoIdsVendidos = Array.from(
         new Set(lineasProducto.map((l) => l.insumo_id)),
       );
@@ -703,7 +704,7 @@ export async function createIngreso(
       );
       for (const linea of lineasProducto) {
         const insumo = insumosVendiblesById.get(linea.insumo_id);
-        if (!insumo || !insumo.activo || !insumo.vendible) {
+        if (!insumo || !insumo.activo || insumo.tipo !== "venta") {
           throw new Error(
             `El producto seleccionado no está disponible para la venta`,
           );

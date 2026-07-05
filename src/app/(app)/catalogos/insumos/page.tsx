@@ -62,6 +62,7 @@ export default async function InsumosPage() {
           <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="text-left font-medium px-4 py-3">Nombre</th>
+              <th className="text-left font-medium px-4 py-3">Tipo</th>
               <th className="text-left font-medium px-4 py-3">Proveedor</th>
               <th className="text-right font-medium px-4 py-3">Envase</th>
               <th className="text-right font-medium px-4 py-3">$ envase</th>
@@ -78,6 +79,17 @@ export default async function InsumosPage() {
               return (
                 <tr key={i.id} className="hover:bg-cream/30">
                   <td className="px-4 py-3 font-medium">{i.nombre}</td>
+                  <td className="px-4 py-3">
+                    {i.tipo === "venta" ? (
+                      <span className="bg-cream text-sage-900 border border-border px-2 py-0.5 rounded text-xs">
+                        Venta{i.precio_venta != null ? ` · ${formatARS(i.precio_venta)}` : ""}
+                      </span>
+                    ) : (
+                      <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded text-xs">
+                        Bacha
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {proveedoresDelInsumo.length > 0
                       ? proveedoresDelInsumo.map((p) => p.nombre).join(", ")

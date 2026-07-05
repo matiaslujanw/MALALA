@@ -15,13 +15,14 @@ export const insumoSchema = z
     rinde: z.coerce.number().optional(),
     umbral_stock_bajo: z.coerce.number().nonnegative(),
     activo: z.coerce.boolean().default(true),
-    vendible: z.coerce.boolean().default(false),
+    // Bacha (recetas / uso interno) o venta (venta directa al público).
+    tipo: z.enum(["bacha", "venta"]).default("bacha"),
     precio_venta: z
       .union([z.coerce.number().nonnegative(), z.literal("").transform(() => undefined)])
       .optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.vendible && (data.precio_venta == null || data.precio_venta <= 0)) {
+    if (data.tipo === "venta" && (data.precio_venta == null || data.precio_venta <= 0)) {
       ctx.addIssue({
         code: "custom",
         path: ["precio_venta"],
@@ -33,7 +34,9 @@ export const insumoSchema = z
     ...data,
     precio_unitario:
       data.tamano_envase > 0 ? data.precio_envase / data.tamano_envase : null,
-    precio_venta: data.vendible ? data.precio_venta : undefined,
+    // `vendible` se deriva de `tipo` (columna legacy sincronizada).
+    vendible: data.tipo === "venta",
+    precio_venta: data.tipo === "venta" ? data.precio_venta : undefined,
   }));
 
 export type InsumoInput = z.infer<typeof insumoSchema>;

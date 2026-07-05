@@ -54,6 +54,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     rinde: row.rinde ?? undefined,
     umbral_stock_bajo: row.umbralStockBajo,
     activo: row.activo,
+    tipo: row.tipo,
     vendible: row.vendible,
     precio_venta: row.precioVenta ?? undefined,
   };
@@ -246,7 +247,7 @@ export async function upsertRecetaItem(
   const db = getDb();
   // El insumo debe pertenecer a la sucursal activa (no se mezclan sedes).
   const [insumoRow] = await db
-    .select({ sucursalId: insumosTable.sucursalId })
+    .select({ sucursalId: insumosTable.sucursalId, tipo: insumosTable.tipo })
     .from(insumosTable)
     .where(eq(insumosTable.id, parsed.data.insumo_id))
     .limit(1);
@@ -254,6 +255,13 @@ export async function upsertRecetaItem(
     return {
       ok: false,
       errors: { insumo_id: ["El insumo no pertenece a la sucursal activa"] },
+    };
+  }
+  // Las recetas solo usan productos de bacha (los de venta van solo a ventas).
+  if (insumoRow.tipo !== "bacha") {
+    return {
+      ok: false,
+      errors: { insumo_id: ["Solo se pueden usar productos de bacha en recetas"] },
     };
   }
 

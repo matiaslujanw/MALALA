@@ -108,6 +108,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     rinde: row.rinde ?? undefined,
     umbral_stock_bajo: row.umbralStockBajo,
     activo: row.activo,
+    tipo: row.tipo,
     vendible: row.vendible,
     precio_venta: row.precioVenta ?? undefined,
   };

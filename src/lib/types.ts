@@ -8,6 +8,7 @@ export type ID = string;
 export type Rol = "superadmin" | "admin" | "encargada" | "empleado";
 export type TipoComision = "porcentaje" | "mixto" | "sueldo_fijo";
 export type UnidadMedida = "ud" | "ml" | "g" | "aplicacion";
+export type InsumoTipo = "bacha" | "venta";
 import type { TurnoEstado } from "./turno-estado";
 export type { TurnoEstado };
 export type TurnoCanal = "web" | "recepcion";
@@ -249,6 +250,9 @@ export interface Insumo {
   rinde?: number;
   umbral_stock_bajo: number;
   activo: boolean;
+  // Bacha (recetas / uso interno) o venta (venta directa). Ver InsumoTipo.
+  tipo: InsumoTipo;
+  // Legacy sincronizado: vendible === (tipo === "venta").
   vendible: boolean;
   precio_venta?: number;
 }
