@@ -120,7 +120,7 @@ export async function upsertIntegracionManychatAction(
     });
   }
 
-  revalidatePath("/configuracion/integraciones-whatsapp");
+  revalidatePath("/catalogos/whatsapp");
   return { ok: true };
 }
 

@@ -12,6 +12,7 @@ import {
   TicketPercent,
   Tags,
   Clock3,
+  MessageCircle,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
@@ -104,6 +105,12 @@ const items = [
     Icon: Clock3,
     desc: "Días y horarios de atención por sede",
   },
+  {
+    href: "/catalogos/whatsapp",
+    label: "WhatsApp",
+    Icon: MessageCircle,
+    desc: "Vincular el número de cada sucursal para notificaciones",
+  },
 ];
 
 export default async function CatalogosPage() {
@@ -170,9 +177,11 @@ export default async function CatalogosPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold">{label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                <p className="text-xs text-muted-foreground mt-2 tabular-nums">
-                  {counts[href] ?? 0} registros
-                </p>
+                {counts[href] !== undefined && (
+                  <p className="text-xs text-muted-foreground mt-2 tabular-nums">
+                    {counts[href]} registros
+                  </p>
+                )}
               </div>
             </div>
           </Link>

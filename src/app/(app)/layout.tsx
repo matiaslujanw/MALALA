@@ -38,7 +38,6 @@ const NAV: NavDef[] = [
   { href: "/egresos", label: "Gastos", iconKey: "Receipt", group: "Gestión", visible: (s) => s.rol !== "empleado" },
   { href: "/catalogos", label: "Catalogos", iconKey: "BookOpen", group: "Gestión", visible: (s) => s.puedeVerCatalogos },
   { href: "/reportes", label: "Reportes", iconKey: "BarChart3", group: "Gestión", visible: (s) => s.puedeVerReportes },
-  { href: "/configuracion/integraciones-whatsapp", label: "WhatsApp", iconKey: "MessageCircle", group: "Configuración", visible: (s) => s.rol !== "empleado" },
 ];
 
 export default async function AppLayout({
