@@ -4,13 +4,21 @@ import { Plus } from "lucide-react";
 import { listClientes } from "@/lib/data/clientes";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { formatARS } from "@/lib/utils";
+import { ClientesSearch } from "./clientes-search";
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   await requireUser();
   const sucursal = await getActiveSucursal();
+  const sp = await searchParams;
+  const q = sp.q?.trim() || undefined;
   const clientes = await listClientes({
     incluirInactivos: true,
     sucursalId: sucursal?.id,
+    q,
   });
 
   return (
@@ -21,7 +29,9 @@ export default async function ClientesPage() {
             Clientes
           </h1>
           <p className="text-sm text-muted-foreground">
-            {clientes.length} clientes
+            {q
+              ? `${clientes.length} ${clientes.length === 1 ? "resultado" : "resultados"} para “${q}”`
+              : `${clientes.length} clientes`}
           </p>
         </div>
         <Link
@@ -32,6 +42,8 @@ export default async function ClientesPage() {
           Nuevo
         </Link>
       </header>
+
+      <ClientesSearch />
 
       <div className="bg-card border border-border rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -46,6 +58,18 @@ export default async function ClientesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
+            {clientes.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-4 py-10 text-center text-sm text-muted-foreground"
+                >
+                  {q
+                    ? `Sin resultados para “${q}”.`
+                    : "No hay clientes cargados."}
+                </td>
+              </tr>
+            ) : null}
             {clientes.map((c) => (
               <tr key={c.id} className="hover:bg-cream/30">
                 <td className="px-4 py-3 font-medium">{c.nombre}</td>
