@@ -40,6 +40,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const AUTH_BASE = join(__dirname, "auth");
 
 const PORT = Number(process.env.WORKER_PORT ?? 8787);
+// Interfaz donde escucha el server. Default 0.0.0.0 (reachable por la plataforma
+// en Railway/Fly). En una VPS con reverse proxy conviene 127.0.0.1 para no
+// exponer el puerto crudo a internet (el proxy sí lo alcanza por loopback).
+const HOST = process.env.WORKER_HOST ?? "0.0.0.0";
 const SECRET = process.env.WORKER_SECRET ?? "";
 
 const logger = pino({ level: process.env.WORKER_LOG_LEVEL ?? "silent" });
@@ -477,8 +481,8 @@ const server = createServer((req, res) => {
   })();
 });
 
-server.listen(PORT, () => {
-  console.log(`MALALA WhatsApp worker escuchando en http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`MALALA WhatsApp worker escuchando en http://${HOST}:${PORT}`);
   if (!SECRET) {
     console.warn(
       "⚠  WORKER_SECRET no está seteado: /send y /logout responderán 401. Seteá WORKER_SECRET.",

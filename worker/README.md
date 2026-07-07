@@ -21,6 +21,7 @@ Variables:
 | Var | Default | Descripción |
 |---|---|---|
 | `WORKER_PORT` | `8787` | Puerto HTTP |
+| `WORKER_HOST` | `0.0.0.0` | Interfaz de escucha. En VPS con reverse proxy usar `127.0.0.1` para no exponer el puerto crudo. |
 | `WORKER_SECRET` | — | Bearer token que exige `/send` y `/logout`. **Obligatorio.** |
 | `WORKER_LOG_LEVEL` | `silent` | Nivel de log de Baileys (`info`, `debug`…) |
 
