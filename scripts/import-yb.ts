@@ -253,7 +253,15 @@ async function main() {
     // 2) Renombrar placeholder -> Yerba Buena.
     await tx
       .update(sucursales)
-      .set({ nombre: "Malala Yerba Buena", slug: "yerba-buena" })
+      .set({
+        nombre: "Malala Yerba Buena",
+        slug: "yerba-buena",
+        direccion: "Mariano Moreno 107, Mercato Shopping Viejo, Yerba Buena",
+        telefono: "+54 381 338-4503",
+        horarioResumen: "Lun–Sáb 9–21 h · Estacionamiento propio",
+        mapaUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d7121.801419279513!2d-65.29898302477942!3d-26.81128997670779!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x942242d74b8c7563%3A0xaa3cd23bfe39c8f9!2sMariano%20Moreno%20107%2C%20T4107%20Yerba%20Buena%2C%20Tucum%C3%A1n!5e0!3m2!1ses-419!2sar!4v1783510352791!5m2!1ses-419!2sar",
+        descripcionCorta: "Mariano Moreno 107, Mercato Shopping Viejo. Con estacionamiento propio.",
+      })
       .where(sql`${sucursales.id} = ${YB_SUCURSAL_ID}`);
 
     // 3) Insertar servicios + membresía a YB.

@@ -134,6 +134,10 @@ async function main() {
         nombre: "Malala Centro",
         slug: "centro",
         direccion: "Corrientes 1677, San Miguel de Tucumán",
+        telefono: "+54 9 381 239-3260",
+        horarioResumen: "Lun 14–21 h · Mar–Vie 10–21 h · Sáb 9–21 h",
+        mapaUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3560.6623312336574!2d-65.2204963!3d-26.8188784!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94225df9c2bdc3f9%3A0x4f503c4c1aeea6f6!2sMalala%20club%20de%20belleza!5e0!3m2!1ses-419!2sar!4v1777588681376!5m2!1ses-419!2sar",
+        descripcionCorta: "Sede principal en el corazón del centro tucumano.",
         rating: 4.9,
         reviews: 376,
       })

@@ -615,64 +615,93 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           </div>
         </section>
 
-        <section id="contacto" className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
-          <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]">
-            <iframe
-              src={mapEmbedUrl}
-              width="100%"
-              height="100%"
-              style={{ border: 0, minHeight: 420 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Mapa de MALALA"
-            />
-          </div>
-
-          <div className="space-y-4 rounded-[2rem] border border-white/70 bg-white/88 p-6 shadow-[0_20px_60px_rgba(44,53,37,0.06)]">
+        <section id="contacto" className="space-y-6">
+          <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Contacto y ubicacion</p>
             <h2 className="text-3xl font-semibold text-ink">Estamos cerca para acompanarte</h2>
             <p className="text-sm leading-7 text-stone-700 sm:text-base">
-              Puedes encontrarnos, escribirnos o reservar desde aqui. Queremos que llegar a MALALA sea tan simple como disfrutarlo.
+              Puedes encontrarnos, escribirnos o reservar desde cualquiera de nuestras sedes. Queremos que llegar a MALALA sea tan simple como disfrutarlo.
             </p>
+          </div>
 
-            <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
-              <div className="flex items-start gap-3">
-                <MapPin className="mt-1 h-4 w-4 text-sage-700" />
-                <div>
-                  <p className="font-medium text-ink">Corrientes 1677, San Miguel de Tucuman</p>
-                  <p className="text-sm text-stone-700">Ubicacion principal de referencia de MALALA.</p>
+          <div className="grid gap-6 xl:grid-cols-2">
+            {snapshot.sucursales.map((item, index) => {
+              const embedUrl = item.mapa_url ?? (index === 0 ? mapEmbedUrl : null);
+              const phoneDigits = item.telefono?.replace(/\D/g, "") ?? "";
+              const waUrl = phoneDigits.length >= 10
+                ? `https://api.whatsapp.com/send/?phone=${phoneDigits}&text&type=phone_number&app_absent=0`
+                : whatsappUrl;
+              return (
+                <div
+                  key={item.id}
+                  className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]"
+                >
+                  {embedUrl ? (
+                    <div className="h-56">
+                      <iframe
+                        src={embedUrl}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        title={`Mapa de ${item.nombre}`}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="space-y-4 p-6">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                        Sucursal {index + 1}
+                      </p>
+                      <h3 className="mt-1 text-xl font-semibold text-ink">{item.nombre}</h3>
+                    </div>
+
+                    <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
+                      {item.direccion ? (
+                        <div className="flex items-start gap-3">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sage-700" />
+                          <span className="text-sm text-stone-700">{item.direccion}</span>
+                        </div>
+                      ) : null}
+                      {item.telefono ? (
+                        <div className="flex items-center gap-3 text-sm text-stone-700">
+                          <Phone className="h-4 w-4 shrink-0 text-sage-700" />
+                          <span>{item.telefono}</span>
+                        </div>
+                      ) : null}
+                      {item.horario_resumen ? (
+                        <div className="flex items-center gap-3 text-sm text-stone-700">
+                          <Clock3 className="h-4 w-4 shrink-0 text-sage-700" />
+                          <span>{item.horario_resumen}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <a
+                        href={waUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
+                      >
+                        WhatsApp
+                        <MessageCircle className="h-4 w-4" />
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => openBooking(item.id)}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
+                      >
+                        Reservar aqui
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-stone-700">
-                <Phone className="h-4 w-4 text-sage-700" />
-                <span>+54 9 381 239-3260</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-stone-700">
-                <Clock3 className="h-4 w-4 text-sage-700" />
-                <span>{featuredSucursal?.horario_resumen}</span>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
-              >
-                WhatsApp
-                <MessageCircle className="h-4 w-4" />
-              </a>
-              <button
-                type="button"
-                onClick={() => openBooking()}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-              >
-                Reserva tu turno
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+              );
+            })}
           </div>
         </section>
       </main>
