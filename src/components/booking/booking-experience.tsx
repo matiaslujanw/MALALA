@@ -27,6 +27,7 @@ import {
 } from "@/lib/turnos-helpers";
 import { HeroVideoShowcase } from "@/components/booking/hero-video-showcase";
 import { cn, formatARS } from "@/lib/utils";
+import { tryNormalizarTelefonoAR } from "@/lib/phone";
 import type {
   HorarioSucursal,
   ProfesionalHorario,
@@ -74,6 +75,16 @@ const mapEmbedUrl =
 
 const TOTAL_STEPS = 7;
 
+function isSafeMapUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && (u.hostname === "www.google.com" || u.hostname === "maps.google.com");
+  } catch {
+    return false;
+  }
+}
+
 export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     createPublicTurnoAction,
@@ -91,11 +102,6 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   const [fechaTurno, setFechaTurno] = useState("");
   const [slotKey, setSlotKey] = useState("");
   const deferredSearch = useDeferredValue(search);
-
-  const featuredSucursal =
-    snapshot.sucursales.find((item) => item.id === featuredSucursalId) ??
-    snapshot.sucursales[0] ??
-    null;
 
   const bookingSucursal =
     snapshot.sucursales.find((item) => item.id === bookingSucursalId) ?? null;
@@ -624,85 +630,90 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
             </p>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            {snapshot.sucursales.map((item, index) => {
-              const embedUrl = item.mapa_url ?? (index === 0 ? mapEmbedUrl : null);
-              const phoneDigits = item.telefono?.replace(/\D/g, "") ?? "";
-              const waUrl = phoneDigits.length >= 10
-                ? `https://api.whatsapp.com/send/?phone=${phoneDigits}&text&type=phone_number&app_absent=0`
-                : whatsappUrl;
-              return (
-                <div
-                  key={item.id}
-                  className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]"
-                >
-                  {embedUrl ? (
-                    <div className="h-56">
-                      <iframe
-                        src={embedUrl}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title={`Mapa de ${item.nombre}`}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="space-y-4 p-6">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                        Sucursal {index + 1}
-                      </p>
-                      <h3 className="mt-1 text-xl font-semibold text-ink">{item.nombre}</h3>
-                    </div>
+          {snapshot.sucursales.length === 0 ? (
+            <p className="text-sm text-stone-500">Próximamente disponible.</p>
+          ) : (
+            <div className="grid gap-6 xl:grid-cols-2">
+              {snapshot.sucursales.map((item, index) => {
+                const embedUrl = isSafeMapUrl(item.mapa_url) ? item.mapa_url : (index === 0 ? mapEmbedUrl : null);
+                const e164 = tryNormalizarTelefonoAR(item.telefono);
+                const waUrl = e164
+                  ? `https://api.whatsapp.com/send/?phone=${e164.slice(1)}&text&type=phone_number&app_absent=0`
+                  : null;
+                return (
+                  <div
+                    key={item.id}
+                    className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]"
+                  >
+                    {embedUrl ? (
+                      <div className="h-[280px]">
+                        <iframe
+                          src={embedUrl}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          referrerPolicy="strict-origin-when-cross-origin"
+                          title={`Mapa de ${item.nombre}`}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="space-y-4 p-6">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                          Sucursal {index + 1}
+                        </p>
+                        <h3 className="mt-1 text-xl font-semibold text-ink">{item.nombre}</h3>
+                      </div>
 
-                    <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
-                      {item.direccion ? (
-                        <div className="flex items-start gap-3">
-                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sage-700" />
-                          <span className="text-sm text-stone-700">{item.direccion}</span>
-                        </div>
-                      ) : null}
-                      {item.telefono ? (
-                        <div className="flex items-center gap-3 text-sm text-stone-700">
-                          <Phone className="h-4 w-4 shrink-0 text-sage-700" />
-                          <span>{item.telefono}</span>
-                        </div>
-                      ) : null}
-                      {item.horario_resumen ? (
-                        <div className="flex items-center gap-3 text-sm text-stone-700">
-                          <Clock3 className="h-4 w-4 shrink-0 text-sage-700" />
-                          <span>{item.horario_resumen}</span>
-                        </div>
-                      ) : null}
-                    </div>
+                      <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
+                        {item.direccion ? (
+                          <div className="flex items-start gap-3">
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sage-700" />
+                            <span className="text-sm text-stone-700">{item.direccion}</span>
+                          </div>
+                        ) : null}
+                        {item.telefono ? (
+                          <div className="flex items-center gap-3 text-sm text-stone-700">
+                            <Phone className="h-4 w-4 shrink-0 text-sage-700" />
+                            <span>{item.telefono}</span>
+                          </div>
+                        ) : null}
+                        {item.horario_resumen ? (
+                          <div className="flex items-center gap-3 text-sm text-stone-700">
+                            <Clock3 className="h-4 w-4 shrink-0 text-sage-700" />
+                            <span>{item.horario_resumen}</span>
+                          </div>
+                        ) : null}
+                      </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <a
-                        href={waUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
-                      >
-                        WhatsApp
-                        <MessageCircle className="h-4 w-4" />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => openBooking(item.id)}
-                        className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-                      >
-                        Reservar aqui
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {waUrl ? (
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
+                          >
+                            WhatsApp
+                            <MessageCircle className="h-4 w-4" />
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => openBooking(item.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
+                        >
+                          Reservar aqui
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
       </main>
 

@@ -131,6 +131,7 @@ async function sendPushPing(endpoint: string) {
 
   const res = await fetch(endpoint, {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       TTL: "60",
       Urgency: "high",

@@ -20,7 +20,7 @@ export const cierreCajaSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida (YYYY-MM-DD)"),
   saldo_inicial_ef: z.coerce.number().nonnegative().default(0),
-  saldo_banco: z.coerce.number().default(0),
+  saldo_banco: z.coerce.number().nonnegative().default(0),
   billetes: billetesSchema.default({}),
   // Campos manuales adicionales (cosas que no salen de ingresos/egresos)
   vouchers: z.coerce.number().nonnegative().default(0),

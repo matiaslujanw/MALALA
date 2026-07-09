@@ -932,24 +932,6 @@ export async function createCierre(
   }
 
   const db = getDb();
-  const [dup] = await db
-    .select({ id: cierresCajaTable.id })
-    .from(cierresCajaTable)
-    .where(
-      and(
-        eq(cierresCajaTable.sucursalId, data.sucursal_id),
-        eq(cierresCajaTable.fecha, data.fecha),
-      ),
-    )
-    .limit(1);
-
-  if (dup) {
-    return {
-      ok: false,
-      errors: { fecha: ["Ya existe un cierre para esta fecha y sucursal"] },
-    };
-  }
-
   const resumen = await getResumenDelDia(data.sucursal_id, data.fecha);
 
   // Separamos efectivo (por cuenta, no por código) del resto de los medios.
@@ -998,11 +980,24 @@ export async function createCierre(
   // coincide con lo esperado. La diferencia se guarda como dato; no toca saldos.
   const saldosCuentas = await getSugerenciasApertura(data.sucursal_id);
 
-  await db.transaction(async (tx) => {
-    await tx.insert(cierresCajaTable).values({
-      id: cierreId,
-      sucursalId: data.sucursal_id,
-      fecha: data.fecha,
+  try {
+    await db.transaction(async (tx) => {
+      const [dup] = await tx
+        .select({ id: cierresCajaTable.id })
+        .from(cierresCajaTable)
+        .where(
+          and(
+            eq(cierresCajaTable.sucursalId, data.sucursal_id),
+            eq(cierresCajaTable.fecha, data.fecha),
+          ),
+        )
+        .limit(1);
+      if (dup) throw new Error("DUP_CIERRE");
+
+      await tx.insert(cierresCajaTable).values({
+        id: cierreId,
+        sucursalId: data.sucursal_id,
+        fecha: data.fecha,
       saldoInicialEf,
       saldoBanco,
       billetes: data.billetes,
@@ -1038,6 +1033,12 @@ export async function createCierre(
       });
     }
   });
+  } catch (err) {
+    if (err instanceof Error && err.message === "DUP_CIERRE") {
+      return { ok: false, errors: { fecha: ["Ya existe un cierre para esta fecha y sucursal"] } };
+    }
+    throw err;
+  }
 
   revalidatePath("/caja");
   revalidatePath("/dashboard");

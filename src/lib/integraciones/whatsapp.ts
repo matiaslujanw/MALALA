@@ -77,6 +77,7 @@ export async function sendWhatsappMessage(
   try {
     const res = await fetch(`${worker.url}/send`, {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${worker.secret}`,
         "Content-Type": "application/json",

@@ -164,7 +164,13 @@ export function AdminChat({
           const dataLine = lines.find((l) => l.startsWith("data: "));
           if (!evLine || !dataLine) continue;
           const event = evLine.slice(7).trim();
-          const data = JSON.parse(dataLine.slice(6));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let data: any;
+          try {
+            data = JSON.parse(dataLine.slice(6));
+          } catch {
+            continue;
+          }
 
           if (event === "tool_call") {
             setToolLabel(`Consultando ${data.name}...`);

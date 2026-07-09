@@ -38,7 +38,6 @@ async function main() {
 
   if (!commit) {
     console.log("\nDRY-RUN: nada fue modificado. Corré con --commit para aplicar.");
-    await getSqlClient().end({ timeout: 5 });
     return;
   }
 
@@ -47,11 +46,11 @@ async function main() {
   console.log("\n✓ Centro actualizado.");
   await db.update(sucursales).set(YB).where(eq(sucursales.id, YB_ID));
   console.log("✓ Yerba Buena actualizado.");
-
-  await getSqlClient().end({ timeout: 5 });
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => getSqlClient().end({ timeout: 5 }));

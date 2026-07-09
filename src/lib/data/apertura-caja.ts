@@ -157,49 +157,6 @@ export async function crearApertura(
 
   const db = getDb();
 
-  // No se puede abrir una caja si ya hay otra abierta en la sucursal (apertura
-  // de cualquier fecha que todavía no tenga su cierre). Hay que cerrarla primero.
-  const [aperturas, cierres] = await Promise.all([
-    db
-      .select({ fecha: aperturasCajaTable.fecha })
-      .from(aperturasCajaTable)
-      .where(eq(aperturasCajaTable.sucursalId, data.sucursal_id)),
-    db
-      .select({ fecha: cierresCajaTable.fecha })
-      .from(cierresCajaTable)
-      .where(eq(cierresCajaTable.sucursalId, data.sucursal_id)),
-  ]);
-  const fechasCerradas = new Set(cierres.map((c) => c.fecha));
-  const abierta = aperturas.find((a) => !fechasCerradas.has(a.fecha));
-  if (abierta) {
-    return {
-      ok: false,
-      errors: {
-        _: [
-          `Ya hay una caja abierta del ${abierta.fecha}. Cerrala antes de abrir otra.`,
-        ],
-      },
-    };
-  }
-
-  const [dup] = await db
-    .select({ id: aperturasCajaTable.id })
-    .from(aperturasCajaTable)
-    .where(
-      and(
-        eq(aperturasCajaTable.sucursalId, data.sucursal_id),
-        eq(aperturasCajaTable.fecha, data.fecha),
-      ),
-    )
-    .limit(1);
-
-  if (dup) {
-    return {
-      ok: false,
-      errors: { _: ["La caja de este día ya está abierta"] },
-    };
-  }
-
   const sugerencias = await getSugerenciasApertura(data.sucursal_id);
   if (sugerencias.length === 0) {
     return {
@@ -213,6 +170,26 @@ export async function crearApertura(
 
   try {
     await db.transaction(async (tx) => {
+      // Checks atómicos dentro de la transacción para evitar race conditions.
+      const [aperturas, cierres] = await Promise.all([
+        tx
+          .select({ fecha: aperturasCajaTable.fecha })
+          .from(aperturasCajaTable)
+          .where(eq(aperturasCajaTable.sucursalId, data.sucursal_id)),
+        tx
+          .select({ fecha: cierresCajaTable.fecha })
+          .from(cierresCajaTable)
+          .where(eq(cierresCajaTable.sucursalId, data.sucursal_id)),
+      ]);
+      const fechasCerradas = new Set(cierres.map((c) => c.fecha));
+      const abierta = aperturas.find((a) => !fechasCerradas.has(a.fecha));
+      if (abierta)
+        throw new Error(
+          `Ya hay una caja abierta del ${abierta.fecha}. Cerrala antes de abrir otra.`,
+        );
+      if (aperturas.some((a) => a.fecha === data.fecha))
+        throw new Error("La caja de este día ya está abierta");
+
       await tx.insert(aperturasCajaTable).values({
         id: aperturaId,
         sucursalId: data.sucursal_id,

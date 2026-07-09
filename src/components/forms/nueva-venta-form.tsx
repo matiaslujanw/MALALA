@@ -1220,7 +1220,7 @@ export function NuevaVentaForm({
           type="submit"
           pending={pending}
           pendingLabel="Guardando..."
-          disabled={!pagosOk || lineas.length === 0}
+          disabled={!pagosOk || lineas.length === 0 || pending}
           className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:cursor-not-allowed"
         >
           Guardar venta

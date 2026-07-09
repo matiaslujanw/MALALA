@@ -57,6 +57,8 @@ Acciones de escritura:
 
 export function buildSystemPrompt(rol: Rol, sucursalNombre: string): string {
   const puedeEscribir = rol !== "empleado";
+  // Sanitizar el nombre para evitar prompt injection via contenido de la DB.
+  const safeName = sucursalNombre.replace(/[\r\n\t]/g, " ").slice(0, 80);
   const fecha = `
 
 Fecha y hora actual (zona horaria de Argentina): ${ahoraLegible()}. Hoy es ${hoyISO()}.
@@ -65,9 +67,9 @@ Fecha y hora actual (zona horaria de Argentina): ${ahoraLegible()}. Hoy es ${hoy
   const confinamiento = `
 
 IMPORTANTE — Aislamiento por sucursal:
-- Operás EXCLUSIVAMENTE sobre la sucursal activa: "${sucursalNombre}".
+- Operás EXCLUSIVAMENTE sobre la sucursal activa: "${safeName}".
 - Todos los datos y acciones se limitan a esa sucursal de forma automática. No podés consultar ni modificar datos de otras sucursales, y no debés mencionarlas.
-- Si te piden algo de otra sucursal, aclará que solo podés operar sobre "${sucursalNombre}".`;
+- Si te piden algo de otra sucursal, aclará que solo podés operar sobre "${safeName}".`;
   return (
     BASE +
     "\n" +

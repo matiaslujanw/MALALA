@@ -3,6 +3,8 @@
 import { and, asc, desc, eq, gte, ilike, inArray, isNull, lte } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
+
+type DbOrTx = ReturnType<typeof getDb> | Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 import { requireSupabaseRuntime } from "@/lib/db/env";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -287,13 +289,10 @@ async function empleadoPerteneceASucursal(
  * nuevo.hasta && existente.hasta >= nuevo.desde. Las liquidaciones anuladas se
  * borran de la tabla, así que cualquier fila encontrada está vigente.
  */
-async function buscarLiquidacionSolapada(args: {
-  empleadoId: string;
-  sucursalId: string;
-  desde: string;
-  hasta: string;
-}): Promise<{ desde: string; hasta: string } | null> {
-  const db = getDb();
+async function buscarLiquidacionSolapada(
+  args: { empleadoId: string; sucursalId: string; desde: string; hasta: string },
+  db: DbOrTx = getDb(),
+): Promise<{ desde: string; hasta: string } | null> {
   const [row] = await db
     .select({
       desde: liquidacionesTable.periodoDesde,
@@ -454,14 +453,6 @@ export async function createLiquidacion(
     };
   }
 
-  const solapada = await buscarLiquidacionSolapada({
-    empleadoId: parsed.data.empleado_id,
-    sucursalId: parsed.data.sucursal_id,
-    desde: parsed.data.periodo_desde,
-    hasta: parsed.data.periodo_hasta,
-  });
-  if (solapada) return errorSolapada(solapada);
-
   const horasTrabajadas = parsed.data.horas_trabajadas;
   const diasViatico = parsed.data.dias_viatico;
 
@@ -496,8 +487,24 @@ export async function createLiquidacion(
   const totalPagar = totalComision + sueldoHoras + totalViatico - totalAnticipos;
   const liquidacionId = createId();
 
+  let solapadaError: ReturnType<typeof errorSolapada> | null = null;
   const db = getDb();
   await db.transaction(async (tx) => {
+    // Check de solapamiento dentro de la transacción para evitar race condition.
+    const solapada = await buscarLiquidacionSolapada(
+      {
+        empleadoId: parsed.data.empleado_id,
+        sucursalId: parsed.data.sucursal_id,
+        desde: parsed.data.periodo_desde,
+        hasta: parsed.data.periodo_hasta,
+      },
+      tx,
+    );
+    if (solapada) {
+      solapadaError = errorSolapada(solapada);
+      throw new Error("SOLAP");
+    }
+
     await tx.insert(liquidacionesTable).values({
       id: liquidacionId,
       sucursalId: parsed.data.sucursal_id,
@@ -549,7 +556,11 @@ export async function createLiquidacion(
     for (let i = 0; i < rows.length; i += CHUNK) {
       await tx.insert(liquidacionLineasTable).values(rows.slice(i, i + CHUNK));
     }
+  }).catch((err) => {
+    if (!(err instanceof Error && err.message === "SOLAP")) throw err;
   });
+
+  if (solapadaError) return solapadaError;
 
   await notificarLiquidacionEmpleadoPush({ liquidacionId }).catch(() => {});
   revalidatePath("/liquidaciones");

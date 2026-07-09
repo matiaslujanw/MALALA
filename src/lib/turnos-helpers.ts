@@ -11,6 +11,18 @@ import type {
   TurnoEstado,
 } from "@/lib/types";
 
+const AR_TZ = "America/Argentina/Buenos_Aires";
+
+// Devuelve el string YYYY-MM-DD de un Date en zona horaria de Argentina.
+function arDateStr(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: AR_TZ });
+}
+
+// Devuelve el día de semana (0=Dom…6=Sáb) de un Date en zona horaria de Argentina.
+function arDayOfWeek(d: Date): number {
+  return new Date(d.toLocaleString("en-US", { timeZone: AR_TZ })).getDay();
+}
+
 export interface ProfesionalReserva extends ProfesionalAgenda {
   empleado: Empleado;
 }
@@ -88,7 +100,7 @@ export function isBlockingTurnoStatus(status: TurnoEstado) {
 }
 
 export function isSameDate(date: Date, isoDate: string) {
-  return date.toISOString().slice(0, 10) === isoDate;
+  return arDateStr(date) === isoDate;
 }
 
 export function listOpenDatesForSucursal(
@@ -109,11 +121,11 @@ export function listOpenDatesForSucursal(
     const hasWindow = horarios.some(
       (item) =>
         item.sucursal_id === sucursalId &&
-        item.dia_semana === cursor.getDay() &&
+        item.dia_semana === arDayOfWeek(cursor) &&
         timeToMinutes(item.cierre) > timeToMinutes(item.apertura),
     );
     if (hasWindow) {
-      dates.push(cursor.toISOString().slice(0, 10));
+      dates.push(arDateStr(cursor));
     }
     cursor.setDate(cursor.getDate() + 1);
     scanned += 1;
@@ -267,7 +279,7 @@ export function buildAvailableSlots(args: {
       let cursor = timeToMinutes(window.apertura);
       const end = timeToMinutes(window.cierre);
       while (cursor + duration <= end) {
-        if (isToday && cursor <= currentMinutes) {
+        if (isToday && cursor < currentMinutes) {
           cursor += slotStep;
           continue;
         }
@@ -339,7 +351,7 @@ export function listReservableDates(args: {
   let scanned = 0;
 
   while (dates.length < count && scanned < 60) {
-    const fecha = cursor.toISOString().slice(0, 10);
+    const fecha = arDateStr(cursor);
     const slots = buildAvailableSlots({
       fecha,
       sucursalId: args.sucursalId,

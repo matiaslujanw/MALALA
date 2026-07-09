@@ -494,7 +494,7 @@ export function NuevaLiquidacionForm({
               onClick={doSave}
               pending={saving}
               pendingLabel="Guardando..."
-              disabled={!puedeGuardar}
+              disabled={!puedeGuardar || saving}
               className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
             >
               Guardar liquidación

@@ -87,12 +87,17 @@ export async function disableCurrentPushSubscription(opts?: {
   const subscription = await getCurrentPushSubscription();
   if (!subscription) return;
 
-  await fetch("/api/pwa/push-subscriptions", {
+  const res = await fetch("/api/pwa/push-subscriptions", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
     body: JSON.stringify({ endpoint: subscription.endpoint }),
   });
+
+  if (!res.ok) {
+    console.error(`[push] DELETE suscripción falló (${res.status}) — no se desuscribe localmente`);
+    return;
+  }
 
   if (opts?.unsubscribe !== false) {
     await subscription.unsubscribe().catch(() => {});

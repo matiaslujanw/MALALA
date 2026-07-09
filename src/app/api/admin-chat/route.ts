@@ -41,6 +41,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "messages requerido" }, { status: 400 });
   }
 
+  // Filtrar mensajes al historial permitido: solo user/assistant, contenido string, longitud acotada.
+  const safeMessages = body.messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({
+      role: m.role,
+      content: typeof m.content === "string" ? m.content.slice(0, 20_000) : "",
+    }))
+    .filter((m) => m.content.length > 0);
+
+  if (safeMessages.length === 0) {
+    return NextResponse.json({ error: "messages requerido" }, { status: 400 });
+  }
+
   const { defs: tools, entries } = toolsForRole(scope.rol);
 
   const client = new OpenAI({
@@ -50,7 +63,7 @@ export async function POST(req: Request) {
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: buildSystemPrompt(scope.rol, sucursalActiva.nombre) },
-    ...body.messages.map((m) => ({ role: m.role, content: m.content })),
+    ...safeMessages,
   ];
 
   const encoder = new TextEncoder();
