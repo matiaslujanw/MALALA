@@ -409,7 +409,7 @@ const REGISTRY: Record<string, ToolEntry> = {
           type: "object",
           properties: {
             empleadoId: { type: "string" },
-            estado: { type: "string", enum: ["borrador", "confirmada", "pagada"] },
+            estado: { type: "string", enum: ["pendiente", "pagada", "anulada"] },
             limit: { type: "number" },
           },
         },
