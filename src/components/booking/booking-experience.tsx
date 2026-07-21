@@ -8,12 +8,7 @@ import {
   Check,
   ChevronLeft,
   Clock3,
-  MapPin,
-  MessageCircle,
-  Phone,
   Search,
-  Sparkles,
-  Star,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -25,9 +20,11 @@ import {
   listReservableDates,
   type ProfesionalReserva,
 } from "@/lib/turnos-helpers";
-import { HeroVideoShowcase } from "@/components/booking/hero-video-showcase";
+import { HeroExperiencia } from "@/components/booking/hero-experiencia";
+import { PromocionesBand } from "@/components/booking/promociones-band";
+import { ServiciosShowcase } from "@/components/booking/servicios-showcase";
+import { SucursalesShowcase } from "@/components/booking/sucursales-showcase";
 import { cn, formatARS } from "@/lib/utils";
-import { tryNormalizarTelefonoAR } from "@/lib/phone";
 import type {
   HorarioSucursal,
   ProfesionalHorario,
@@ -70,20 +67,8 @@ const initialActionState: ActionState = null;
 const storeUrl = "https://malala.ar/";
 const whatsappUrl =
   "https://api.whatsapp.com/send/?phone=5493812393260&text&type=phone_number&app_absent=0";
-const mapEmbedUrl =
-  "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3560.6623312336574!2d-65.2204963!3d-26.8188784!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x94225df9c2bdc3f9%3A0x4f503c4c1aeea6f6!2sMalala%20club%20de%20belleza!5e0!3m2!1ses-419!2sar!4v1777588681376!5m2!1ses-419!2sar";
 
 const TOTAL_STEPS = 7;
-
-function isSafeMapUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" && (u.hostname === "www.google.com" || u.hostname === "maps.google.com");
-  } catch {
-    return false;
-  }
-}
 
 export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
@@ -91,9 +76,6 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     initialActionState,
   );
   const [modalOpen, setModalOpen] = useState(false);
-  const [featuredSucursalId, setFeaturedSucursalId] = useState(
-    snapshot.sucursales[0]?.id ?? "",
-  );
   const [bookingSucursalId, setBookingSucursalId] = useState("");
   const [search, setSearch] = useState("");
   const [categoria, setCategoria] = useState("TODOS");
@@ -124,10 +106,16 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     [serviciosDeSucursal],
   );
 
+  // Los tiles de la landing preseleccionan un rubro antes de elegir sucursal, y
+  // ese rubro puede no existir en la sucursal que el cliente termine eligiendo.
+  // En ese caso caemos a TODOS en vez de mostrar un catálogo vacío.
+  const categoriaEfectiva = categorias.includes(categoria) ? categoria : "TODOS";
+
   const servicios = useMemo(
     () =>
       serviciosDeSucursal.filter((item) => {
-        const matchesCategory = categoria === "TODOS" || item.rubro === categoria;
+        const matchesCategory =
+          categoriaEfectiva === "TODOS" || item.rubro === categoriaEfectiva;
         const term = deferredSearch.trim().toLowerCase();
         const matchesText =
           term.length === 0 ||
@@ -136,12 +124,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           item.descripcion_corta?.toLowerCase().includes(term);
         return matchesCategory && matchesText;
       }),
-    [categoria, deferredSearch, serviciosDeSucursal],
-  );
-
-  const destacados = useMemo(
-    () => serviciosDeSucursal.filter((item) => item.destacado_pct).slice(0, 3),
-    [serviciosDeSucursal],
+    [categoriaEfectiva, deferredSearch, serviciosDeSucursal],
   );
 
   const profesionales = useMemo(
@@ -282,7 +265,6 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
   function openBooking(nextSucursalId?: string, nextServicioId?: string) {
     if (nextSucursalId) {
       setBookingSucursalId(nextSucursalId);
-      setFeaturedSucursalId(nextSucursalId);
       resetBooking(true);
       setBookingSucursalId(nextSucursalId);
     }
@@ -295,13 +277,18 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     setModalOpen(true);
   }
 
+  /** Un tile de la sección Servicios: abre la reserva con el rubro precargado. */
+  function openBookingConRubro(rubro: string | null) {
+    setCategoria(rubro ?? "TODOS");
+    setModalOpen(true);
+  }
+
   function closeBooking() {
     setModalOpen(false);
   }
 
   function handleSucursalChange(nextSucursalId: string) {
     setBookingSucursalId(nextSucursalId);
-    setFeaturedSucursalId(nextSucursalId);
     setServicioId("");
     setProfesionalId("");
     setFechaTurno("");
@@ -349,373 +336,116 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     }
   }
 
-  const heroStats = [
-    { value: "4.9", label: "valoracion promedio" },
-    { value: "2", label: "sucursales" },
-    { value: "+10", label: "servicios destacados" },
-  ];
-
-  const beneficios = [
-    {
-      title: "Atencion personalizada",
-      text: "Cada visita se piensa con tiempo, detalle y una propuesta que se adapta a tu estilo.",
-    },
-    {
-      title: "Equipo de confianza",
-      text: "Profesionales con especialidades claras para ayudarte a elegir con tranquilidad.",
-    },
-    {
-      title: "Reserva simple",
-      text: "Elegi sucursal, servicio y horario desde una experiencia clara y comoda.",
-    },
-  ];
+  const totalServicios = snapshot.servicios.length;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f4ece4_0%,transparent_28%),radial-gradient(circle_at_top_right,#eef4eb_0%,transparent_20%),linear-gradient(180deg,#faf8f4_0%,#ffffff_48%,#f4f1ea_100%)] text-foreground">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 pb-16 pt-4 sm:px-6 lg:px-8">
-        <header className="sticky top-3 z-40">
-          <div className="rounded-full border border-white/70 bg-white/88 px-4 py-3 shadow-[0_14px_40px_rgba(44,53,37,0.08)] backdrop-blur">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <Image
-                  src="/logo-malala.png"
-                  alt="Logo MALALA"
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 rounded-full border border-stone-100 object-cover"
-                />
-                <div>
-                  <p className="font-display text-xl uppercase tracking-[0.28em] text-ink">MALALA</p>
-                  <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">
-                    Club de belleza
-                  </p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-sand text-foreground">
+      <header className="sticky top-0 z-40 border-b border-stone-100 bg-sand/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+          <a href="#" className="flex items-center gap-3">
+            <Image
+              src="/logo-malala.png"
+              alt="MALALA"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain"
+            />
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-lg uppercase tracking-[0.3em] text-ink">
+                Malala
+              </span>
+              <span className="mt-1 text-[0.52rem] uppercase tracking-[0.3em] text-stone-500">
+                Hair and Nails
+              </span>
+            </span>
+          </a>
 
-              <nav className="hidden items-center gap-6 text-sm text-stone-700 lg:flex">
-                <a href="#servicios" className="transition hover:text-ink">Servicios</a>
-                <a href="#sucursales" className="transition hover:text-ink">Sucursales</a>
-                <a href="#contacto" className="transition hover:text-ink">Contacto</a>
-                <a href={storeUrl} target="_blank" rel="noreferrer" className="transition hover:text-ink">
-                  Tienda online
-                </a>
-              </nav>
+          <nav className="hidden items-center gap-8 text-[0.68rem] uppercase tracking-[0.22em] text-stone-700 md:flex">
+            <a href="#servicios" className="transition hover:text-ink">
+              Servicios
+            </a>
+            <a href="#sucursales" className="transition hover:text-ink">
+              Sucursales
+            </a>
+            <a href="#contacto" className="transition hover:text-ink">
+              Contacto
+            </a>
+          </nav>
 
-              <div className="flex items-center gap-2">
-                {loggedInLabel ? (
-                  <a
-                    href="/dashboard"
-                    className="hidden rounded-full border border-sage-200 bg-sage-50 px-4 py-2 text-sm font-medium text-sage-900 transition hover:bg-sage-100 sm:inline-flex"
-                  >
-                    {loggedInLabel}
-                  </a>
-                ) : (
-                  <a
-                    href="/dev/login"
-                    className="hidden rounded-full border border-border px-4 py-2 text-sm text-muted-foreground transition hover:border-sage-200 hover:text-foreground sm:inline-flex"
-                  >
-                    Acceso interno
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => openBooking()}
-                  className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sage-700"
-                >
-                  Reserva tu turno
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
+          <button
+            type="button"
+            onClick={() => openBooking()}
+            className="shrink-0 rounded-full bg-ink px-5 py-3 text-[0.62rem] font-medium uppercase tracking-[0.18em] text-white transition hover:bg-brown-500"
+          >
+            Reserva tu turno
+          </button>
+        </div>
+      </header>
 
-        <HeroVideoShowcase
+      <main>
+        <HeroExperiencia
           onReserve={() => openBooking()}
           whatsappUrl={whatsappUrl}
-          storeUrl={storeUrl}
-          heroStats={heroStats}
+          totalServicios={totalServicios}
         />
 
-        <section className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="rounded-[2rem] border border-white/70 bg-[#f6efe8] p-6 shadow-[0_20px_60px_rgba(44,53,37,0.05)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Nuestra experiencia</p>
-            <h2 className="mt-3 text-3xl font-semibold text-ink">Un lugar pensado para disfrutar tu momento</h2>
-            <p className="mt-4 text-sm leading-7 text-stone-700 sm:text-base">
-              En MALALA queremos que cada visita se sienta cuidada desde el primer momento. Por eso unimos atencion personalizada, servicios elegidos con detalle y una forma comoda de reservar.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => openBooking()}
-                className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-              >
-                Reserva tu turno
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-sage-200"
-              >
-                Hablar por WhatsApp
-                <Phone className="h-4 w-4 text-sage-700" />
-              </a>
-            </div>
-          </div>
+        <SucursalesShowcase
+          sucursales={snapshot.sucursales}
+          onReserve={(sucursalId) => openBooking(sucursalId)}
+        />
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {beneficios.map((item) => (
-              <div
-                key={item.title}
-                className="rounded-[1.75rem] border border-white/70 bg-white/88 p-5 shadow-[0_16px_50px_rgba(44,53,37,0.05)]"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sage-50 text-sage-900">
-                  <Sparkles className="h-5 w-5" />
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-ink">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-700">{item.text}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <ServiciosShowcase
+          servicios={snapshot.servicios}
+          onSelectRubro={openBookingConRubro}
+        />
 
-        <section id="servicios" className="space-y-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Servicios destacados</p>
-              <h2 className="text-3xl font-semibold text-ink">Elige la experiencia que mejor acompana tu momento</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => openBooking()}
-              className="inline-flex items-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
-            >
-              Reserva tu turno
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-3">
-            {destacados.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => openBooking(undefined, item.id)}
-                className="relative overflow-hidden rounded-[1.8rem] border border-stone-100 bg-white p-5 text-left shadow-[0_14px_45px_rgba(44,53,37,0.04)] transition hover:border-sage-200 hover:bg-sage-50/40"
-              >
-                <span className="absolute right-0 top-0 rounded-bl-2xl bg-[#e53b2d] px-3 py-1 text-xs font-semibold text-white">
-                  {item.destacado_pct}% OFF
-                </span>
-                <div className="space-y-3">
-                  <p className="text-lg font-semibold text-ink">{item.nombre}</p>
-                  <p className="text-sm leading-6 text-stone-700">{item.descripcion_corta}</p>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-stone-700">
-                    <span className="font-semibold text-ink">Desde {formatARS(item.precio_efectivo)}</span>
-                    <span className="line-through text-stone-400">{formatARS(item.precio_lista)}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock3 className="h-4 w-4 text-sage-700" />
-                      {item.duracion_min} min
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section
-          id="sucursales"
-          className="space-y-6 rounded-[2.2rem] border border-white/70 bg-white/88 p-6 shadow-[0_20px_60px_rgba(44,53,37,0.06)]"
-        >
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Nuestras sucursales</p>
-              <h2 className="text-3xl font-semibold text-ink">Elige el espacio que te resulte mas comodo</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => openBooking()}
-              className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-            >
-              Quiero mi cita
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            {snapshot.sucursales.map((item, index) => {
-              const active = item.id === featuredSucursalId;
-              return (
-                <article
-                  key={item.id}
-                  className={cn(
-                    "overflow-hidden rounded-[1.8rem] border transition",
-                    active
-                      ? "border-sage-300 bg-sage-50/70 shadow-[0_16px_50px_rgba(44,53,37,0.08)]"
-                      : "border-stone-100 bg-white",
-                  )}
-                >
-                  <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-                    <div className="border-b border-stone-100 bg-[linear-gradient(155deg,#f8f3ea_0%,#fff_42%,#edf2e9_100%)] p-5 lg:border-b-0 lg:border-r">
-                      <div className="space-y-4">
-                        <span className="inline-flex rounded-full border border-stone-200 bg-white/90 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                          Sucursal {index + 1}
-                        </span>
-                        <div>
-                          <h3 className="text-2xl font-semibold text-ink">{item.nombre}</h3>
-                          <p className="mt-2 text-sm leading-6 text-stone-700">{item.descripcion_corta}</p>
-                        </div>
-                        <div className="space-y-3 text-sm text-stone-700">
-                          <p className="flex items-start gap-2">
-                            <MapPin className="mt-0.5 h-4 w-4 text-sage-700" />
-                            <span>{item.direccion}</span>
-                          </p>
-                          <p className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-sage-700" />
-                            <span>{item.telefono}</span>
-                          </p>
-                          <p className="flex items-center gap-2">
-                            <Star className="h-4 w-4 fill-current text-[#c69b4e]" />
-                            <span>{item.rating?.toFixed(1)} · {item.reviews} reseñas</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col justify-between gap-4 p-5">
-                      <div className="overflow-hidden rounded-[1.35rem] border border-stone-100">
-                        <Image
-                          src={index % 2 === 0 ? "/landing-service-editorial.svg" : "/landing-shop-editorial.svg"}
-                          alt={`Visual de ${item.nombre}`}
-                          width={920}
-                          height={1100}
-                          className="h-56 w-full object-cover"
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFeaturedSucursalId(item.id);
-                            openBooking(item.id);
-                          }}
-                          className="inline-flex items-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-                        >
-                          Reserva aqui
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFeaturedSucursalId(item.id)}
-                          className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-3 text-sm font-semibold text-foreground transition hover:border-sage-200 hover:bg-sage-50"
-                        >
-                          Ver destacada
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        <section id="contacto" className="space-y-6">
-          <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Contacto y ubicacion</p>
-            <h2 className="text-3xl font-semibold text-ink">Estamos cerca para acompanarte</h2>
-            <p className="text-sm leading-7 text-stone-700 sm:text-base">
-              Puedes encontrarnos, escribirnos o reservar desde cualquiera de nuestras sedes. Queremos que llegar a MALALA sea tan simple como disfrutarlo.
-            </p>
-          </div>
-
-          {snapshot.sucursales.length === 0 ? (
-            <p className="text-sm text-stone-500">Próximamente disponible.</p>
-          ) : (
-            <div className="grid gap-6 xl:grid-cols-2">
-              {snapshot.sucursales.map((item, index) => {
-                const embedUrl = isSafeMapUrl(item.mapa_url) ? item.mapa_url : (index === 0 ? mapEmbedUrl : null);
-                const e164 = tryNormalizarTelefonoAR(item.telefono);
-                const waUrl = e164
-                  ? `https://api.whatsapp.com/send/?phone=${e164.slice(1)}&text&type=phone_number&app_absent=0`
-                  : null;
-                return (
-                  <div
-                    key={item.id}
-                    className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/88 shadow-[0_20px_60px_rgba(44,53,37,0.06)]"
-                  >
-                    {embedUrl ? (
-                      <div className="h-[280px]">
-                        <iframe
-                          src={embedUrl}
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          referrerPolicy="strict-origin-when-cross-origin"
-                          title={`Mapa de ${item.nombre}`}
-                        />
-                      </div>
-                    ) : null}
-                    <div className="space-y-4 p-6">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
-                          Sucursal {index + 1}
-                        </p>
-                        <h3 className="mt-1 text-xl font-semibold text-ink">{item.nombre}</h3>
-                      </div>
-
-                      <div className="space-y-3 rounded-[1.5rem] border border-stone-100 bg-cream/55 p-4">
-                        {item.direccion ? (
-                          <div className="flex items-start gap-3">
-                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-sage-700" />
-                            <span className="text-sm text-stone-700">{item.direccion}</span>
-                          </div>
-                        ) : null}
-                        {item.telefono ? (
-                          <div className="flex items-center gap-3 text-sm text-stone-700">
-                            <Phone className="h-4 w-4 shrink-0 text-sage-700" />
-                            <span>{item.telefono}</span>
-                          </div>
-                        ) : null}
-                        {item.horario_resumen ? (
-                          <div className="flex items-center gap-3 text-sm text-stone-700">
-                            <Clock3 className="h-4 w-4 shrink-0 text-sage-700" />
-                            <span>{item.horario_resumen}</span>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {waUrl ? (
-                          <a
-                            href={waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 rounded-full border border-sage-200 bg-sage-50 px-5 py-3 text-sm font-semibold text-sage-900 transition hover:bg-sage-100"
-                          >
-                            WhatsApp
-                            <MessageCircle className="h-4 w-4" />
-                          </a>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => openBooking(item.id)}
-                          className="inline-flex items-center justify-center gap-2 rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sage-700"
-                        >
-                          Reservar aqui
-                          <ArrowRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+        <PromocionesBand />
       </main>
+
+      <footer id="contacto" className="bg-ink text-white">
+        <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8">
+          <div className="grid gap-10 md:grid-cols-[1fr_1fr]">
+            <div>
+              <p className="font-display text-2xl uppercase tracking-[0.3em]">
+                Malala
+              </p>
+              <p className="mt-2 text-[0.6rem] uppercase tracking-[0.3em] text-white/60">
+                Hair and Nails
+              </p>
+              <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.68rem] uppercase tracking-[0.2em] text-white/80">
+                <a href={storeUrl} target="_blank" rel="noreferrer" className="transition hover:text-white">
+                  Tienda online
+                </a>
+                <a href={whatsappUrl} target="_blank" rel="noreferrer" className="transition hover:text-white">
+                  WhatsApp
+                </a>
+                <a href={loggedInLabel ? "/dashboard" : "/dev/login"} className="transition hover:text-white">
+                  {loggedInLabel ?? "Acceso interno"}
+                </a>
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              {snapshot.sucursales.map((item) => (
+                <div key={item.id} className="space-y-2">
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em]">
+                    {item.nombre}
+                  </p>
+                  {item.direccion ? (
+                    <p className="text-xs leading-5 text-white/70">{item.direccion}</p>
+                  ) : null}
+                  {item.telefono ? (
+                    <p className="text-xs text-white/70">{item.telefono}</p>
+                  ) : null}
+                  {item.horario_resumen ? (
+                    <p className="text-xs leading-5 text-white/50">{item.horario_resumen}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {modalOpen ? (
         <BookingModal
@@ -728,7 +458,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           sucursalId={bookingSucursalId}
           onSucursalChange={handleSucursalChange}
           categorias={categorias}
-          categoria={categoria}
+          categoria={categoriaEfectiva}
           onCategoriaChange={setCategoria}
           search={search}
           onSearchChange={setSearch}
@@ -785,7 +515,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
         <button
           type="button"
           onClick={() => openBooking()}
-          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-center rounded-full bg-sage-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(44,53,37,0.28)] transition hover:bg-sage-700 lg:hidden"
+          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-center rounded-full bg-ink px-5 py-3 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-white shadow-[0_18px_40px_rgba(43,34,26,0.35)] transition hover:bg-brown-500 lg:hidden"
         >
           Reserva tu turno
         </button>

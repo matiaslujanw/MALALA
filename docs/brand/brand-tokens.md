@@ -1,6 +1,6 @@
 # MALALA — Brand Tokens
 
-> Sistema de diseño para el sistema de gestión de MALALA Hair and Nails. Estos tokens se aplican en `globals.css`, `tailwind.config.ts` y los componentes shadcn/ui.
+> Sistema de diseño de MALALA Hair and Nails, común a la landing pública y a la app interna. Los tokens viven **solo** en `src/app/globals.css` (Tailwind v4, bloque `@theme inline`): no hay `tailwind.config.ts`.
 
 ---
 
@@ -17,40 +17,22 @@
 
 ## 2. Tipografías
 
-Como Engravers Gothic y Bantayog son comerciales, usamos alternativas Google Fonts gratuitas que mantienen la estética:
+El brief de marca pide **Gotham → Lato → Helvetica**. Gotham es comercial (Hoefler&Co) y no se distribuye acá, así que servimos Lato desde Google Fonts; el stack la deja primero para que, si algún día se licencia y se instala, gane sin tocar código.
 
-| Rol en el sistema | Fuente original | Reemplazo Google Fonts | Uso |
-|---|---|---|---|
-| Display / Logo / Headers grandes | Engravers Gothic Regular | **Cinzel** (regular 400) | Logo en sidebar, títulos de página tipo "VENTAS", "STOCK" |
-| UI / Body / Forms / Tablas | Bantayog | **Montserrat** (300, 400, 500, 600, 700) | Todo el resto |
+| Rol | Fuente | Uso |
+|---|---|---|
+| UI / Body / Forms / Tablas | **Lato** (300, 400, 700, 900) | Todo el texto corriente, landing y app interna |
+| Display / Logo / Headers grandes | **Cinzel** (400, 500) | Logo, "EXPERIENCIA MALALA", títulos tipo "VENTAS", "STOCK" |
+| Script editorial | **Pinyon Script** (400) | Solo landing: título "Servicios" y placeholders de foto |
 
-**Importación en `app/layout.tsx`:**
+**Importación en `src/app/layout.tsx`:** `next/font/google` expone `--font-lato`, `--font-display` y `--font-script`, y las tres variables se aplican en el `<html>`.
 
-```tsx
-import { Cinzel, Montserrat } from "next/font/google";
+**Stack en `globals.css` (`@theme inline`):**
 
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-display",
-});
-
-const montserrat = Montserrat({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-sans",
-});
-
-// En el <html>: className={`${cinzel.variable} ${montserrat.variable}`}
-```
-
-**Configuración en `tailwind.config.ts`:**
-
-```ts
-fontFamily: {
-  sans: ["var(--font-sans)", "system-ui", "sans-serif"],
-  display: ["var(--font-display)", "serif"],
-}
+```css
+--font-sans: Gotham, var(--font-lato), "Helvetica Neue", Helvetica, Arial, sans-serif;
+--font-display: var(--font-display), serif;
+--font-script: var(--font-script), cursive;
 ```
 
 **Jerarquía tipográfica:**
@@ -70,77 +52,51 @@ fontFamily: {
 
 ## 3. Paleta de colores
 
-Base blanco/negro del logo + verdes botánicos como acento (sage, eucalyptus). Pensado para un dashboard que se mira muchas horas: alto contraste pero sin estridencias.
+Tres colores de marca — **marrón `#5D4B3D`, verde `#495A47`, claro `#E0DFDC`** — sobre una base de neutros cálidos. Pensado para un dashboard que se mira muchas horas: alto contraste pero sin estridencias.
 
-### Colores raw
+> Nota de nomenclatura: la escala verde sigue llamándose `sage-*` porque la usan ~79 archivos de la app interna. Los **nombres** se conservan, los **valores** son los de marca.
+
+### Colores raw (`:root` en `globals.css`)
 
 ```css
 /* Neutros (base) */
 --white:           #FFFFFF;
---off-white:       #FAFAF9;   /* fondo principal */
---cream:           #F5F4F0;   /* fondos sutiles, hover */
---stone-100:       #E7E5E0;   /* bordes claros */
---stone-300:       #C4C2BC;   /* bordes default */
+--off-white:       #F7F6F4;   /* fondo principal de la app */
+--cream:           #EEEDEA;   /* fondos sutiles, hover */
+--sand:            #E0DFDC;   /* "clarito" de marca — fondo de secciones de landing */
+--stone-100:       #D8D6D2;   /* bordes claros */
+--stone-300:       #B4B2AD;   /* bordes default */
 --stone-500:       #78766F;   /* texto secundario */
 --stone-700:       #3F3D38;   /* texto cuerpo */
---ink:             #1A1A1A;   /* texto principal, casi negro */
---black:           #000000;   /* logo, énfasis máximo */
+--ink:             #1A1A1A;   /* texto principal, bandas negras */
+--black:           #000000;
 
-/* Verdes botánicos (acento) */
---sage-50:         #F2F5F0;   /* fondos sutiles de éxito/info */
---sage-100:        #DDE5D6;   /* badges suaves */
---sage-300:        #A8B89A;
---sage-500:        #6E8060;   /* acento principal — botones, links, focus */
---sage-700:        #4A5840;   /* hover de acento */
---sage-900:        #2C3525;   /* texto sobre fondos sage claros */
+/* Verde de marca (escala "sage") */
+--sage-50:         #F1F4F0;
+--sage-100:        #DCE3DA;
+--sage-200:        #C3CDC0;
+--sage-300:        #9AA898;
+--sage-500:        #495A47;   /* verde de marca — botones, links, focus */
+--sage-700:        #3A4739;   /* hover de acento */
+--sage-800:        #2C362B;
+--sage-900:        #1F271E;
+
+/* Marrón de marca */
+--brown-50:        #F5F2EF;
+--brown-100:       #E6DFD8;
+--brown-300:       #A89485;
+--brown-500:       #5D4B3D;   /* marrón de marca — velo del hero, banda de promos */
+--brown-700:       #453729;
+--brown-900:       #2B221A;
 
 /* Semánticos */
---success:         #6E8060;   /* = sage-500, coherente */
+--success:         #495A47;   /* = sage-500, coherente */
 --warning:         #C9A961;   /* dorado tenue, no chillón */
 --danger:          #A84A3D;   /* rojo terracota, no rojo puro */
---info:            #6E8060;   /* mismo verde, no azul */
+--info:            #495A47;   /* mismo verde, no azul */
 ```
 
-### Tokens shadcn/ui (en `globals.css`)
-
-```css
-@layer base {
-  :root {
-    --background: 36 17% 98%;          /* off-white */
-    --foreground: 0 0% 10%;            /* ink */
-
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-
-    --primary: 92 14% 44%;             /* sage-500 */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 40 15% 95%;           /* cream */
-    --secondary-foreground: 0 0% 10%;
-
-    --muted: 40 15% 95%;
-    --muted-foreground: 36 4% 46%;     /* stone-500 */
-
-    --accent: 92 14% 44%;              /* sage-500 */
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 9 47% 45%;          /* terracota */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 40 8% 88%;               /* stone-100 */
-    --input: 40 8% 88%;
-    --ring: 92 14% 44%;                /* sage-500 para focus */
-
-    --radius: 0.375rem;                /* 6px — sobrio, no muy redondeado */
-  }
-
-  /* Modo oscuro: opcional, no priorizar en Fase 1.
-     Si lo activan después: invertir base manteniendo sage como acento. */
-}
-```
+Los tokens shadcn (`--background`, `--primary`, `--border`, …) son alias de los de arriba y están definidos más abajo en el mismo `:root`; `@theme inline` los expone como utilidades (`bg-primary`, `text-sage-700`, `bg-brown-500`, `bg-sand`). No hay modo oscuro.
 
 ### Reglas de uso por contexto
 
@@ -157,6 +113,7 @@ Base blanco/negro del logo + verdes botánicos como acento (sage, eucalyptus). P
 | Stock bajo | `bg-warning/10 text-warning` | Dorado tenue |
 | Stock negativo | `bg-destructive/10 text-destructive` | Terracota |
 | Cerrado / inactivo | `bg-stone-100 text-stone-500` | Caja cerrada, cliente inactivo |
+| Bandas de landing | `bg-ink` / `bg-sand` / `bg-brown-500` | Negro para títulos de sección, claro para separadores, marrón para promos e Instagram |
 
 ---
 
@@ -240,5 +197,5 @@ Archivo: `/public/brand/logo.png` (usar el PNG provisto por la marca).
 - Colores saturados (rosas chicle, dorados brillantes, azules vivos) — no pertenecen al universo de marca
 - Bordes redondeados grandes (`rounded-xl`, `rounded-2xl`)
 - Iconos de stroke grueso o con relleno
-- Mezclar más de 2 fuentes en una misma vista
+- Mezclar más de 2 fuentes en una misma vista de la app interna (la landing usa 3: Lato + Cinzel + un toque de Pinyon Script)
 - Usar Cinzel (display) para textos largos o números — es ilegible en cuerpo

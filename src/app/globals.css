@@ -6,30 +6,42 @@
    ============================================================ */
 
 :root {
-  /* Neutros */
+  /* Neutros. --sand es el "clarito" de marca (#e0dfdc). */
   --white: #ffffff;
-  --off-white: #fafaf9;
-  --cream: #f5f4f0;
-  --stone-100: #e7e5e0;
-  --stone-300: #c4c2bc;
+  --off-white: #f7f6f4;
+  --cream: #eeedea;
+  --sand: #e0dfdc;
+  --stone-100: #d8d6d2;
+  --stone-300: #b4b2ad;
   --stone-500: #78766f;
   --stone-700: #3f3d38;
   --ink: #1a1a1a;
   --black: #000000;
 
-  /* Sage (acento) */
-  --sage-50: #f2f5f0;
-  --sage-100: #dde5d6;
-  --sage-300: #a8b89a;
-  --sage-500: #6e8060;
-  --sage-700: #4a5840;
-  --sage-900: #2c3525;
+  /* Verde de marca (#495a47). Escala histórica "sage": los nombres se
+     mantienen porque los usa toda la app interna, los valores son los nuevos. */
+  --sage-50: #f1f4f0;
+  --sage-100: #dce3da;
+  --sage-200: #c3cdc0;
+  --sage-300: #9aa898;
+  --sage-500: #495a47;
+  --sage-700: #3a4739;
+  --sage-800: #2c362b;
+  --sage-900: #1f271e;
+
+  /* Marrón de marca (#5d4b3d) */
+  --brown-50: #f5f2ef;
+  --brown-100: #e6dfd8;
+  --brown-300: #a89485;
+  --brown-500: #5d4b3d;
+  --brown-700: #453729;
+  --brown-900: #2b221a;
 
   /* Semánticos */
-  --success: #6e8060;
+  --success: #495a47;
   --warning: #c9a961;
   --danger: #a84a3d;
-  --info: #6e8060;
+  --info: #495a47;
 
   /* Tokens shadcn-style */
   --background: var(--off-white);
@@ -64,8 +76,11 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-sans), system-ui, sans-serif;
+  /* Gotham va primero: si algún día se licencia y se instala/carga, gana sin
+     tocar código. Lato es la que servimos hoy; Helvetica cierra el stack. */
+  --font-sans: Gotham, var(--font-lato), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-display: var(--font-display), serif;
+  --font-script: var(--font-script), cursive;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -89,16 +104,26 @@
 
   --color-sage-50: var(--sage-50);
   --color-sage-100: var(--sage-100);
+  --color-sage-200: var(--sage-200);
   --color-sage-300: var(--sage-300);
   --color-sage-500: var(--sage-500);
   --color-sage-700: var(--sage-700);
+  --color-sage-800: var(--sage-800);
   --color-sage-900: var(--sage-900);
+
+  --color-brown-50: var(--brown-50);
+  --color-brown-100: var(--brown-100);
+  --color-brown-300: var(--brown-300);
+  --color-brown-500: var(--brown-500);
+  --color-brown-700: var(--brown-700);
+  --color-brown-900: var(--brown-900);
 
   --color-stone-100: var(--stone-100);
   --color-stone-300: var(--stone-300);
   --color-stone-500: var(--stone-500);
   --color-stone-700: var(--stone-700);
 
+  --color-sand: var(--sand);
   --color-cream: var(--cream);
   --color-ink: var(--ink);
   --color-success: var(--success);
