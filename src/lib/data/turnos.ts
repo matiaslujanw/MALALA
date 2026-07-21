@@ -83,6 +83,7 @@ export function mapServicio(
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,
     activo: row.activo,
+    visible_reserva: row.visibleReserva,
     duracion_min: row.duracionMin ?? undefined,
     descripcion_corta: row.descripcionCorta ?? undefined,
     destacado_pct: row.destacadoPct ?? undefined,
@@ -227,10 +228,17 @@ async function getSucursalesActivas(scopeIds?: string[]) {
 
 async function getServiciosActivos() {
   const db = getDb();
+  // Solo los visibles en reserva: los servicios solo-caja (visible_reserva=false,
+  // ej. precios internos por largo de pelo) no se muestran ni generan turnos.
   const rows = await db
     .select()
     .from(serviciosTable)
-    .where(eq(serviciosTable.activo, true))
+    .where(
+      and(
+        eq(serviciosTable.activo, true),
+        eq(serviciosTable.visibleReserva, true),
+      ),
+    )
     .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
   const servicios = rows.map(mapServicio);
 

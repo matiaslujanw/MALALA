@@ -22,6 +22,7 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,
     activo: row.activo,
+    visible_reserva: row.visibleReserva,
     duracion_min: row.duracionMin ?? undefined,
     descripcion_corta: row.descripcionCorta ?? undefined,
     destacado_pct: row.destacadoPct ?? undefined,
@@ -132,6 +133,9 @@ function parse(formData: FormData) {
     precio_efectivo: formData.get("precio_efectivo"),
     duracion_min: formData.get("duracion_min"),
     activo: formData.get("activo") === "on" || formData.get("activo") === "true",
+    visible_reserva:
+      formData.get("visible_reserva") === "on" ||
+      formData.get("visible_reserva") === "true",
   });
 }
 
@@ -158,6 +162,7 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
     comisionDefaultPct: 0, // la comisión la define el % del empleado
     duracionMin: parsed.data.duracion_min,
     activo: parsed.data.activo,
+    visibleReserva: parsed.data.visible_reserva,
   });
 
   // Membresía: el servicio queda habilitado en la sucursal activa del admin.
@@ -210,6 +215,7 @@ export async function updateServicio(
       // comisionDefaultPct ya no se gestiona desde el servicio.
       duracionMin: parsed.data.duracion_min,
       activo: parsed.data.activo,
+      visibleReserva: parsed.data.visible_reserva,
     })
     .where(eq(serviciosTable.id, servicioId));
 

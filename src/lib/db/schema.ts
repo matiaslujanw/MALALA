@@ -222,6 +222,11 @@ export const servicios = pgTable("servicios", {
   precioEfectivo: doublePrecision("precio_efectivo").notNull(),
   comisionDefaultPct: doublePrecision("comision_default_pct").notNull(),
   activo: boolean("activo").notNull().default(true),
+  // Visible en la reserva pública / agenda de turnos. Cuando es false el
+  // servicio se puede vender en la caja pero NO aparece en el menú del cliente
+  // ni genera turnos: sirve para los precios internos por largo de pelo
+  // (tiers 1/2/3/4) de los que en la web se muestra un único "desde".
+  visibleReserva: boolean("visible_reserva").notNull().default(true),
   duracionMin: integer("duracion_min"),
   descripcionCorta: text("descripcion_corta"),
   destacadoPct: integer("destacado_pct"),

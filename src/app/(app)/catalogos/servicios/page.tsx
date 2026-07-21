@@ -79,15 +79,25 @@ export default async function ServiciosPage() {
                         {formatARS(s.precio_efectivo)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {s.activo ? (
-                          <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
-                            Activo
-                          </span>
-                        ) : (
-                          <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
-                            Inactivo
-                          </span>
-                        )}
+                        <div className="flex items-center justify-center gap-1.5">
+                          {s.activo ? (
+                            <span className="bg-sage-100 text-sage-900 px-2 py-0.5 rounded text-xs">
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded text-xs">
+                              Inactivo
+                            </span>
+                          )}
+                          {s.visible_reserva === false && (
+                            <span
+                              className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-xs"
+                              title="Solo se cobra en caja: no aparece en la reserva online"
+                            >
+                              Solo caja
+                            </span>
+                          )}
+                        </div>
                       </td>
                       {user.rol === "admin" && (
                         <td className="px-4 py-3">

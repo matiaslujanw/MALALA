@@ -138,6 +138,24 @@ export function ServicioForm({
         <span>Activo</span>
       </label>
 
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="visible_reserva"
+            defaultChecked={servicio?.visible_reserva ?? true}
+            className="h-4 w-4 rounded border-border accent-sage-500"
+          />
+          <span>Visible en la reserva online</span>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Destildá para que sea solo de caja: se puede cobrar en el mostrador
+          pero no aparece en la web del cliente ni genera turnos. Se usa para los
+          precios internos por largo de pelo (1/2/3/4), donde en la web se
+          muestra un único servicio.
+        </p>
+      </div>
+
       {errors._ && <p className="text-sm text-destructive">{errors._.join(", ")}</p>}
 
       <div className="flex items-center gap-3 pt-4">

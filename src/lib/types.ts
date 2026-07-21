@@ -134,6 +134,9 @@ export interface Servicio {
   precio_efectivo: number;
   comision_default_pct: number; // 0-100
   activo: boolean;
+  // Si es false, el servicio se cobra en caja pero no se muestra en la reserva
+  // pública ni genera turnos (precios internos por largo de pelo). Default true.
+  visible_reserva?: boolean;
   duracion_min?: number;
   descripcion_corta?: string;
   destacado_pct?: number;

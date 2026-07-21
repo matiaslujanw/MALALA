@@ -15,6 +15,8 @@ export const servicioSchema = z.object({
   // La comisión la define el % del empleado; el servicio ya no la maneja.
   comision_default_pct: z.coerce.number().min(0).max(100).optional().default(0),
   activo: z.coerce.boolean().default(true),
+  // false = solo-caja (no se muestra en la reserva pública ni genera turnos).
+  visible_reserva: z.coerce.boolean().default(true),
 });
 
 export type ServicioInput = z.infer<typeof servicioSchema>;
