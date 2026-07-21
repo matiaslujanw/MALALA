@@ -1,0 +1,2279 @@
+[
+ {
+  "cod": "PEL100",
+  "nombre": "Corte",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 53625,
+  "precioEfectivo": 42900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL101",
+  "nombre": "Corte flequillo",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 15125,
+  "precioEfectivo": 12100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL102",
+  "nombre": "Corte masculino",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 22000,
+  "precioEfectivo": 27500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL103",
+  "nombre": "Peinado recogido",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 56250,
+  "precioEfectivo": 45000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL104",
+  "nombre": "Peinado semirecogido",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 56250,
+  "precioEfectivo": 45000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL105",
+  "nombre": "Peinado ondas",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 56250,
+  "precioEfectivo": 45000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL106",
+  "nombre": "Corte Kids",
+  "rubro": "Peluqueria",
+  "subrubro": "Corte y peinado",
+  "precioLista": 20625,
+  "precioEfectivo": 16500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL200",
+  "nombre": "Lavado + Brushing",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL201",
+  "nombre": "Lavado + Brushing + planchita",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": 34100,
+  "precioEfectivo": 42625,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL202",
+  "nombre": "Lavado especial Kerastase",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": null,
+  "precioEfectivo": null,
+  "notaPrecio": "no tenemos"
+ },
+ {
+  "cod": "PEL203",
+  "nombre": "Lavado especial Loreal",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": 48125,
+  "precioEfectivo": 38500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL204",
+  "nombre": "Lavado especial Wella",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL205",
+  "nombre": "Lavado + Planchita",
+  "rubro": "Peluqueria",
+  "subrubro": "Lavados",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL300",
+  "nombre": "Nutricion Colageno 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL301",
+  "nombre": "Nutricion Colageno 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL302",
+  "nombre": "Nutricion intensa Wella 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": null,
+  "precioEfectivo": null,
+  "notaPrecio": "Pendiente"
+ },
+ {
+  "cod": "PEL303",
+  "nombre": "Nutricion intensa Wella 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": null,
+  "precioEfectivo": null,
+  "notaPrecio": "Pendiente"
+ },
+ {
+  "cod": "PEL304",
+  "nombre": "Nutricion intensa Loreal 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 63250,
+  "precioEfectivo": 50600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL305",
+  "nombre": "Nutricion intensa Loreal 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 75625,
+  "precioEfectivo": 60500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL306",
+  "nombre": "Nutricion intensa Olaplex 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 115500,
+  "precioEfectivo": 144375,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL307",
+  "nombre": "Nutricion intensa Olaplex 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 166375,
+  "precioEfectivo": 133100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL308",
+  "nombre": "Keraplex antifrizz 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 66000,
+  "precioEfectivo": 52800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL309",
+  "nombre": "Keraplex antifrizz 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 72875,
+  "precioEfectivo": 58300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL310",
+  "nombre": "Keraplex antifrizz 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 78375,
+  "precioEfectivo": 62700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL311",
+  "nombre": "Lumino Liss (alisado sin formol) 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 121000,
+  "precioEfectivo": 96800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL312",
+  "nombre": "Lumino Liss (alisado sin formol) 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 133375,
+  "precioEfectivo": 106700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL313",
+  "nombre": "Lumino Liss (alisado sin formol) 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 145750,
+  "precioEfectivo": 116600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL314",
+  "nombre": "Tratamiento BIOREPAIR CELL - UN PASO (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL315",
+  "nombre": "Tratamiento BIOREPAIR CELL - UN PASO (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 64625,
+  "precioEfectivo": 51700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL316",
+  "nombre": "Tratamiento BIOREPAIR CELL - DOS PASOS (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL317",
+  "nombre": "Tratamiento BIOREPAIR CELL - DOS PASOS (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 72875,
+  "precioEfectivo": 58300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL318",
+  "nombre": "Celulas Madres ALFAPARF (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 85250,
+  "precioEfectivo": 68200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL319",
+  "nombre": "Celulas Madres ALFAPARF (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL320",
+  "nombre": "Celulas Madres ALFAPARF (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 121000,
+  "precioEfectivo": 96800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL321",
+  "nombre": "Tratamiento wella fusion (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 78375,
+  "precioEfectivo": 62700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL322",
+  "nombre": "tratamiento wella fusion (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL323",
+  "nombre": "tratamiento wella fusion (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL324",
+  "nombre": "Nutricion Wella ULTIMATE REPAIR (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL325",
+  "nombre": "Nutricion Intensa Kerastase",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": null,
+  "precioEfectivo": null,
+  "notaPrecio": "no tenemos"
+ },
+ {
+  "cod": "PEL326",
+  "nombre": "Nutricion Wella ULTIMATE REPAIR (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL327",
+  "nombre": "Nutricion Wella ULTIMATE REPAIR (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 104500,
+  "precioEfectivo": 83600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL328",
+  "nombre": "Alisado (NUCA)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL329",
+  "nombre": "Tratamiento Loreal Absolute Molecular 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL330",
+  "nombre": "Tratamiento Loreal Absolute Molecular 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 123750,
+  "precioEfectivo": 99000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL331",
+  "nombre": "Tratamiento reparacion y sellado TWO BONACURE 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 72600,
+  "precioEfectivo": 58080,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL332",
+  "nombre": "Tratamiento reparacion y sellado TWO BONACURE 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 88000,
+  "precioEfectivo": 70400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL333",
+  "nombre": "Tratamiento FIBRE CLINIX reparacion profunda (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 82500,
+  "precioEfectivo": 66000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL334",
+  "nombre": "Tratamiento FIBRE CLINIX reparacion profunda (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 93500,
+  "precioEfectivo": 74800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL335",
+  "nombre": "Tratamiento Loreal VITAMINO SPECTRUM (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL336",
+  "nombre": "Tratamiento Loreal VITAMINO SPECTRUM (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 123750,
+  "precioEfectivo": 99000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL337",
+  "nombre": "Alisado (FLEQUILLO)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 33000,
+  "precioEfectivo": 26400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL338",
+  "nombre": "Alisado con formol (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 66000,
+  "precioEfectivo": 52800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL339",
+  "nombre": "Alisado con formol (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 72875,
+  "precioEfectivo": 58300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL340",
+  "nombre": "Alisado con formol (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 78375,
+  "precioEfectivo": 62700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL341",
+  "nombre": "EXILINE / Tratamiento Biocell vida celular (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL342",
+  "nombre": "EXILINE / Tratamiento Biocell vida celular (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 120312.5,
+  "precioEfectivo": 96250,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL343",
+  "nombre": "EXILINE / Tratamiento Biocell vida celular (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 137500,
+  "precioEfectivo": 110000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL344",
+  "nombre": "Keraplex 4",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 86225,
+  "precioEfectivo": 68980,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL345",
+  "nombre": "Nutricion Colageno 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 66550,
+  "precioEfectivo": 53240,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL346",
+  "nombre": "Lumino Liss ( Alisado SIN FORMOL ) 4",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 160325,
+  "precioEfectivo": 128260,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL347",
+  "nombre": "Tratamiento Loreal KERATIN ALPHA SLEEK (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL348",
+  "nombre": "Tratamiento Loreal KERATIN ALPHA SLEEK (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 123750,
+  "precioEfectivo": 99000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL349",
+  "nombre": "Tratamiento Loreal VITAMINO SPECTRUM (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 148500,
+  "precioEfectivo": 118800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL350",
+  "nombre": "Tratamiento Loreal KERATIN ALPHA SLEEK (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Tratamientos capilares",
+  "precioLista": 148500,
+  "precioEfectivo": 118800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL400",
+  "nombre": "Reflejo/Iluminacion (Precio 1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 136125,
+  "precioEfectivo": 108900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL401",
+  "nombre": "Reflejo/Iluminacion (Precio 2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 166375,
+  "precioEfectivo": 133100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL402",
+  "nombre": "Reflejo/Iluminacion (Precio 3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 226875,
+  "precioEfectivo": 181500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL403",
+  "nombre": "Reflejo/Iluminacion (Precio 4)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 332750,
+  "precioEfectivo": 266200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL404",
+  "nombre": "Reflejo/Iluminacion especial (Precio 1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 166375,
+  "precioEfectivo": 133100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL405",
+  "nombre": "Reflejo/Iluminacion especial (Precio 2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 226875,
+  "precioEfectivo": 181500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL406",
+  "nombre": "Reflejo/Iluminacion especial (Precio 3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 272250,
+  "precioEfectivo": 217800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL407",
+  "nombre": "Reflejo/Iluminacion especial (Precio 4)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 332750,
+  "precioEfectivo": 266200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL408",
+  "nombre": "Mechas contorno",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL409",
+  "nombre": "Mechas frontal",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 83875,
+  "precioEfectivo": 67100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL410",
+  "nombre": "Mechas contorno especial",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 105875,
+  "precioEfectivo": 84700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL411",
+  "nombre": "Mechas frontal especial",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 99000,
+  "precioEfectivo": 79200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL412",
+  "nombre": "Balayage con papel 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 181500,
+  "precioEfectivo": 145200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL413",
+  "nombre": "Balayage con papel 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 196625,
+  "precioEfectivo": 157300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL414",
+  "nombre": "Balayage con papel 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 220000,
+  "precioEfectivo": 176000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL415",
+  "nombre": "Balayage con papel 4",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 257125,
+  "precioEfectivo": 205700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL416",
+  "nombre": "Balayage especial con papel 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 211750,
+  "precioEfectivo": 169400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL417",
+  "nombre": "Balayage especial con papel 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 235125,
+  "precioEfectivo": 188100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL418",
+  "nombre": "Balayage especial con papel 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 272250,
+  "precioEfectivo": 217800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL419",
+  "nombre": "Balayage especial con papel 4",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 332750,
+  "precioEfectivo": 266200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL420",
+  "nombre": "Reverse balayage (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 127000,
+  "precioEfectivo": 101600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL421",
+  "nombre": "Reverse balayage (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 137640,
+  "precioEfectivo": 110112,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL422",
+  "nombre": "Reverse balagaye (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 154000,
+  "precioEfectivo": 123200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL423",
+  "nombre": "Reverse balagaye (4)",
+  "rubro": "Peluqueria",
+  "subrubro": "Trabajos tecnicos",
+  "precioLista": 180000,
+  "precioEfectivo": 144000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL500",
+  "nombre": "Aplicacion de color",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 50875,
+  "precioEfectivo": 40700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL501",
+  "nombre": "Gloss Question 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL502",
+  "nombre": "Gloss Question 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 75625,
+  "precioEfectivo": 60500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL503",
+  "nombre": "Color Raiz Question",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL504",
+  "nombre": "Color global Question 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 78375,
+  "precioEfectivo": 62700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL505",
+  "nombre": "Color global Question 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 103125,
+  "precioEfectivo": 82500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL506",
+  "nombre": "Color global Question 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 136125,
+  "precioEfectivo": 108900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL507",
+  "nombre": "Color Raiz question sin Amoniaco",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 68750,
+  "precioEfectivo": 55000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL508",
+  "nombre": "Color global question sin Amoniaco 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL509",
+  "nombre": "Color global question sin Amoniaco 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 114125,
+  "precioEfectivo": 91300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL510",
+  "nombre": "Color global question sin Amoniaco 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 151250,
+  "precioEfectivo": 121000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL511",
+  "nombre": "Color vincha Question",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL512",
+  "nombre": "Gloss Loreal 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 68750,
+  "precioEfectivo": 55000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL513",
+  "nombre": "Gloss Loreal 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 85250,
+  "precioEfectivo": 68200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL514",
+  "nombre": "Color Raiz Loreal",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL515",
+  "nombre": "Color global Loreal 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 108625,
+  "precioEfectivo": 86900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL516",
+  "nombre": "Color global Loreal 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 148500,
+  "precioEfectivo": 118800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL517",
+  "nombre": "Color global Loreal 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 196625,
+  "precioEfectivo": 157300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL518",
+  "nombre": "Color Raiz sin Amoniaco Loreal",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 82500,
+  "precioEfectivo": 103125,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL519",
+  "nombre": "Color global sin Amoniaco Loreal 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 181500,
+  "precioEfectivo": 145200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL520",
+  "nombre": "Color global sin Amoniaco Loreal 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 226875,
+  "precioEfectivo": 181500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL521",
+  "nombre": "Color global sin Amoniaco Loreal 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 302500,
+  "precioEfectivo": 242000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL522",
+  "nombre": "Color vincha Loreal",
+  "rubro": "Peluqueria",
+  "subrubro": "Coloracion",
+  "precioLista": 66000,
+  "precioEfectivo": 52800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL600",
+  "nombre": "Nutricion + Corte",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL601",
+  "nombre": "Color raices + Corte + Nutri + Brushing + Planchita",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL602",
+  "nombre": "Keraplex + Corte 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL603",
+  "nombre": "Keraplex + Corte 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 100000,
+  "precioEfectivo": 80000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL604",
+  "nombre": "Keraplex + Corte 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 110000,
+  "precioEfectivo": 88000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL605",
+  "nombre": "Reflejos + Corte + Colageno + Brushing o Planchita (Precio 1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 199375,
+  "precioEfectivo": 159500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL606",
+  "nombre": "Reflejos + Corte + Colageno + Brushing o Planchita (Precio 2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 217250,
+  "precioEfectivo": 173800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL607",
+  "nombre": "Reflejos + Corte + Colageno + Brushing o Planchita (Precio 3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 299750,
+  "precioEfectivo": 239800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL608",
+  "nombre": "Balayage + Gloss + Nutricion + Corte + Ondas 1",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 247500,
+  "precioEfectivo": 198000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL609",
+  "nombre": "Balayage + Gloss + Nutricion + Corte + Ondas 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 272250,
+  "precioEfectivo": 217800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL610",
+  "nombre": "Balayage + Gloss + Nutricion + Corte + Ondas 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 299750,
+  "precioEfectivo": 239800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL611",
+  "nombre": "PROMO ( Color Raiz + Nutri + Brushing-Planchita )",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 90750,
+  "precioEfectivo": 72600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL612",
+  "nombre": "PROMO ( Semi Manos y Pies + Keraplex )",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 74800,
+  "precioEfectivo": 59840,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL613",
+  "nombre": "PROMO ( Keraplex + Semi Manos y Pies )",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 49500,
+  "precioEfectivo": 39600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL614",
+  "nombre": "Corte + Lavado (Hombre)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 27500,
+  "precioEfectivo": 22000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL615",
+  "nombre": "PROMO ( Reflejos + Corte + Colageno + Brushing + Planchita ) 4",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 264000,
+  "precioEfectivo": 211200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL616",
+  "nombre": "PROMO ( Corte + Biorepair )",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 79200,
+  "precioEfectivo": 63360,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL617",
+  "nombre": "PROMO ( Nutricion + Corte ) largo 2",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 72600,
+  "precioEfectivo": 58080,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL618",
+  "nombre": "PROMO JUNIO / balayage+nutri+corte puntas (1)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 206250,
+  "precioEfectivo": 165000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL619",
+  "nombre": "PROMO JUNIO / balayage+nutri+corte puntas (2)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 225000,
+  "precioEfectivo": 180000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL620",
+  "nombre": "PROMO ( Nutricion + Corte ) largo 3",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 79860,
+  "precioEfectivo": 63888,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL621",
+  "nombre": "PROMO JUNIO / balayage+nutri+corte puntas (3)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 247500,
+  "precioEfectivo": 198000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL622",
+  "nombre": "PROMO JUNIO / balayage+nutri+corte puntas (4)",
+  "rubro": "Peluqueria",
+  "subrubro": "Combos",
+  "precioLista": 272250,
+  "precioEfectivo": 217800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL700",
+  "nombre": "Adicional Planchita",
+  "rubro": "Peluqueria",
+  "subrubro": "Adicionales",
+  "precioLista": 8800,
+  "precioEfectivo": 7040,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL701",
+  "nombre": "Pluma (Venta+Colocacion)",
+  "rubro": "Peluqueria",
+  "subrubro": "Adicionales",
+  "precioLista": 11000,
+  "precioEfectivo": 8800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL702",
+  "nombre": "Adicional ( Mechita Frontal )",
+  "rubro": "Peluqueria",
+  "subrubro": "Adicionales",
+  "precioLista": 13750,
+  "precioEfectivo": 11000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "PEL703",
+  "nombre": "Ajuste ( Cortinas + Colocación de Roll )",
+  "rubro": "Peluqueria",
+  "subrubro": "Adicionales",
+  "precioLista": 27500,
+  "precioEfectivo": 22000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI100",
+  "nombre": "Esmaltado Comun",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 18700,
+  "precioEfectivo": 23375,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI101",
+  "nombre": "Semi",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 22000,
+  "precioEfectivo": 27500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI102",
+  "nombre": "Kapping",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 33000,
+  "precioEfectivo": 26400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI103",
+  "nombre": "Esculpidas Soft Gel",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI104",
+  "nombre": "Polygel",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI105",
+  "nombre": "Podoestetica + esmaltado comun",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI106",
+  "nombre": "Podoestetica + esmaltado semi",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 53625,
+  "precioEfectivo": 42900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI107",
+  "nombre": "Remocion semi",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 9625,
+  "precioEfectivo": 7700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI108",
+  "nombre": "Remocion soft",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 12375,
+  "precioEfectivo": 9900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI109",
+  "nombre": "Deco (el par)",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 4125,
+  "precioEfectivo": 3300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI110",
+  "nombre": "Francesita / Chrome / Cat Eyes",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 4125,
+  "precioEfectivo": 3300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI111",
+  "nombre": "Baby boomer / Aerografo",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 8250,
+  "precioEfectivo": 6600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI112",
+  "nombre": "Reconstruccion por uña",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 4125,
+  "precioEfectivo": 3300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI113",
+  "nombre": "Reparacion por uña",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 2750,
+  "precioEfectivo": 2200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI114",
+  "nombre": "Semi manos + pies",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI115",
+  "nombre": "Esmaltado Comun manos + pies",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI116",
+  "nombre": "PROMO ( Semi Manos y Pies ) solo pies",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 24750,
+  "precioEfectivo": 19800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI117",
+  "nombre": "PROMO ( Semi Manos y Pies ) solo manos",
+  "rubro": "Nails",
+  "subrubro": "Nails",
+  "precioLista": 24750,
+  "precioEfectivo": 19800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "NAI200",
+  "nombre": "Adicional (KAPPING)",
+  "rubro": "Nails",
+  "subrubro": "Adicionales",
+  "precioLista": 5500,
+  "precioEfectivo": 4400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP101",
+  "nombre": "Laminado",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP102",
+  "nombre": "Diseño y perfilado de cejas",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 17875,
+  "precioEfectivo": 14300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP103",
+  "nombre": "Lifting de pestañas",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 27500,
+  "precioEfectivo": 22000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP104",
+  "nombre": "Combo laminado + perfilado",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP105",
+  "nombre": "PROMO (perfilado cejas + lifting pestañas - común)",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 45375,
+  "precioEfectivo": 36300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP106",
+  "nombre": "Lifting de Pestañas (coreano)",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 41250,
+  "precioEfectivo": 33000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "CEP107",
+  "nombre": "PROMO JUNIO (Laminado + lifting coreano)",
+  "rubro": "Cejas y pestañas",
+  "subrubro": "Cejas y pestañas",
+  "precioLista": 50000,
+  "precioEfectivo": 40000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC100",
+  "nombre": "Dermaplaning",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 49500,
+  "precioEfectivo": 39600,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC101",
+  "nombre": "limpieza facial profunda",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 56375,
+  "precioEfectivo": 45100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC102",
+  "nombre": "Full Facial (Dermaplaning + Limpieza profunda)",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 68750,
+  "precioEfectivo": 55000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC103",
+  "nombre": "maquillaje social",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 68750,
+  "precioEfectivo": 55000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC104",
+  "nombre": "Depilacion de bozo",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 17875,
+  "precioEfectivo": 14300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC105",
+  "nombre": "Depilación de mentón",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 17875,
+  "precioEfectivo": 14300,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC106",
+  "nombre": "Shock de Hidratacion Facial",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 41250,
+  "precioEfectivo": 33000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC107",
+  "nombre": "Limpieza Facial con peeling",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC108",
+  "nombre": "Spa facial con drenaje e hidratación",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "FAC109",
+  "nombre": "Maquillaje Produccion",
+  "rubro": "Facial",
+  "subrubro": "Facial",
+  "precioLista": 48125,
+  "precioEfectivo": 38500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS100",
+  "nombre": "Masaje descontracturante 60 min",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS101",
+  "nombre": "Masaje relajante 30 min",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS102",
+  "nombre": "Masaje relajante 60 min",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS103",
+  "nombre": "Masaje deportivo 30 min",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS104",
+  "nombre": "Masaje deportivo 60 min",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS105",
+  "nombre": "Pack masajes x4",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 136125,
+  "precioEfectivo": 108900,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS106",
+  "nombre": "Masajes Descontracturantes (30 MIN)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS107",
+  "nombre": "Masajes drenaje linfatico (30 MIN)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS108",
+  "nombre": "Masajes drenaje linfatico (1hora)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS109",
+  "nombre": "Prenatal / Postquirurgico",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 50875,
+  "precioEfectivo": 40700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS110",
+  "nombre": "Masajes piedras calientes",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 66000,
+  "precioEfectivo": 52800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS111",
+  "nombre": "Masaje holistico con pindas (1 hora)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 66000,
+  "precioEfectivo": 52800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS112",
+  "nombre": "Masajes reductores modelado por zona / celulitis (maderoterap - 30Min)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 34375,
+  "precioEfectivo": 27500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS113",
+  "nombre": "Masajes reductores o modelado por zona (celulitis - maderoterap 1 hora)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 42625,
+  "precioEfectivo": 34100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS114",
+  "nombre": "Maderoteria Facial (30Min)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS115",
+  "nombre": "Masaje lifting facial con drenaje (30Min)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MAS116",
+  "nombre": "Masajes antiestres para bruxismo y migrañas (30Min)",
+  "rubro": "Masajes",
+  "subrubro": "Masajes",
+  "precioLista": 23375,
+  "precioEfectivo": 18700,
+  "notaPrecio": null
+ },
+ {
+  "cod": "COR100",
+  "nombre": "Pulido Corporal",
+  "rubro": "Corporal",
+  "subrubro": "Corporal",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "COR101",
+  "nombre": "Full púlido espalda",
+  "rubro": "Corporal",
+  "subrubro": "Corporal",
+  "precioLista": 55000,
+  "precioEfectivo": 44000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC100",
+  "nombre": "Bed Head TIGI",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 60500,
+  "precioEfectivo": 48400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC101",
+  "nombre": "Small Talk TIGI",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 64350,
+  "precioEfectivo": 51480,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC102",
+  "nombre": "Protector Térmico TIGI",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 44000,
+  "precioEfectivo": 35200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC103",
+  "nombre": "ULTIMATE REPAIR Serum tratamiento 30ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 99000,
+  "precioEfectivo": 79200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC104",
+  "nombre": "ULTIMATE REPAIR Shampoo 250 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 99000,
+  "precioEfectivo": 79200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC105",
+  "nombre": "ULTIMATE REPAIR Mascara de tratamiento 150 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 137500,
+  "precioEfectivo": 110000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC106",
+  "nombre": "ULTIMATE SMOOTH - Shampoo 250 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 99000,
+  "precioEfectivo": 79200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC107",
+  "nombre": "ULTIMATE SMOOTH - Mascara de tratamiento 150 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 137500,
+  "precioEfectivo": 110000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC108",
+  "nombre": "ULTIMATE SMOOTH - Serum 30 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 107250,
+  "precioEfectivo": 85800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC109",
+  "nombre": "ULTIMATE SMOOTH - Acondicionador 200 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 107250,
+  "precioEfectivo": 85800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC110",
+  "nombre": "QUESTION - Shampoo",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 35200,
+  "precioEfectivo": 28160,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC111",
+  "nombre": "Maca Power colageno KARSEELL",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 39600,
+  "precioEfectivo": 31680,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC112",
+  "nombre": "TWELVE question",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 41250,
+  "precioEfectivo": 33000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC113",
+  "nombre": "Wella ULTIMATE REPAIR step 3",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 85800,
+  "precioEfectivo": 68640,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC114",
+  "nombre": "Shampu matizador QUESTION 200ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 29700,
+  "precioEfectivo": 23760,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC115",
+  "nombre": "After Party TIGI",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 36300,
+  "precioEfectivo": 29040,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC116",
+  "nombre": "Serum Antifrizz TIGI",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 88000,
+  "precioEfectivo": 70400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC117",
+  "nombre": "Mask ABSOLUT REPAIR MOLECULAR 250 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 110000,
+  "precioEfectivo": 88000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC118",
+  "nombre": "Shampoo ABSOLUT REPAIR MOLECULAR 300 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC119",
+  "nombre": "Serum ABSOLUT REPAIR MOLECULAR OIL 90 ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 123750,
+  "precioEfectivo": 99000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC120",
+  "nombre": "Masque ABSOLUT REPAIR MOLECULAR 100ml",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC121",
+  "nombre": "Karseell",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 39600,
+  "precioEfectivo": 31680,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC122",
+  "nombre": "Pearl SUERO ARGAN",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 27500,
+  "precioEfectivo": 22000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC123",
+  "nombre": "producto de prueba 2",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 13750,
+  "precioEfectivo": 11000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC124",
+  "nombre": "Aceite KARSELL",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 33000,
+  "precioEfectivo": 26400,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC125",
+  "nombre": "Aceite de cuticulas",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 16500,
+  "precioEfectivo": 13200,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC126",
+  "nombre": "Protector Termico STYLE question",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC127",
+  "nombre": "Spray KERATIN LIFT question",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 28875,
+  "precioEfectivo": 23100,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC128",
+  "nombre": "Shampoo vitamino Color",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC129",
+  "nombre": "Vitamino color 10 en 1",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC130",
+  "nombre": "Vitamino Color Acond",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 96250,
+  "precioEfectivo": 77000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC131",
+  "nombre": "Vitamino Color Mascara",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 110000,
+  "precioEfectivo": 88000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC132",
+  "nombre": "Vitamino Spectrum Acond",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 96250,
+  "precioEfectivo": 77000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC133",
+  "nombre": "Shampoo Vitamino Spectrum",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC134",
+  "nombre": "Mascara Vitamino Spectrum",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 110000,
+  "precioEfectivo": 88000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC135",
+  "nombre": "Serum Vitamina Spectrum",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC136",
+  "nombre": "Shampoo Absolut Repair",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 89375,
+  "precioEfectivo": 71500,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC137",
+  "nombre": "Acondicionador Absolut Repair",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 96250,
+  "precioEfectivo": 77000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC138",
+  "nombre": "Mascara Absolut Repair",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 110000,
+  "precioEfectivo": 88000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC139",
+  "nombre": "shampoo EXILINE",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 41800,
+  "precioEfectivo": 33440,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC140",
+  "nombre": "Active repair EXILINE",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 41800,
+  "precioEfectivo": 33440,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC141",
+  "nombre": "serum EXILINE",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 52800,
+  "precioEfectivo": 42240,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC142",
+  "nombre": "Dual EXILINE",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 41800,
+  "precioEfectivo": 33440,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VPC143",
+  "nombre": "mascara EXILINE",
+  "rubro": "Venta de productos capilares",
+  "subrubro": "Productos capilares",
+  "precioLista": 41800,
+  "precioEfectivo": 33440,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ100",
+  "nombre": "Collar CO001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 48400,
+  "precioEfectivo": 38720,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ101",
+  "nombre": "Collar CO002",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 41800,
+  "precioEfectivo": 33440,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ102",
+  "nombre": "Collar CO003",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 35200,
+  "precioEfectivo": 28160,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ103",
+  "nombre": "Aros AR001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 36300,
+  "precioEfectivo": 29040,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ104",
+  "nombre": "Aros AR002",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 30800,
+  "precioEfectivo": 24640,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ105",
+  "nombre": "Anillos AN001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ106",
+  "nombre": "Pulseras PU001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 38500,
+  "precioEfectivo": 30800,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ107",
+  "nombre": "Cuff CU001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 35200,
+  "precioEfectivo": 28160,
+  "notaPrecio": null
+ },
+ {
+  "cod": "VDJ108",
+  "nombre": "Hair HA001",
+  "rubro": "Venta de joyas",
+  "subrubro": "Joyas",
+  "precioLista": 25300,
+  "precioEfectivo": 20240,
+  "notaPrecio": null
+ },
+ {
+  "cod": "GFC100",
+  "nombre": "Gift Card",
+  "rubro": "Gift Cards",
+  "subrubro": "Gift Cards",
+  "precioLista": 200000,
+  "precioEfectivo": 160000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "GFC101",
+  "nombre": "Gift card x $160.000",
+  "rubro": "Gift Cards",
+  "subrubro": "Gift Cards",
+  "precioLista": 220000,
+  "precioEfectivo": 176000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "GFC102",
+  "nombre": "gift card ESPECIAL",
+  "rubro": "Gift Cards",
+  "subrubro": "Gift Cards",
+  "precioLista": 165000,
+  "precioEfectivo": 132000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "GFC103",
+  "nombre": "monto gift card x $30.000",
+  "rubro": "Gift Cards",
+  "subrubro": "Gift Cards",
+  "precioLista": 37500,
+  "precioEfectivo": 30000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "GFC104",
+  "nombre": "Gif card x $60000",
+  "rubro": "Gift Cards",
+  "subrubro": "Gift Cards",
+  "precioLista": 60000,
+  "precioEfectivo": 48000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "COM102",
+  "nombre": "Comision Maquillaje",
+  "rubro": "Otros Ingresos",
+  "subrubro": "Comisiones",
+  "precioLista": 27500,
+  "precioEfectivo": 22000,
+  "notaPrecio": null
+ },
+ {
+  "cod": "MOV100",
+  "nombre": "PAGO DE CHEQUE X 200.000",
+  "rubro": "Otros Ingresos",
+  "subrubro": "Movimientos financieros",
+  "precioLista": 275000,
+  "precioEfectivo": 220000,
+  "notaPrecio": null
+ }
+]
