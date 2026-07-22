@@ -342,22 +342,15 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
     <div className="min-h-screen bg-sand text-foreground">
       <header className="sticky top-0 z-40 border-b border-stone-100 bg-sand/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <a href="#" className="flex items-center gap-3">
+          <a href="#" className="flex items-center">
             <Image
-              src="/logo-malala.png"
-              alt="MALALA"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain"
+              src="/landing/logo-wordmark.png"
+              alt="MALALA Hair and Nails"
+              width={1045}
+              height={219}
+              priority
+              className="h-7 w-auto sm:h-9"
             />
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-lg uppercase tracking-[0.3em] text-ink">
-                Malala
-              </span>
-              <span className="mt-1 text-[0.52rem] uppercase tracking-[0.3em] text-stone-500">
-                Hair and Nails
-              </span>
-            </span>
           </a>
 
           <nav className="hidden items-center gap-8 text-[0.68rem] uppercase tracking-[0.22em] text-stone-700 md:flex">
@@ -406,12 +399,13 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
         <div className="mx-auto w-full max-w-6xl px-5 py-14 sm:px-8">
           <div className="grid gap-10 md:grid-cols-[1fr_1fr]">
             <div>
-              <p className="font-display text-2xl uppercase tracking-[0.3em]">
-                Malala
-              </p>
-              <p className="mt-2 text-[0.6rem] uppercase tracking-[0.3em] text-white/60">
-                Hair and Nails
-              </p>
+              <Image
+                src="/landing/logo-wordmark-light.png"
+                alt="MALALA Hair and Nails"
+                width={1045}
+                height={219}
+                className="h-9 w-auto"
+              />
               <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.68rem] uppercase tracking-[0.2em] text-white/80">
                 <a href={storeUrl} target="_blank" rel="noreferrer" className="transition hover:text-white">
                   Tienda online

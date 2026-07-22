@@ -60,7 +60,7 @@ export function HeroExperiencia({
 
       <div className="relative z-10 mx-auto flex min-h-[78svh] w-full max-w-6xl flex-col justify-between px-5 py-12 sm:px-8 lg:min-h-[86vh] lg:py-16">
         <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
-          <h1 className="font-display text-3xl uppercase leading-[1.2] tracking-[0.22em] text-white drop-shadow-[0_8px_28px_rgba(43,34,26,0.45)] sm:text-5xl lg:text-6xl">
+          <h1 className="font-sans text-3xl font-light uppercase leading-[1.3] tracking-[0.3em] text-white/95 drop-shadow-[0_8px_28px_rgba(43,34,26,0.45)] sm:text-5xl sm:tracking-[0.38em] lg:text-6xl">
             Experiencia
             <br />
             Malala

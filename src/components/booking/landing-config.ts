@@ -38,14 +38,17 @@ export const TILES_SERVICIOS: TileServicio[] = [
   { label: "Masajes", rubros: ["MASAJES", "CORPORAL", "CORPORALES", "SPA"], imagen: "/landing/servicio-masajes.jpg" },
 ];
 
-/** Bloque de promociones del mes. `lineas` se apila centrado sobre el marrón. */
+/**
+ * Métodos de pago / promos. Cada columna es una lista de líneas apiladas; se
+ * muestran en 3 columnas separadas por hairlines sobre el marrón (como en la
+ * pieza de marca).
+ */
 export const PROMOCIONES = {
   titulo: "Promociones del mes",
-  lineas: [
-    "Todos los miércoles",
-    "15% OFF + 3 cuotas sin interés",
-    "Tarjetas de crédito",
-    "Visa · Master",
+  columnas: [
+    ["3 cuotas", "sin interés", "todos los días"],
+    ["Todos los miércoles", "15% OFF + 3 cuotas sin interés", "TC: Visa · Master"],
+    ["-20% OFF", "Efectivo · Transf.", "todos los días"],
   ],
 };
 
