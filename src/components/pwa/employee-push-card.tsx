@@ -105,7 +105,7 @@ export function EmployeePushCard({
     status === "activo"
       ? "border-sage-700 bg-sage-50"
       : status === "bloqueado"
-        ? "border-amber-300 bg-amber-50"
+        ? "border-warning/40 bg-warning/10"
         : "border-border bg-card";
 
   return (

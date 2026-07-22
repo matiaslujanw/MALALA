@@ -49,14 +49,14 @@ export function ProbarEnvioForm({ sucursalId }: { sucursalId: string }) {
       </label>
 
       {state && !state.ok && (
-        <p className="text-xs text-rose-600">
+        <p className="text-xs text-destructive">
           {state.errors._?.[0] ??
             Object.values(state.errors).flat()[0] ??
             "Error al enviar"}
         </p>
       )}
       {state?.ok && (
-        <p className="text-xs text-emerald-700">Enviado ✓</p>
+        <p className="text-xs text-sage-700">Enviado ✓</p>
       )}
 
       <button

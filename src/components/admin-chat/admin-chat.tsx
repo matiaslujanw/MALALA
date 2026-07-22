@@ -266,7 +266,7 @@ export function AdminChat({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Cerrar asistente" : "Abrir asistente"}
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-sage-700"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:bg-brown-700"
       >
         {open ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -346,8 +346,8 @@ export function AdminChat({
             )}
 
             {pending && (
-              <div className="mr-auto w-full max-w-[95%] rounded-2xl border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-ink">
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-700">
+              <div className="mr-auto w-full max-w-[95%] rounded-2xl border border-warning/40 bg-warning/10 px-3 py-3 text-sm text-ink">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-warning">
                   Confirmar acción
                 </p>
                 <p className="mb-3 leading-relaxed">{pending.resumen}</p>
@@ -356,7 +356,7 @@ export function AdminChat({
                     type="button"
                     onClick={confirmAction}
                     disabled={loading}
-                    className="rounded-xl bg-primary px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700 disabled:opacity-50"
+                    className="rounded-xl bg-primary px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-brown-700 disabled:opacity-50"
                   >
                     Confirmar
                   </button>
@@ -395,7 +395,7 @@ export function AdminChat({
                   aria-label={listening ? "Detener dictado" : "Dictar por voz"}
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
                     listening
-                      ? "border-red-400 bg-red-50 text-red-600"
+                      ? "border-destructive/50 bg-destructive/10 text-destructive"
                       : "border-border bg-card text-muted-foreground hover:border-sage-700 hover:text-ink"
                   }`}
                 >
@@ -416,7 +416,7 @@ export function AdminChat({
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700 disabled:opacity-50"
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-brown-700 disabled:opacity-50"
               >
                 Enviar
               </button>

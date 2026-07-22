@@ -68,7 +68,7 @@ export default async function AppLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <header
           data-app-chrome
-          className="h-14 border-b border-border bg-card px-4 md:px-6 flex items-center justify-between gap-2"
+          className="h-14 border-b border-border bg-sand px-4 md:px-6 flex items-center justify-between gap-2"
         >
           {/* Spacer for hamburger button on mobile */}
           <div className="w-10 lg:w-0 shrink-0" />

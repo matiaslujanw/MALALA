@@ -49,7 +49,7 @@ export function QuickAddForm({
       </div>
 
       {state && !state.ok && (
-        <div className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+        <div className="mb-4 flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             {state.errors?._form?.map((error: string) => <p key={error}>{error}</p>)}
@@ -150,7 +150,7 @@ export function QuickAddForm({
           type="submit"
           pending={isPending}
           pendingLabel="Creando..."
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-brown-700"
         >
           <Plus className="h-4 w-4" />
           Crear turno

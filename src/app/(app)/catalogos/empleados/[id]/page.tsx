@@ -311,7 +311,7 @@ function DisponibilidadPublicaPanel({
                 </div>
                 <button
                   type="submit"
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
                 >
                   Guardar servicios
                 </button>
@@ -408,7 +408,7 @@ function DisponibilidadPublicaPanel({
                 </label>
                 <button
                   type="submit"
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
                 >
                   Agregar franja
                 </button>
@@ -486,7 +486,7 @@ function DisponibilidadPublicaPanel({
             />
           </label>
           <SubmitButton
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             pendingLabel="Habilitando..."
           >
             Habilitar

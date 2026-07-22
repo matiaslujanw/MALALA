@@ -634,7 +634,7 @@ export function NuevaVentaForm({
               </span>
             )}
             {nProductos > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800">
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-warning/10 text-brown-700">
                 <Package className="h-3 w-3 stroke-[1.5]" />
                 {nProductos} producto{nProductos !== 1 ? "s" : ""}
               </span>
@@ -996,7 +996,7 @@ export function NuevaVentaForm({
               className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
             {recargo1 > 0 && (
-              <p className="text-[10px] text-amber-700 tabular-nums">
+              <p className="text-[10px] text-warning tabular-nums">
                 + recargo {mp1?.recargo_pct}% = {formatARS(valor1 + recargo1)} a cobrar
               </p>
             )}
@@ -1059,7 +1059,7 @@ export function NuevaVentaForm({
                 className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
               {recargo2 > 0 && (
-                <p className="text-[10px] text-amber-700 tabular-nums">
+                <p className="text-[10px] text-warning tabular-nums">
                   + recargo {mp2?.recargo_pct}% = {formatARS(valor2 + recargo2)} a cobrar
                 </p>
               )}
@@ -1093,10 +1093,10 @@ export function NuevaVentaForm({
         </div>
         {recargoTotal > 0 && (
           <div className="flex items-center justify-between text-sm tabular-nums">
-            <span className="text-amber-700 uppercase tracking-wider text-xs">
+            <span className="text-warning uppercase tracking-wider text-xs">
               Recargo · Total a cobrar
             </span>
-            <span className="text-amber-700">
+            <span className="text-warning">
               + {formatARS(recargoTotal)} ·{" "}
               <span className="font-display text-lg text-foreground">
                 {formatARS(totalACobrar)}
@@ -1221,7 +1221,7 @@ export function NuevaVentaForm({
           pending={pending}
           pendingLabel="Guardando..."
           disabled={!pagosOk || lineas.length === 0 || pending}
-          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700 disabled:cursor-not-allowed"
+          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700 disabled:cursor-not-allowed"
         >
           Guardar venta
         </LoadingButton>
@@ -1319,7 +1319,7 @@ export function NuevaVentaForm({
               onClick={handleCreateCliente}
               pending={newClienteSaving}
               pendingLabel="Guardando..."
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             >
               Crear
             </LoadingButton>
@@ -1364,7 +1364,7 @@ function LineaServicioRow({
   return (
     <div className="space-y-2">
       {promoNombre && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sage-700 text-white">
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-ink text-white">
           <Tags className="h-3 w-3 stroke-[1.5]" />
           Promo · {promoNombre}
         </span>
@@ -1475,7 +1475,7 @@ function LineaServicioRow({
                 onClick={() => onPrecioTipo("lista")}
                 className={`px-2.5 py-1 transition-colors ${
                   linea.precio_tipo === "lista"
-                    ? "bg-sage-700 text-white"
+                    ? "bg-ink text-white"
                     : "bg-card hover:bg-cream"
                 }`}
               >
@@ -1487,7 +1487,7 @@ function LineaServicioRow({
                 onClick={() => onPrecioTipo("efectivo")}
                 className={`px-2.5 py-1 border-l border-border transition-colors ${
                   linea.precio_tipo === "efectivo"
-                    ? "bg-sage-700 text-white"
+                    ? "bg-ink text-white"
                     : "bg-card hover:bg-cream"
                 }`}
               >
@@ -1507,7 +1507,7 @@ function LineaServicioRow({
                 title="Comisión sobre el precio final pagado"
                 className={`px-2.5 py-1 transition-colors ${
                   linea.soporta_descuento
-                    ? "bg-sage-700 text-white"
+                    ? "bg-ink text-white"
                     : "bg-card hover:bg-cream"
                 }`}
               >
@@ -1519,7 +1519,7 @@ function LineaServicioRow({
                 title="Comisión sobre el precio de lista (regular)"
                 className={`px-2.5 py-1 border-l border-border transition-colors ${
                   !linea.soporta_descuento
-                    ? "bg-sage-700 text-white"
+                    ? "bg-ink text-white"
                     : "bg-card hover:bg-cream"
                 }`}
               >
@@ -1593,7 +1593,7 @@ function LineaProductoRow({
   return (
     <div className="grid grid-cols-12 gap-2 items-start">
       <div className="col-span-12 sm:col-span-2 flex items-center">
-        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-500/40">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-semibold uppercase tracking-wider px-2 py-1 rounded bg-warning/10 text-brown-700 ring-1 ring-inset ring-warning/40">
           <Package className="h-3.5 w-3.5 stroke-[1.5]" />
           Producto
         </span>

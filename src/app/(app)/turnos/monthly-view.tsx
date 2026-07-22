@@ -115,7 +115,7 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
                   <span
                     className={`text-sm font-semibold ${
                       isToday
-                        ? "bg-sage-900 text-white rounded-full w-7 h-7 flex items-center justify-center"
+                        ? "bg-ink text-white rounded-full w-7 h-7 flex items-center justify-center"
                         : "text-ink group-hover:text-sage-700"
                     }`}
                   >
@@ -137,7 +137,7 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
                       >
                         <span
                           className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: t.profesional?.color ?? "#999" }}
+                          style={{ backgroundColor: t.profesional?.color ?? "#78766f" }}
                         />
                         <span className="text-xs font-medium text-ink tabular-nums">
                           {t.hora}
@@ -189,7 +189,7 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
                 <span
                   className={`text-[11px] font-medium ${
                     isToday
-                      ? "bg-sage-900 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
+                      ? "bg-ink text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]"
                       : "text-ink"
                   }`}
                 >

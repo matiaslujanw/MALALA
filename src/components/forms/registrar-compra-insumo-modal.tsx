@@ -281,7 +281,7 @@ export function RegistrarCompraInsumoModal({
                   disabled={cantidad <= 0 || valor <= 0}
                   pending={pending}
                   pendingLabel="Guardando..."
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
                 >
                   Registrar compra
                 </LoadingButton>

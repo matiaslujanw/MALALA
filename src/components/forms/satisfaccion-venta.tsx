@@ -108,7 +108,7 @@ export function SatisfaccionVentaForm({
             disabled={estado === ""}
             pending={pending}
             pendingLabel="Guardando..."
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             Guardar
           </LoadingButton>
@@ -160,7 +160,7 @@ function Opcion({
 }) {
   const activeCls =
     tone === "ok"
-      ? "border-sage-700 bg-sage-700 text-white"
+      ? "border-ink bg-ink text-white"
       : "border-[var(--danger)] bg-[var(--danger)] text-white";
   return (
     <button

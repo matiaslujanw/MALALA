@@ -231,7 +231,7 @@ export default async function BancosPage({ searchParams }: PageProps) {
           </h2>
           <span className="text-xs text-muted-foreground">
             {totalImpuestos > 0 && (
-              <span className="text-amber-700 mr-3">
+              <span className="text-warning mr-3">
                 Impuestos en la vista: {fmtMoney(totalImpuestos)}
               </span>
             )}
@@ -284,7 +284,7 @@ export default async function BancosPage({ searchParams }: PageProps) {
                         "px-4 py-3 text-right tabular-nums font-medium " +
                         (m.movimiento.monto >= 0
                           ? "text-sage-700"
-                          : "text-amber-700")
+                          : "text-warning")
                       }
                     >
                       {fmtMoney(m.movimiento.monto)}
@@ -385,7 +385,7 @@ function TransferenciaForm({
             </div>
             <button
               type="submit"
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors"
             >
               Transferir
             </button>

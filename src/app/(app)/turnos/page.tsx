@@ -218,7 +218,7 @@ export default async function TurnosPage({
           <input type="hidden" name="vista" value={vista} />
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-sage-700"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition hover:bg-brown-700"
           >
             <Filter className="h-4 w-4" />
             Filtrar
@@ -282,7 +282,7 @@ export default async function TurnosPage({
                   return (
                     <div
                       key={prof.id}
-                      className="rounded-[1.5rem] border border-stone-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8f8f4_100%)] p-4"
+                      className="rounded-[1.5rem] border border-stone-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f6f4_100%)] p-4"
                     >
                       <div className="mb-4 flex items-center gap-3">
                         <div
@@ -541,7 +541,7 @@ export default async function TurnosPage({
                     </div>
                     <button
                       type="submit"
-                      className="w-full mt-2 rounded-xl bg-sage-900 px-4 py-3 text-sm font-medium uppercase tracking-wider text-white transition hover:bg-sage-700"
+                      className="w-full mt-2 rounded-xl bg-primary px-4 py-3 text-sm font-medium uppercase tracking-wider text-white transition hover:bg-brown-700"
                     >
                       Guardar reprogramación
                     </button>
@@ -571,7 +571,7 @@ function Kpi({
     tone === "sage"
       ? "border-sage-200 bg-sage-50"
       : tone === "warm"
-        ? "border-[#f1ddab] bg-[#fff8e9]"
+        ? "border-warning/40 bg-warning/10"
         : "border-border bg-card";
   return (
     <div className={`rounded-[1.4rem] border p-5 ${extraClass}`}>

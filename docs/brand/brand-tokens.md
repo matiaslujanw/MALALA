@@ -76,7 +76,7 @@ Tres colores de marca — **marrón `#5D4B3D`, verde `#495A47`, claro `#E0DFDC`*
 --sage-100:        #DCE3DA;
 --sage-200:        #C3CDC0;
 --sage-300:        #9AA898;
---sage-500:        #495A47;   /* verde de marca — botones, links, focus */
+--sage-500:        #495A47;   /* verde de marca — ACENTO: links, focus, selección, badges */
 --sage-700:        #3A4739;   /* hover de acento */
 --sage-800:        #2C362B;
 --sage-900:        #1F271E;
@@ -104,9 +104,14 @@ Los tokens shadcn (`--background`, `--primary`, `--border`, …) son alias de lo
 |---|---|---|
 | Fondo de página | `bg-background` (off-white) | Nunca blanco puro, da más calidez |
 | Cards / paneles | `bg-card` (white) | Contraste sutil con el fondo |
+| Sidebar / chrome | `bg-ink` texto claro | Banda oscura de marca, como las secciones de la landing |
+| Header bar | `bg-sand` | El "clarito" de marca; banda cálida sobre el contenido blanco |
 | Texto principal | `text-foreground` (ink) | |
 | Texto secundario | `text-muted-foreground` | Fechas, hints, descripciones |
-| Botón primario | `bg-primary text-primary-foreground` | Sage. Acciones de guardar, confirmar |
+| **Botón primario** | `bg-primary text-primary-foreground` (`--primary` = **marrón**) hover `bg-brown-700` | **Marrón**, igual que el CTA sólido de la landing. Acciones de guardar/confirmar |
+| Botón secundario / acento | `bg-sage-700 text-white` hover `bg-sage-900` | Verde como **acento**: acciones inline menores |
+| Selección sólida (tab/pill/hoy) | `bg-ink text-white` | Estado activo, como los pills de la landing |
+| Selección suave | `border-sage-500 bg-sage-50` | Opción elegida en wizards/toggles (verde de acento) |
 | Botón ghost | `variant="ghost"` | Acciones secundarias, navegación |
 | Botón destructivo | `variant="destructive"` | Eliminar, anular venta |
 | Stock OK | `bg-sage-100 text-sage-900` | Badge |
@@ -114,6 +119,8 @@ Los tokens shadcn (`--background`, `--primary`, `--border`, …) son alias de lo
 | Stock negativo | `bg-destructive/10 text-destructive` | Terracota |
 | Cerrado / inactivo | `bg-stone-100 text-stone-500` | Caja cerrada, cliente inactivo |
 | Bandas de landing | `bg-ink` / `bg-sand` / `bg-brown-500` | Negro para títulos de sección, claro para separadores, marrón para promos e Instagram |
+
+> **Jerarquía de color (landing y app interna, unificadas):** marrón `#5D4B3D` es el **protagonista** (botones, chrome, bandas), verde `#495A47` es **acento** (selección, focus, links, badges) y arena `#E0DFDC` es la superficie cálida. El verde nunca es fondo protagónico ni botón primario.
 
 ---
 

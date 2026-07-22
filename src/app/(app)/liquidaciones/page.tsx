@@ -102,7 +102,7 @@ export default async function LiquidacionesPage({
 
           <Link
             href={`/liquidaciones/nueva?sucursal=${sucursal.id}`}
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             <Plus className="h-4 w-4 stroke-[1.5]" />
             Nueva liquidación

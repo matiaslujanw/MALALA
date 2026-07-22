@@ -187,7 +187,7 @@ export default async function ReportesMediosPagoPage({
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {f.cuentaId && (impuestosByCuenta.get(f.cuentaId) ?? 0) > 0 ? (
-                      <span className="text-amber-700">
+                      <span className="text-warning">
                         {formatARS(impuestosByCuenta.get(f.cuentaId) ?? 0)}
                       </span>
                     ) : (
@@ -219,7 +219,7 @@ export default async function ReportesMediosPagoPage({
                 <td colSpan={3} className="px-4 py-2 font-semibold">
                   Total
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold text-amber-700">
+                <td className="px-4 py-2 text-right tabular-nums font-semibold text-warning">
                   {formatARS(totalImpuestos)}
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums font-semibold">
@@ -253,9 +253,9 @@ function KpiCard({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : accent === "warn"
-          ? "text-amber-700"
+          ? "text-warning"
           : "";
   return (
     <div className="bg-card border border-border rounded-md p-4">

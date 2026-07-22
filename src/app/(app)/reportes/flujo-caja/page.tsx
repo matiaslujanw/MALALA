@@ -291,9 +291,9 @@ function KpiCard({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : accent === "warn"
-          ? "text-amber-700"
+          ? "text-warning"
           : "";
   return (
     <div className="bg-card border border-border rounded-md p-4">

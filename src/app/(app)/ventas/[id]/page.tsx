@@ -92,7 +92,7 @@ export default async function VentaDetallePage({
             </p>
           )}
           {recargoCobrado > 0.01 && (
-            <p className="text-xs text-amber-700 mt-0.5 tabular-nums">
+            <p className="text-xs text-warning mt-0.5 tabular-nums">
               Incluye recargo: {formatARS(recargoCobrado)}
             </p>
           )}

@@ -171,7 +171,7 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
               onClick={handleRegistrar}
               pending={pending}
               pendingLabel="Guardando..."
-              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             >
               Registrar anticipo
             </LoadingButton>
@@ -216,7 +216,7 @@ export function AnticiposPanel({ empleadoId, anticipos, mediosPago }: Props) {
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                           descontado
                             ? "bg-sage-100 text-sage-800"
-                            : "bg-amber-50 text-amber-800"
+                            : "bg-warning/10 text-brown-700"
                         }`}
                       >
                         {descontado ? "Descontado" : "Pendiente"}

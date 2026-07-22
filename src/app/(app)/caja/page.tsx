@@ -92,16 +92,16 @@ export default async function CajaPage({
   return (
     <div className="space-y-8 max-w-6xl">
       {pendientesDeCierre.length > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-4 text-brown-900">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 stroke-[1.5] text-amber-600" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 stroke-[1.5] text-warning" />
             <div className="space-y-2">
               <p className="text-sm font-medium">
                 {pendientesDeCierre.length === 1
                   ? "Quedó una caja sin cerrar"
                   : `Quedaron ${pendientesDeCierre.length} cajas sin cerrar`}
               </p>
-              <p className="text-xs text-amber-800">
+              <p className="text-xs text-brown-700">
                 Cerrá la caja de cada día antes de seguir operando, así el
                 control de efectivo no se mezcla entre jornadas.
               </p>
@@ -110,7 +110,7 @@ export default async function CajaPage({
                   <Link
                     key={fecha}
                     href={`/caja/nuevo?fecha=${fecha}`}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-warning px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-brown-900 transition-colors hover:bg-warning/90"
                   >
                     Cerrar caja del {formatYMD(fecha)}
                   </Link>
@@ -194,7 +194,7 @@ export default async function CajaPage({
           {puedeCerrar && aperturaHoy && !cierreHoy ? (
             <Link
               href="/caja/nuevo"
-              className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             >
               <Plus className="h-4 w-4 stroke-[1.5]" />
               Cerrar caja de hoy
@@ -329,33 +329,33 @@ export default async function CajaPage({
           <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
             Fiado del día · cuenta corriente
           </h2>
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
+          <div className="rounded-md border border-warning/40 bg-warning/10 p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="font-display text-2xl tabular-nums text-amber-700">
+              <p className="font-display text-2xl tabular-nums text-warning">
                 {formatARS(resumen.fiado.total)}
               </p>
-              <p className="text-xs uppercase tracking-wider text-amber-800">
+              <p className="text-xs uppercase tracking-wider text-brown-700">
                 No entró a caja · {resumen.fiado.cantidad} venta
                 {resumen.fiado.cantidad !== 1 ? "s" : ""} fiada
                 {resumen.fiado.cantidad !== 1 ? "s" : ""}
               </p>
             </div>
-            <ul className="mt-3 divide-y divide-amber-200 border-t border-amber-200">
+            <ul className="mt-3 divide-y divide-warning/30 border-t border-warning/30">
               {resumen.fiado.porCliente.map((row, i) => (
                 <li
                   key={row.cliente?.id ?? `sin-cliente-${i}`}
                   className="flex items-center justify-between py-2 text-sm"
                 >
-                  <span className="text-amber-900">
+                  <span className="text-brown-900">
                     {row.cliente?.nombre ?? "Sin cliente"}
                   </span>
-                  <span className="tabular-nums text-amber-900">
+                  <span className="tabular-nums text-brown-900">
                     {formatARS(row.monto)}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-amber-700">
+            <p className="mt-2 text-xs text-warning">
               Queda como deuda del cliente. Se cobra desde su cuenta corriente.
             </p>
           </div>
@@ -370,12 +370,12 @@ export default async function CajaPage({
             </h2>
             <span className="text-xs tabular-nums text-muted-foreground">
               {deudores.length} cliente{deudores.length !== 1 ? "s" : ""} · total{" "}
-              <strong className="text-amber-700">{formatARS(totalDeuda)}</strong>
+              <strong className="text-warning">{formatARS(totalDeuda)}</strong>
             </span>
           </div>
-          <div className="overflow-hidden rounded-md border border-amber-300 bg-card">
+          <div className="overflow-hidden rounded-md border border-warning/40 bg-card">
             <table className="w-full text-sm">
-              <thead className="bg-amber-50 text-xs uppercase tracking-wider text-amber-800">
+              <thead className="bg-warning/10 text-xs uppercase tracking-wider text-brown-700">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Cliente</th>
                   <th className="px-4 py-3 text-left font-medium">
@@ -387,7 +387,7 @@ export default async function CajaPage({
               </thead>
               <tbody className="divide-y divide-border">
                 {deudores.map((d) => (
-                  <tr key={d.cliente_id} className="hover:bg-amber-50/40">
+                  <tr key={d.cliente_id} className="hover:bg-warning/5">
                     <td className="px-4 py-3 font-medium">{d.nombre}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {d.ultimo_concepto ?? "—"}
@@ -397,13 +397,13 @@ export default async function CajaPage({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-amber-700">
+                    <td className="px-4 py-3 text-right font-medium tabular-nums text-warning">
                       {formatARS(d.saldo)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/catalogos/clientes/${d.cliente_id}`}
-                        className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
+                        className="inline-flex items-center rounded-md bg-warning px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-brown-900 transition-colors hover:bg-warning/90"
                       >
                         Saldar
                       </Link>

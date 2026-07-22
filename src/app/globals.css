@@ -3,6 +3,7 @@
 /* ============================================================
    MALALA — Brand tokens
    Paleta y tipografías del sistema. Ver docs/brand/brand-tokens.md
+   Primario = marrón; verde = acento; chrome cálido (ink/sand).
    ============================================================ */
 
 :root {
@@ -53,7 +54,10 @@
   --popover: var(--white);
   --popover-foreground: var(--ink);
 
-  --primary: var(--sage-500);
+  /* Primario = marrón de marca (#5d4b3d): botones y acciones, igual que la
+     landing (donde el CTA sólido es oscuro con hover marrón). El verde deja de
+     ser protagonista y pasa a rol de acento (ring, selección suave, links). */
+  --primary: var(--brown-500);
   --primary-foreground: var(--white);
 
   --secondary: var(--cream);
@@ -62,6 +66,8 @@
   --muted: var(--cream);
   --muted-foreground: var(--stone-500);
 
+  /* Acento = verde botánico. Selección suave (bg-sage-50 + border-sage-500),
+     estados y detalles. Nunca como fondo protagónico. */
   --accent: var(--sage-500);
   --accent-foreground: var(--white);
 

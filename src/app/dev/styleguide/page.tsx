@@ -4,20 +4,22 @@
  */
 
 const swatches: { name: string; cls: string; hex: string }[] = [
-  { name: "background", cls: "bg-background", hex: "#FAFAF9" },
+  { name: "background", cls: "bg-background", hex: "#F7F6F4" },
   { name: "card", cls: "bg-card", hex: "#FFFFFF" },
-  { name: "cream", cls: "bg-cream", hex: "#F5F4F0" },
-  { name: "stone-100", cls: "bg-stone-100", hex: "#E7E5E0" },
-  { name: "stone-300", cls: "bg-stone-300", hex: "#C4C2BC" },
+  { name: "cream", cls: "bg-cream", hex: "#EEEDEA" },
+  { name: "sand", cls: "bg-sand", hex: "#E0DFDC" },
+  { name: "stone-100", cls: "bg-stone-100", hex: "#D8D6D2" },
+  { name: "stone-300", cls: "bg-stone-300", hex: "#B4B2AD" },
   { name: "stone-500", cls: "bg-stone-500", hex: "#78766F" },
   { name: "stone-700", cls: "bg-stone-700", hex: "#3F3D38" },
   { name: "ink (foreground)", cls: "bg-ink", hex: "#1A1A1A" },
-  { name: "sage-50", cls: "bg-sage-50", hex: "#F2F5F0" },
-  { name: "sage-100", cls: "bg-sage-100", hex: "#DDE5D6" },
-  { name: "sage-300", cls: "bg-sage-300", hex: "#A8B89A" },
-  { name: "sage-500 (primary)", cls: "bg-sage-500", hex: "#6E8060" },
-  { name: "sage-700", cls: "bg-sage-700", hex: "#4A5840" },
-  { name: "sage-900", cls: "bg-sage-900", hex: "#2C3525" },
+  { name: "sage-50", cls: "bg-sage-50", hex: "#F1F4F0" },
+  { name: "sage-100", cls: "bg-sage-100", hex: "#DCE3DA" },
+  { name: "sage-300", cls: "bg-sage-300", hex: "#9AA898" },
+  { name: "sage-500 (primary)", cls: "bg-sage-500", hex: "#495A47" },
+  { name: "sage-700", cls: "bg-sage-700", hex: "#3A4739" },
+  { name: "sage-900", cls: "bg-sage-900", hex: "#1F271E" },
+  { name: "brown-500", cls: "bg-brown-500", hex: "#5D4B3D" },
   { name: "warning", cls: "bg-warning", hex: "#C9A961" },
   { name: "danger (destructive)", cls: "bg-danger", hex: "#A84A3D" },
 ];
@@ -144,7 +146,7 @@ export default function StyleguidePage() {
             Botones
           </p>
           <div className="flex flex-wrap gap-3">
-            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors">
+            <button className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors">
               Guardar venta
             </button>
             <button className="border border-border px-4 py-2 rounded-md text-sm font-medium hover:bg-cream transition-colors">

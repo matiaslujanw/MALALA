@@ -66,24 +66,24 @@ export const ESTADO_LABEL: Record<TurnoEstado, string> = {
 
 /** Badge (fondo + texto) para chips de estado. */
 export const ESTADO_BADGE: Record<TurnoEstado, string> = {
-  pendiente: "bg-[#fff5dd] text-[#8c6b11]",
-  realizado: "bg-emerald-100 text-emerald-800",
-  ausente: "bg-stone-200 text-stone-700",
-  cancelado: "bg-[#fff1ef] text-[#8a3b31]",
+  pendiente: "bg-warning/15 text-brown-700",
+  realizado: "bg-sage-100 text-sage-900",
+  ausente: "bg-stone-100 text-stone-500",
+  cancelado: "bg-destructive/10 text-destructive",
 };
 
 /** Badge con borde, para las tarjetas de la timeline diaria. */
 export const ESTADO_BADGE_BORDE: Record<TurnoEstado, string> = {
-  pendiente: "bg-[#fff5dd] text-[#8c6b11] border-[#f1ddab]",
-  realizado: "bg-emerald-50 text-emerald-800 border-emerald-200",
-  ausente: "bg-stone-200 text-stone-700 border-stone-300",
-  cancelado: "bg-[#fff1ef] text-[#8a3b31] border-[#f1c5bf]",
+  pendiente: "bg-warning/10 text-brown-700 border-warning/40",
+  realizado: "bg-sage-50 text-sage-900 border-sage-200",
+  ausente: "bg-stone-100 text-stone-500 border-stone-300",
+  cancelado: "bg-destructive/10 text-destructive border-destructive/30",
 };
 
 /** Punto de color para el calendario (vista semanal/mensual). */
 export const ESTADO_DOT: Record<TurnoEstado, string> = {
-  pendiente: "bg-[#c9a961]",
-  realizado: "bg-emerald-500",
-  ausente: "bg-stone-400",
-  cancelado: "bg-[#a84a3d]",
+  pendiente: "bg-warning",
+  realizado: "bg-sage-500",
+  ausente: "bg-stone-300",
+  cancelado: "bg-destructive",
 };

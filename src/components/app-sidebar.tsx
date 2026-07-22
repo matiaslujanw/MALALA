@@ -63,11 +63,12 @@ export function AppSidebar({ navItems }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — banda oscura de marca (ink), como las secciones de la landing.
+          Texto claro; el verde queda de acento y el logo va en blanco. */}
       <aside
         data-app-chrome
         className={`
-          fixed top-0 left-0 z-50 h-screen w-64 shrink-0 border-r border-border bg-card flex flex-col
+          fixed top-0 left-0 z-50 h-screen w-64 shrink-0 border-r border-white/10 bg-ink text-white flex flex-col
           transition-transform duration-200 ease-out
           lg:sticky lg:top-0 lg:translate-x-0 lg:self-start
           ${open ? "translate-x-0" : "-translate-x-full"}
@@ -77,7 +78,7 @@ export function AppSidebar({ navItems }: SidebarProps) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="absolute top-3 right-3 lg:hidden rounded-full p-1.5 text-muted-foreground hover:bg-stone-100 transition"
+          className="absolute top-3 right-3 lg:hidden rounded-full p-1.5 text-white/70 hover:bg-white/10 transition"
           aria-label="Cerrar menú"
         >
           <X className="h-4 w-4" />
@@ -86,12 +87,12 @@ export function AppSidebar({ navItems }: SidebarProps) {
         <Link
           href="/dashboard"
           onClick={() => setOpen(false)}
-          className="block px-6 py-4 border-b border-border hover:bg-cream/40 transition-colors"
+          className="block px-6 py-4 border-b border-white/10 hover:bg-white/5 transition-colors"
         >
-          <h1 className="font-display text-xl tracking-[0.3em] uppercase">
+          <h1 className="font-display text-xl tracking-[0.3em] uppercase text-white">
             MALALA
           </h1>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
+          <p className="text-[10px] uppercase tracking-widest text-white/50 mt-1">
             Hair and Nails
           </p>
         </Link>
@@ -105,7 +106,7 @@ export function AppSidebar({ navItems }: SidebarProps) {
               <div key={item.href}>
                 {showHeader && (
                   <p
-                    className={`px-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground ${
+                    className={`px-3 text-[10px] font-medium uppercase tracking-widest text-white/40 ${
                       i === 0 ? "pb-1.5" : "pt-4 pb-1.5"
                     }`}
                   >
@@ -115,7 +116,7 @@ export function AppSidebar({ navItems }: SidebarProps) {
                 <Link
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm hover:bg-cream transition-colors"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/75 hover:bg-white/10 hover:text-white transition-colors"
                 >
                   <Icon className="h-4 w-4 stroke-[1.5]" />
                   <span>{item.label}</span>

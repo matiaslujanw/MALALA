@@ -69,7 +69,7 @@ export default async function StockPage({
           {scope.rol === "admin" && (
             <Link
               href="/stock/ajuste"
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"
             >
               <SlidersHorizontal className="h-4 w-4 stroke-[1.5]" />
               Ajuste manual
@@ -223,9 +223,9 @@ function SummaryCard({
 }) {
   const className =
     tone === "danger"
-      ? "border-[#f2c4bd] bg-[#fff1ef]"
+      ? "border-destructive/30 bg-destructive/10"
       : tone === "warning"
-        ? "border-[#f1ddab] bg-[#fff8e9]"
+        ? "border-warning/40 bg-warning/10"
         : "border-border bg-card";
   return (
     <div className={`rounded-[1.4rem] border p-5 ${className}`}>

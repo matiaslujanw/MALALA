@@ -80,7 +80,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                 <span
                   className={`text-base font-semibold ${
                     isCurrentDay
-                      ? "bg-sage-900 text-white rounded-full w-7 h-7 flex items-center justify-center"
+                      ? "bg-ink text-white rounded-full w-7 h-7 flex items-center justify-center"
                       : "text-ink group-hover:text-sage-700"
                   }`}
                 >
@@ -98,7 +98,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                     <div className="flex items-center gap-1.5">
                       <div
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: turno.profesional?.color ?? "#999" }}
+                        style={{ backgroundColor: turno.profesional?.color ?? "#78766f" }}
                       />
                       <span className="text-xs font-semibold text-ink tabular-nums">
                         {turno.hora}
@@ -146,7 +146,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                   <span
                     className={`text-sm font-semibold ${
                       isCurrentDay
-                        ? "bg-sage-900 text-white rounded-full w-7 h-7 flex items-center justify-center"
+                        ? "bg-ink text-white rounded-full w-7 h-7 flex items-center justify-center"
                         : "text-ink"
                     }`}
                   >
@@ -173,7 +173,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                     >
                       <div
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: turno.profesional?.color ?? "#999" }}
+                        style={{ backgroundColor: turno.profesional?.color ?? "#78766f" }}
                       />
                       <span className="text-xs font-medium text-ink">{turno.hora}</span>
                       <span className="text-xs text-stone-600 truncate flex-1">

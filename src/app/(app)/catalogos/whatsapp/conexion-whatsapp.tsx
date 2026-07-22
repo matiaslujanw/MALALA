@@ -18,9 +18,9 @@ const LABEL: Record<Status, string> = {
 };
 
 const COLOR: Record<Status, string> = {
-  connected: "bg-emerald-100 text-emerald-800",
-  qr: "bg-amber-100 text-amber-800",
-  connecting: "bg-sky-100 text-sky-800",
+  connected: "bg-sage-100 text-sage-900",
+  qr: "bg-warning/15 text-brown-700",
+  connecting: "bg-sage-100 text-sage-900",
   closed: "bg-muted text-muted-foreground",
 };
 
@@ -115,7 +115,7 @@ export function ConexionWhatsapp({ sucursalId }: { sucursalId: string }) {
       </div>
 
       {status === "connected" ? (
-        <p className="mt-2 text-xs text-emerald-700">
+        <p className="mt-2 text-xs text-sage-700">
           {numero
             ? `Vinculado al número ${numero}.`
             : "Vinculado."}{" "}

@@ -56,8 +56,8 @@ export default async function SucursalesHorariosPage() {
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 {franjas === 0 ? (
                   <>
-                    <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5] text-amber-600" />
-                    <span className="text-amber-700">
+                    <AlertTriangle className="h-3.5 w-3.5 stroke-[1.5] text-warning" />
+                    <span className="text-warning">
                       Sin horarios cargados — no ofrece turnos
                     </span>
                   </>

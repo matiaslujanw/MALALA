@@ -3,17 +3,21 @@ import type { ReactNode } from "react";
 import type { AnalyticsPoint, AnalyticsSnapshot } from "@/lib/data/analytics";
 import { formatARS } from "@/lib/utils";
 
+// Paleta de gráficos derivada de los tokens de marca (ver globals.css):
+// verde sage como serie principal, marrón como acento, dorado y terracota
+// para el resto. Sin malvas ni rosas: todo dentro del universo MALALA.
 const CHART_COLORS = {
-  primary: "#4a5840",
-  primarySoft: "#dfe7d9",
-  accent: "#8f6b7d",
-  accentSoft: "#ead8e1",
-  warm: "#d0af8c",
-  warmSoft: "#f2e7db",
-  danger: "#a84a3d",
-  grid: "#e7e5e0",
-  text: "#1a1a1a",
-  muted: "#78766f",
+  primary: "#495a47", // sage-500
+  primarySoft: "#dce3da", // sage-100
+  accent: "#5d4b3d", // brown-500
+  accentSoft: "#e6dfd8", // brown-100
+  warm: "#c9a961", // warning (dorado)
+  warmSoft: "#efe3c9", // dorado tenue
+  danger: "#a84a3d", // danger (terracota)
+  dangerSoft: "#ecd6d1", // terracota tenue
+  grid: "#d8d6d2", // stone-100
+  text: "#1a1a1a", // ink
+  muted: "#78766f", // stone-500
   surface: "#ffffff",
 };
 
@@ -107,7 +111,7 @@ export function DashboardVisuals({
             description="Alertas para decidir reposicion y prevenir quiebres operativos."
             data={analytics.charts.stockCriticoPorSucursal}
             color={CHART_COLORS.danger}
-            softColor="#f6d7d2"
+            softColor={CHART_COLORS.dangerSoft}
           />
           <StatusPanel analytics={analytics} />
         </div>
@@ -265,8 +269,8 @@ function AreaChartCard({
 
           <defs>
             <linearGradient id="incomeAreaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8f6b7d" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="#8f6b7d" stopOpacity="0.04" />
+              <stop offset="0%" stopColor={CHART_COLORS.accent} stopOpacity="0.24" />
+              <stop offset="100%" stopColor={CHART_COLORS.accent} stopOpacity="0.03" />
             </linearGradient>
           </defs>
         </svg>
@@ -343,7 +347,7 @@ function DonutChartCard({
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div className="mx-auto w-full max-w-[240px]">
           <svg viewBox="0 0 240 240" className="h-auto w-full">
-            <circle cx="120" cy="120" r="72" fill="none" stroke="#f1eee8" strokeWidth="26" />
+            <circle cx="120" cy="120" r="72" fill="none" stroke="#eeedea" strokeWidth="26" />
             {segments.map((segment) => (
               <path
                 key={segment.label}
@@ -491,7 +495,7 @@ function ColumnChartCard({
   return (
     <BaseCard title={title} description={description}>
       <div className="space-y-5">
-        <div className="flex h-72 items-end gap-3 rounded-[1.5rem] border border-stone-100 bg-[linear-gradient(180deg,#fff_0%,#f8f5ef_100%)] px-4 pb-4 pt-8">
+        <div className="flex h-72 items-end gap-3 rounded-[1.5rem] border border-stone-100 bg-[linear-gradient(180deg,#fff_0%,#f7f6f4_100%)] px-4 pb-4 pt-8">
           {data.map((item, index) => {
             const height = Math.max((item.value / max) * 100, 8);
             return (
@@ -547,8 +551,8 @@ function RetentionCard({
         <EmptyChart />
       ) : (
         <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-          <div className="rounded-[1.5rem] bg-[linear-gradient(145deg,#f7ecef_0%,#fff_100%)] p-5 text-center">
-            <p className="font-display text-6xl text-[#8f6b7d]">{retention.tasaPct}%</p>
+          <div className="rounded-[1.5rem] bg-[linear-gradient(145deg,#f1f4f0_0%,#fff_100%)] p-5 text-center">
+            <p className="font-display text-6xl text-sage-700">{retention.tasaPct}%</p>
             <p className="mt-2 text-sm font-medium text-ink">Tasa de retencion</p>
             <p className="mt-1 text-sm text-stone-700">
               {retention.recurrentes} recurrentes de {retention.total} clientes
@@ -559,18 +563,18 @@ function RetentionCard({
             <div className="overflow-hidden rounded-full bg-stone-100">
               <div className="flex h-4">
                 <div
-                  className="h-full bg-[#8f6b7d]"
+                  className="h-full bg-sage-500"
                   style={{ width: `${retention.tasaPct}%` }}
                 />
                 <div
-                  className="h-full bg-[#d8d3dc]"
+                  className="h-full bg-stone-300"
                   style={{ width: `${100 - retention.tasaPct}%` }}
                 />
               </div>
             </div>
             <div className="grid gap-3">
-              <LegendRow color="#8f6b7d" label="Clientes recurrentes" value={retention.recurrentes} />
-              <LegendRow color="#d8d3dc" label="Clientes nuevos / unicos" value={retention.nuevos} />
+              <LegendRow color="#495a47" label="Clientes recurrentes" value={retention.recurrentes} />
+              <LegendRow color="#b4b2ad" label="Clientes nuevos / unicos" value={retention.nuevos} />
             </div>
           </div>
         </div>
@@ -609,8 +613,8 @@ function StatusPanel({ analytics }: { analytics: AnalyticsSnapshot }) {
 
       <div className="rounded-[1.75rem] border border-border bg-card p-5">
         <div className="flex items-center gap-3">
-          <div className="rounded-full bg-[#fff5dd] p-2">
-            <CircleAlert className="h-4 w-4 text-[#8c6b11]" />
+          <div className="rounded-full bg-warning/15 p-2">
+            <CircleAlert className="h-4 w-4 text-warning" />
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
@@ -650,7 +654,7 @@ function MiniMetric({
     <div
       className={`rounded-2xl border p-4 ${
         tone === "danger"
-          ? "border-[#f2c4bd] bg-[#fff1ef]"
+          ? "border-destructive/30 bg-destructive/10"
           : "border-stone-100 bg-cream/60"
       }`}
     >
@@ -709,12 +713,12 @@ function formatStateLabel(label: string) {
 
 function pickSegmentColor(index: number) {
   const palette = [
-    CHART_COLORS.primary,
-    CHART_COLORS.accent,
-    CHART_COLORS.warm,
-    "#74877f",
-    CHART_COLORS.danger,
-    "#b6a8b6",
+    CHART_COLORS.primary, // sage-500
+    CHART_COLORS.accent, // brown-500
+    CHART_COLORS.warm, // dorado
+    "#9aa898", // sage-300
+    CHART_COLORS.danger, // terracota
+    "#a89485", // brown-300
   ];
   return palette[index % palette.length];
 }

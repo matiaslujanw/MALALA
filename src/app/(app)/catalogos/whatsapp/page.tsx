@@ -60,11 +60,11 @@ async function SucursalCard({
           </h2>
           <p className="text-xs text-muted-foreground">
             {integ.numero_whatsapp_e164 ? (
-              <span className="text-emerald-700">
+              <span className="text-sage-700">
                 Número {integ.numero_whatsapp_e164}
               </span>
             ) : (
-              <span className="text-amber-700">Sin número — pendiente</span>
+              <span className="text-warning">Sin número — pendiente</span>
             )}
             {integ.actualizado_en && (
               <>
@@ -77,7 +77,7 @@ async function SucursalCard({
         <span
           className={`rounded-full px-3 py-1 text-xs font-medium ${
             integ.activo
-              ? "bg-emerald-100 text-emerald-800"
+              ? "bg-sage-100 text-sage-900"
               : "bg-muted text-muted-foreground"
           }`}
         >
@@ -114,8 +114,8 @@ async function SucursalCard({
                     <span
                       className={
                         e.estado === "ok"
-                          ? "font-medium text-emerald-700"
-                          : "font-medium text-rose-700"
+                          ? "font-medium text-sage-700"
+                          : "font-medium text-destructive"
                       }
                       title={e.error}
                     >

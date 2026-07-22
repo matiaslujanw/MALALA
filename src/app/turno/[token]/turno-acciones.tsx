@@ -41,7 +41,7 @@ export function TurnoAcciones({
         ? reprogState.message
         : "";
     return (
-      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+      <div className="mt-6 rounded-2xl border border-sage-200 bg-sage-50 p-5 text-sm text-sage-900">
         ✓ {msg}
       </div>
     );
@@ -60,7 +60,7 @@ export function TurnoAcciones({
         <button
           type="button"
           onClick={() => setModo("cancelar")}
-          className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-100"
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/15"
         >
           Cancelar turno
         </button>
@@ -76,7 +76,7 @@ export function TurnoAcciones({
           ¿Querés cancelar este turno? Esta acción no se puede deshacer.
         </p>
         {cancelState && !cancelState.ok && (
-          <p className="mt-2 text-sm text-rose-600">
+          <p className="mt-2 text-sm text-destructive">
             {cancelState.errors._?.[0] ?? "No se pudo cancelar."}
           </p>
         )}
@@ -92,7 +92,7 @@ export function TurnoAcciones({
           <button
             type="submit"
             disabled={cancelPending}
-            className="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="flex-1 rounded-xl bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground disabled:opacity-60"
           >
             {cancelPending ? "Cancelando…" : "Sí, cancelar"}
           </button>
@@ -197,7 +197,7 @@ function ReprogramarForm({
         {loadingSlots ? (
           <p className="text-sm text-muted-foreground">Buscando horarios…</p>
         ) : errorSlots ? (
-          <p className="text-sm text-rose-600">{errorSlots}</p>
+          <p className="text-sm text-destructive">{errorSlots}</p>
         ) : fecha && slots.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay horarios disponibles para esa fecha.
@@ -237,7 +237,7 @@ function ReprogramarForm({
       </div>
 
       {state && !state.ok && (
-        <p className="mt-3 text-sm text-rose-600">
+        <p className="mt-3 text-sm text-destructive">
           {state.errors._?.[0] ??
             Object.values(state.errors).flat().join(", ") ??
             "No se pudo reprogramar."}

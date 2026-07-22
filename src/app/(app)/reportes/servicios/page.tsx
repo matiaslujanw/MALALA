@@ -105,12 +105,12 @@ export default async function ReportesServiciosPage({ searchParams }: PageProps)
       />
 
       {perdedores.length > 0 && (
-        <div className="bg-rose-50 border border-rose-200 rounded-md p-4 text-sm text-rose-900">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-md p-4 text-sm text-destructive">
           <p className="font-medium">
             {perdedores.length} servicio{perdedores.length !== 1 ? "s" : ""} con
             margen negativo:
           </p>
-          <p className="mt-1 text-rose-800/80">
+          <p className="mt-1 text-destructive/80">
             {perdedores.map((p) => p.nombre).join(", ")}. Revisá los precios o
             las recetas técnicas.
           </p>
@@ -172,7 +172,7 @@ export default async function ReportesServiciosPage({ searchParams }: PageProps)
                     </td>
                     <td
                       className={`px-3 py-3 text-right tabular-nums font-medium ${
-                        f.neto >= 0 ? "text-sage-700" : "text-rose-600"
+                        f.neto >= 0 ? "text-sage-700" : "text-destructive"
                       }`}
                     >
                       {formatARS(f.neto)}
@@ -183,7 +183,7 @@ export default async function ReportesServiciosPage({ searchParams }: PageProps)
                           ? "text-sage-700"
                           : margenPct >= 0
                             ? "text-muted-foreground"
-                            : "text-rose-600"
+                            : "text-destructive"
                       }`}
                     >
                       {margenPct.toFixed(1)}%
@@ -214,7 +214,7 @@ export default async function ReportesServiciosPage({ searchParams }: PageProps)
                 </td>
                 <td
                   className={`px-3 py-3 text-right tabular-nums font-semibold ${
-                    totales.neto >= 0 ? "text-sage-700" : "text-rose-600"
+                    totales.neto >= 0 ? "text-sage-700" : "text-destructive"
                   }`}
                 >
                   {formatARS(totales.neto)}

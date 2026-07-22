@@ -101,7 +101,7 @@ export default async function EgresosPage({
         {puedeCargar && (
           <Link
             href="/egresos/nuevo"
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             <Plus className="h-4 w-4 stroke-[1.5]" />
             Nuevo gasto
@@ -211,7 +211,7 @@ export default async function EgresosPage({
 
         <button
           type="submit"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
         >
           Filtrar
         </button>
@@ -289,7 +289,7 @@ export default async function EgresosPage({
                         Pagado
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-500/40">
+                      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wider bg-warning/15 text-brown-700 ring-1 ring-inset ring-warning/40">
                         <Clock className="h-3.5 w-3.5 stroke-[2.5]" />
                         Pendiente
                       </span>

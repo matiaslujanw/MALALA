@@ -280,7 +280,7 @@ export default async function ReporteExportarPage({ searchParams }: PageProps) {
                       <td className="px-3 py-2 text-right tabular-nums">{formatARS(f.facturado)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatARS(f.comisiones)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatARS(f.costoInsumos)}</td>
-                      <td className={`px-3 py-2 text-right tabular-nums font-medium ${f.neto >= 0 ? "text-sage-700" : "text-rose-600"}`}>{formatARS(f.neto)}</td>
+                      <td className={`px-3 py-2 text-right tabular-nums font-medium ${f.neto >= 0 ? "text-sage-700" : "text-destructive"}`}>{formatARS(f.neto)}</td>
                     </tr>
                   ))
                 )}

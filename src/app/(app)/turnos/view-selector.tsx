@@ -35,7 +35,7 @@ export function ViewSelector({ active }: { active: VistaAgenda }) {
           onClick={() => navigate(key)}
           className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
             active === key
-              ? "bg-sage-900 text-white shadow-sm"
+              ? "bg-ink text-white shadow-sm"
               : "text-muted-foreground hover:bg-stone-100 hover:text-foreground"
           }`}
         >

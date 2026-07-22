@@ -122,12 +122,12 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                     · {d.cantidad} venta{d.cantidad !== 1 ? "s" : ""}
                   </span>
                 </span>
-                <span className="text-rose-600">− {formatARS(d.total)}</span>
+                <span className="text-destructive">− {formatARS(d.total)}</span>
               </div>
             ))}
             <div className="flex justify-between items-center pt-2 mt-1 border-t border-border tabular-nums font-medium">
               <span className="text-xs uppercase tracking-wider">Total</span>
-              <span className="text-rose-600">
+              <span className="text-destructive">
                 − {formatARS(totals.descuentos)}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                     <td className="px-3 py-3 text-right tabular-nums">
                       {row.ingreso.descuento_monto > 0 ? (
                         <>
-                          <span className="text-rose-600">
+                          <span className="text-destructive">
                             − {formatARS(row.ingreso.descuento_monto)}
                           </span>
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">
@@ -238,7 +238,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                       className={`px-3 py-3 text-right tabular-nums font-medium ${
                         row.breakdown.neto >= 0
                           ? "text-sage-700"
-                          : "text-rose-600"
+                          : "text-destructive"
                       }`}
                     >
                       {formatARS(row.breakdown.neto)}
@@ -257,7 +257,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                 >
                   Totales
                 </td>
-                <td className="px-3 py-3 text-right tabular-nums font-semibold text-rose-600">
+                <td className="px-3 py-3 text-right tabular-nums font-semibold text-destructive">
                   − {formatARS(totals.descuentos)}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums font-semibold">
@@ -271,7 +271,7 @@ export default async function ReportesVentasPage({ searchParams }: PageProps) {
                 </td>
                 <td
                   className={`px-3 py-3 text-right tabular-nums font-semibold ${
-                    totals.neto >= 0 ? "text-sage-700" : "text-rose-600"
+                    totals.neto >= 0 ? "text-sage-700" : "text-destructive"
                   }`}
                 >
                   {formatARS(totals.neto)}
@@ -298,7 +298,7 @@ function Stat({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : "";
   return (
     <div className="bg-card border border-border rounded-md p-4">

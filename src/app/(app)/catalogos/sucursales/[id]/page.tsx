@@ -83,7 +83,7 @@ export default async function EditarHorariosSucursalPage({
         </p>
 
         {horarios.length === 0 ? (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-md border border-warning/30 bg-warning/10 p-4 text-sm text-brown-700">
             Esta sucursal no tiene horarios cargados, por lo que no ofrece turnos
             online. Agregá al menos una franja para habilitar la reserva.
           </div>
@@ -159,7 +159,7 @@ export default async function EditarHorariosSucursalPage({
             />
           </div>
           <SubmitButton
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             pendingLabel="Agregando..."
           >
             Agregar franja

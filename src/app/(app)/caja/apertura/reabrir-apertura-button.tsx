@@ -39,7 +39,7 @@ export function ReabrirAperturaButton({ aperturaId }: { aperturaId: string }) {
         onClick={handleClick}
         pending={pending}
         pendingLabel="Reabriendo..."
-        className="rounded-md border border-amber-400 px-4 py-2 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-50"
+        className="rounded-md border border-warning/50 px-4 py-2 text-sm font-medium text-brown-700 transition-colors hover:bg-warning/10"
       >
         {confirmando ? "Confirmar: deshacer apertura" : "Reabrir / corregir"}
       </LoadingButton>

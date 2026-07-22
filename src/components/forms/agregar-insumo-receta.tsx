@@ -80,7 +80,7 @@ export function AgregarInsumoReceta({ insumosDisponibles, action }: Props) {
       </div>
       <button
         type="submit"
-        className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+        className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors"
       >
         Agregar
       </button>

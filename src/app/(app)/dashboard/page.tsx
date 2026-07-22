@@ -275,7 +275,7 @@ function Stat({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : "";
   return (
     <div className="rounded-xl border border-border bg-card p-3">

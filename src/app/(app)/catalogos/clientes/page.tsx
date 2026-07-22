@@ -36,7 +36,7 @@ export default async function ClientesPage({
         </div>
         <Link
           href="/catalogos/clientes/nuevo"
-          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
+          className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"
         >
           <Plus className="h-4 w-4 stroke-[1.5]" />
           Nuevo

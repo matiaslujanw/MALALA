@@ -236,7 +236,7 @@ export function CuentaCorrientePanel({
               resetForm();
               setModo("cargo");
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-amber-500 px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-amber-700 transition-colors hover:bg-amber-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-warning px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-warning transition-colors hover:bg-warning/10"
           >
             <Plus className="h-3.5 w-3.5 stroke-[1.5]" />
             Registrar cargo
@@ -343,7 +343,7 @@ export function CuentaCorrientePanel({
               onClick={modo === "cargo" ? handleCargo : handlePago}
               pending={pending}
               pendingLabel="Guardando..."
-              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="rounded-md bg-primary px-4 py-2 text-xs font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             >
               {modo === "cargo" ? "Registrar cargo" : "Registrar pago"}
             </LoadingButton>
@@ -387,7 +387,7 @@ export function CuentaCorrientePanel({
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                           esCargo
-                            ? "bg-amber-50 text-amber-800"
+                            ? "bg-warning/10 text-brown-700"
                             : "bg-sage-100 text-sage-800"
                         }`}
                       >

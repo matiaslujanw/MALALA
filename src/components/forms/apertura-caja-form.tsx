@@ -176,7 +176,7 @@ export function AperturaCajaForm({ sucursalId, fecha, cuentas }: Props) {
           type="submit"
           pending={pending}
           pendingLabel="Abriendo..."
-          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+          className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
         >
           Abrir caja
         </LoadingButton>

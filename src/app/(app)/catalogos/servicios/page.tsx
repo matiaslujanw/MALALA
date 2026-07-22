@@ -41,7 +41,7 @@ export default async function ServiciosPage() {
         {user.rol === "admin" && (
           <Link
             href="/catalogos/servicios/nuevo"
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors flex items-center gap-2"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"
           >
             <Plus className="h-4 w-4 stroke-[1.5]" />
             Nuevo
@@ -91,7 +91,7 @@ export default async function ServiciosPage() {
                           )}
                           {s.visible_reserva === false && (
                             <span
-                              className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-xs"
+                              className="bg-warning/15 text-brown-900 px-2 py-0.5 rounded text-xs"
                               title="Solo se cobra en caja: no aparece en la reserva online"
                             >
                               Solo caja

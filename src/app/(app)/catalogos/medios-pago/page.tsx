@@ -78,7 +78,7 @@ export default async function MediosPagoPage() {
       </header>
 
       {cuentas.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-md p-4 text-sm">
+        <div className="bg-warning/10 border border-warning/30 text-brown-900 rounded-md p-4 text-sm">
           Todavía no hay cuentas bancarias cargadas. Cargá al menos una en{" "}
           <a href="/catalogos/cuentas-bancarias" className="underline">
             Catálogos → Cuentas bancarias
@@ -170,7 +170,7 @@ export default async function MediosPagoPage() {
             />
           </div>
           <SubmitButton
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-sage-700 transition-colors"
+            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors"
             pendingLabel="Agregando..."
           >
             Agregar
@@ -211,7 +211,7 @@ export default async function MediosPagoPage() {
                         defaultValue={m.cuenta_id ?? ""}
                         className={
                           "flex-1 px-2 py-1.5 border border-border rounded bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring " +
-                          (!cuenta ? "text-amber-700" : "")
+                          (!cuenta ? "text-warning" : "")
                         }
                       >
                         <option value="">— sin asignar —</option>

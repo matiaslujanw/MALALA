@@ -30,9 +30,9 @@ export default async function DevLoginPage({
             </h1>
           </header>
 
-          <div className="mt-8 rounded-[1.4rem] border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+          <div className="mt-8 rounded-[1.4rem] border border-warning/30 bg-warning/10 p-6 text-sm text-brown-900">
             <p className="font-medium">Supabase no está configurado</p>
-            <p className="mt-2 text-amber-800/80">
+            <p className="mt-2 text-brown-700">
               Completá las variables obligatorias en <code>.env.local</code> y
               volvé a cargar esta página.
             </p>
@@ -58,7 +58,7 @@ export default async function DevLoginPage({
         </header>
 
         {sp.error ? (
-          <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {sp.error}
           </div>
         ) : null}

@@ -122,7 +122,7 @@ export default async function ReportesDescuentosPage({
                   <td className="px-4 py-2 text-right tabular-nums">
                     {d.cantidad}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-rose-600">
+                  <td className="px-4 py-2 text-right tabular-nums text-destructive">
                     − {formatARS(d.total)}
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums text-muted-foreground text-xs">
@@ -141,7 +141,7 @@ export default async function ReportesDescuentosPage({
                 <td className="px-4 py-2 text-right tabular-nums font-semibold">
                   {conDescuento.length}
                 </td>
-                <td className="px-4 py-2 text-right tabular-nums font-semibold text-rose-600">
+                <td className="px-4 py-2 text-right tabular-nums font-semibold text-destructive">
                   − {formatARS(totals.descuentos)}
                 </td>
                 <td />
@@ -203,7 +203,7 @@ export default async function ReportesDescuentosPage({
                           ?.nombre ?? "Motivo eliminado")
                       : "Sin motivo"}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-rose-600">
+                  <td className="px-4 py-2 text-right tabular-nums text-destructive">
                     − {formatARS(row.ingreso.descuento_monto)}
                   </td>
                   <td className="px-4 py-2 text-right">
@@ -237,7 +237,7 @@ function Stat({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : "";
   return (
     <div className="bg-card border border-border rounded-md p-4">

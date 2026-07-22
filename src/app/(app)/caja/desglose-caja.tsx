@@ -260,9 +260,9 @@ function Kpi({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : accent === "warn"
-          ? "text-amber-700"
+          ? "text-warning"
           : "";
   return (
     <div className="rounded-md border border-border bg-card p-4">

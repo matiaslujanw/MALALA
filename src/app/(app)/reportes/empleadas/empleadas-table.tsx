@@ -105,7 +105,7 @@ export function EmpleadasReportTable({ filas, detalle, totales }: Props) {
               </td>
               <td
                 className={`px-3 py-3 text-right tabular-nums font-semibold ${
-                  totales.netoNegocio >= 0 ? "text-sage-700" : "text-rose-600"
+                  totales.netoNegocio >= 0 ? "text-sage-700" : "text-destructive"
                 }`}
               >
                 {formatARS(totales.netoNegocio)}
@@ -155,7 +155,7 @@ function FilaEmpleada({
         </td>
         <td
           className={`px-3 py-3 text-right tabular-nums font-medium ${
-            fila.netoNegocio >= 0 ? "text-sage-700" : "text-rose-600"
+            fila.netoNegocio >= 0 ? "text-sage-700" : "text-destructive"
           }`}
         >
           {formatARS(fila.netoNegocio)}

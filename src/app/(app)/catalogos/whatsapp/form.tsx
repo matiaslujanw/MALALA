@@ -40,7 +40,7 @@ function Field({
         className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ink/30"
       />
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-rose-600">{error[0]}</p>}
+      {error && <p className="mt-1 text-xs text-destructive">{error[0]}</p>}
     </label>
   );
 }
@@ -81,7 +81,7 @@ export function IntegracionManychatForm({ integ }: Props) {
         <span>Integración activa</span>
       </label>
 
-      {globalError && <p className="text-sm text-rose-600">{globalError}</p>}
+      {globalError && <p className="text-sm text-destructive">{globalError}</p>}
 
       <div className="flex justify-end">
         <LoadingButton

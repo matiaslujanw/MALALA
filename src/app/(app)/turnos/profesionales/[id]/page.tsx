@@ -160,7 +160,7 @@ export default async function ProfesionalAgendaPage({
               className="text-sm file:mr-3 file:rounded-md file:border-0 file:bg-sage-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-sage-900 hover:file:bg-sage-100"
             />
             <SubmitButton
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
               pendingLabel="Subiendo..."
             >
               Subir foto
@@ -215,7 +215,7 @@ export default async function ProfesionalAgendaPage({
           </div>
           <button
             type="submit"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             Guardar servicios
           </button>
@@ -310,7 +310,7 @@ export default async function ProfesionalAgendaPage({
           </div>
           <button
             type="submit"
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             Agregar franja
           </button>

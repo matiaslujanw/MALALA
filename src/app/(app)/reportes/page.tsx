@@ -140,7 +140,7 @@ export default async function ReportesHubPage({ searchParams }: PageProps) {
         </div>
         <Link
           href={`/reportes/exportar${qsStr}`}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
         >
           <FileText className="h-4 w-4 stroke-[1.5]" />
           Exportar PDF
@@ -227,9 +227,9 @@ function Kpi({
     accent === "sage"
       ? "text-sage-700"
       : accent === "danger"
-        ? "text-rose-600"
+        ? "text-destructive"
         : accent === "warn"
-          ? "text-amber-700"
+          ? "text-warning"
           : "";
   return (
     <div className="bg-card border border-border rounded-md p-4">

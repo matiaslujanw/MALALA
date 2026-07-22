@@ -264,7 +264,7 @@ export function NuevaLiquidacionForm({
             onClick={doPreview}
             pending={previewing}
             pendingLabel="Calculando..."
-            className="rounded-md bg-primary px-5 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+            className="rounded-md bg-primary px-5 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
           >
             Calcular comisiones
           </LoadingButton>
@@ -443,7 +443,7 @@ export function NuevaLiquidacionForm({
                       {formatYMD(a.fecha)}
                       {a.observacion ? ` · ${a.observacion}` : ""}
                     </span>
-                    <span className="tabular-nums text-amber-700">
+                    <span className="tabular-nums text-warning">
                       − {formatARS(a.monto)}
                     </span>
                   </li>
@@ -495,7 +495,7 @@ export function NuevaLiquidacionForm({
               pending={saving}
               pendingLabel="Guardando..."
               disabled={!puedeGuardar || saving}
-              className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-sage-700"
+              className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
             >
               Guardar liquidación
             </LoadingButton>
@@ -526,7 +526,7 @@ function DesgloseRow({
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`tabular-nums ${muted ? "text-amber-700" : ""}`}>
+      <span className={`tabular-nums ${muted ? "text-warning" : ""}`}>
         {value}
       </span>
     </div>
