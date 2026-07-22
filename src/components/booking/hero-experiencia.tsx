@@ -12,7 +12,7 @@ interface HeroExperienciaProps {
 const VIDEO_SRC = "/hero-malala-scroll.mp4";
 
 const BOTON =
-  "inline-flex min-w-[11rem] items-center justify-center bg-white/95 px-6 py-3 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-ink transition hover:bg-white";
+  "inline-flex min-w-[11rem] items-center justify-center rounded-lg bg-white/95 px-6 py-3 text-[0.7rem] font-medium uppercase tracking-[0.22em] text-ink transition hover:bg-white";
 
 export function HeroExperiencia({
   onReserve,

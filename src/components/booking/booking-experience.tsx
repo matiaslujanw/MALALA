@@ -375,7 +375,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
           <button
             type="button"
             onClick={() => openBooking()}
-            className="shrink-0 rounded-full bg-ink px-5 py-3 text-[0.62rem] font-medium uppercase tracking-[0.18em] text-white transition hover:bg-brown-500"
+            className="shrink-0 rounded-lg bg-ink px-5 py-3 text-[0.62rem] font-medium uppercase tracking-[0.18em] text-white transition hover:bg-brown-500"
           >
             Reserva tu turno
           </button>
@@ -515,7 +515,7 @@ export function BookingExperience({ snapshot, loggedInLabel }: Props) {
         <button
           type="button"
           onClick={() => openBooking()}
-          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-center rounded-full bg-ink px-5 py-3 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-white shadow-[0_18px_40px_rgba(43,34,26,0.35)] transition hover:bg-brown-500 lg:hidden"
+          className="fixed inset-x-4 bottom-4 z-40 flex items-center justify-center rounded-lg bg-ink px-5 py-3 text-[0.68rem] font-medium uppercase tracking-[0.2em] text-white shadow-[0_18px_40px_rgba(43,34,26,0.35)] transition hover:bg-brown-500 lg:hidden"
         >
           Reserva tu turno
         </button>
@@ -598,21 +598,21 @@ function BookingModal({
   const showReview = currentStep >= 6 || Boolean(state?.ok);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 backdrop-blur-[2px]">
-      <div className="absolute inset-x-0 bottom-0 top-10 overflow-hidden rounded-t-[2rem] bg-white shadow-[0_30px_90px_rgba(0,0,0,0.18)] lg:left-1/2 lg:top-1/2 lg:h-[min(920px,94vh)] lg:w-[min(920px,94vw)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[2rem]">
+    <div className="fixed inset-0 z-50 bg-ink/55 backdrop-blur-[2px]">
+      <div className="absolute inset-x-0 bottom-0 top-8 overflow-hidden rounded-t-2xl bg-white shadow-[0_30px_90px_rgba(43,34,26,0.28)] lg:left-1/2 lg:top-1/2 lg:h-[min(920px,94vh)] lg:w-[min(920px,94vw)] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-2xl">
         <div className="flex h-full flex-col overflow-hidden">
-          <div className="sticky top-0 z-10 border-b border-stone-100 bg-white/96 px-5 py-4 backdrop-blur">
+          <div className="sticky top-0 z-10 border-b border-stone-100 bg-white px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                <p className="font-display text-[0.7rem] uppercase tracking-[0.3em] text-brown-500">
                   Reserva tu turno
                 </p>
-                <p className="mt-1 text-sm font-medium text-ink">
+                <p className="mt-1.5 text-sm font-medium text-ink">
                   {currentStepMeta.title}
                 </p>
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-sand">
                   <div
-                    className="h-full rounded-full bg-sage-700 transition-all duration-300"
+                    className="h-full rounded-full bg-sage-500 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -623,7 +623,7 @@ function BookingModal({
                   <button
                     type="button"
                     onClick={onBack}
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-2 text-sm text-stone-700 transition hover:border-sage-200 hover:bg-sage-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-[0.7rem] uppercase tracking-[0.16em] text-stone-700 transition hover:border-sage-500 hover:text-ink"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Volver
@@ -632,7 +632,7 @@ function BookingModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-full border border-border bg-white p-2 text-muted-foreground shadow-sm transition hover:border-sage-200 hover:text-foreground"
+                  className="rounded-lg border border-stone-200 bg-white p-2 text-stone-500 transition hover:border-sage-500 hover:text-ink"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -688,7 +688,7 @@ function BookingModal({
                   return (
                     <ModalStep title={currentStepMeta.title} text={currentStepMeta.text}>
                       <div className="space-y-4">
-                        <div className="rounded-[1.4rem] border border-sage-200 bg-sage-50 px-4 py-4 text-sm text-sage-900">
+                        <div className="rounded-lg border border-sage-200 bg-sage-50 px-4 py-4 text-sm text-sage-900">
                           <p className="font-medium">{state.message}</p>
                           <p className="mt-2">
                             {sucursal?.nombre} · {servicioConfirmado} · {fechaHora} con{" "}
@@ -735,9 +735,9 @@ function BookingModal({
               )}
 
               {showReview && !state?.ok ? (
-                <section className="space-y-4 rounded-[1.8rem] border border-stone-100 bg-[linear-gradient(160deg,#f7f4ee_0%,#fff_40%,#eef3ec_100%)] p-5 shadow-[0_14px_40px_rgba(44,53,37,0.05)]">
-                  <div className="space-y-2 border-b border-stone-100 pb-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">
+                <section className="space-y-4 border border-stone-200 bg-sand p-5 sm:p-6">
+                  <div className="space-y-2 border-b border-stone-300/60 pb-4">
+                    <p className="font-display text-[0.7rem] uppercase tracking-[0.3em] text-brown-500">
                       Revisa tu reserva
                     </p>
                     <h3 className="text-2xl font-semibold text-ink">
@@ -811,7 +811,7 @@ function BookingModal({
               ) : null}
 
               {state && !state.ok ? (
-                <div className="rounded-[1.35rem] border border-[#f2c4bd] bg-[#fff1ef] px-4 py-3 text-sm text-[#8a3b31]">
+                <div className="border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
                   {Object.values(state.errors).flat()[0]}
                 </div>
               ) : null}
@@ -820,7 +820,7 @@ function BookingModal({
                 <button
                   type="submit"
                   disabled={!canSubmit || pending}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-sage-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sage-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-4 text-[0.72rem] font-medium uppercase tracking-[0.2em] text-white transition hover:bg-brown-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {pending ? "Reservando..." : "Confirmar turno"}
                   <ArrowRight className="h-4 w-4" />
@@ -866,10 +866,10 @@ function renderStepContent(args: {
             type="button"
             onClick={() => args.onSucursalChange(item.id)}
             className={cn(
-              "rounded-[1.4rem] border px-4 py-4 text-left transition",
+              "rounded-lg border px-4 py-4 text-left transition",
               args.sucursalId === item.id
-                ? "border-sage-300 bg-sage-50"
-                : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+                ? "border-sage-500 bg-sage-50"
+                : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
             )}
           >
             <p className="text-lg font-semibold text-ink">{item.nombre}</p>
@@ -892,7 +892,7 @@ function renderStepContent(args: {
             value={args.search}
             onChange={(event) => args.onSearchChange(event.target.value)}
             placeholder="Buscar servicio..."
-            className="w-full rounded-full border border-stone-200 bg-white px-11 py-3 text-sm outline-none transition focus:border-sage-300"
+            className="w-full rounded-lg border border-stone-200 bg-white px-11 py-3 text-sm outline-none transition focus:border-sage-500"
           />
         </div>
 
@@ -903,10 +903,10 @@ function renderStepContent(args: {
               type="button"
               onClick={() => args.onCategoriaChange(item)}
               className={cn(
-                "rounded-full border px-4 py-2 text-sm transition",
+                "rounded-full border px-4 py-2 text-[0.72rem] uppercase tracking-[0.14em] transition",
                 args.categoria === item
-                  ? "border-sage-700 bg-sage-700 text-white"
-                  : "border-stone-200 bg-white text-foreground hover:border-sage-200 hover:bg-sage-50",
+                  ? "border-ink bg-ink text-white"
+                  : "border-stone-200 bg-white text-stone-700 hover:border-sage-500 hover:text-ink",
               )}
             >
               {item}
@@ -921,14 +921,14 @@ function renderStepContent(args: {
               type="button"
               onClick={() => args.onServicioChange(item.id)}
               className={cn(
-                "relative overflow-hidden rounded-[1.35rem] border p-4 text-left transition",
+                "relative overflow-hidden rounded-lg border p-4 text-left transition",
                 args.servicioId === item.id
-                  ? "border-sage-300 bg-sage-50 shadow-sm"
-                  : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+                  ? "border-sage-500 bg-sage-50 shadow-sm"
+                  : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
               )}
             >
               {item.destacado_pct ? (
-                <span className="absolute right-0 top-0 rounded-bl-2xl bg-[#e53b2d] px-3 py-1 text-xs font-semibold text-white">
+                <span className="absolute right-0 top-0 rounded-bl-lg bg-ink px-3 py-1 text-[0.65rem] font-medium uppercase tracking-[0.12em] text-white">
                   {item.destacado_pct}% OFF
                 </span>
               ) : null}
@@ -937,7 +937,7 @@ function renderStepContent(args: {
                   <p className="text-lg font-semibold text-ink">
                     {item.nombre}
                     {item.es_promo ? (
-                      <span className="ml-2 rounded-full bg-sage-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white align-middle">
+                      <span className="ml-2 rounded-full bg-sage-500 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-white align-middle">
                         Promo
                       </span>
                     ) : null}
@@ -974,7 +974,7 @@ function renderStepContent(args: {
   if (args.currentStep === 3) {
     if (args.profesionales.length === 0) {
       return (
-        <div className="rounded-[1.35rem] border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
+        <div className="rounded-lg border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
           No hay profesionales configurados para este servicio en esta sucursal.
         </div>
       );
@@ -986,10 +986,10 @@ function renderStepContent(args: {
           type="button"
           onClick={() => args.onProfesionalChange("any")}
           className={cn(
-            "flex w-full items-center justify-between rounded-[1.35rem] border px-4 py-4 text-left transition",
+            "flex w-full items-center justify-between rounded-lg border px-4 py-4 text-left transition",
             args.profesionalId === "any"
-              ? "border-sage-300 bg-sage-50"
-              : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+              ? "border-sage-500 bg-sage-50"
+              : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
           )}
         >
           <span className="inline-flex items-center gap-3">
@@ -1015,10 +1015,10 @@ function renderStepContent(args: {
               type="button"
               onClick={() => args.onProfesionalChange(prof.empleado_id)}
               className={cn(
-                "rounded-[1.35rem] border px-4 py-4 text-left transition",
+                "rounded-lg border px-4 py-4 text-left transition",
                 args.profesionalId === prof.empleado_id
-                  ? "border-sage-300 bg-sage-50"
-                  : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+                  ? "border-sage-500 bg-sage-50"
+                  : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
               )}
             >
               <div className="flex items-center gap-3">
@@ -1061,7 +1061,7 @@ function renderStepContent(args: {
   if (args.currentStep === 4) {
     if (args.fechasDisponibles.length === 0) {
       return (
-        <div className="rounded-[1.35rem] border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
+        <div className="rounded-lg border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
           No hay fechas disponibles para esta selección. Si es una promoción,
           puede estar vencida. Volvé y elegí otro servicio.
         </div>
@@ -1076,10 +1076,10 @@ function renderStepContent(args: {
             type="button"
             onClick={() => args.onFechaChange(item)}
             className={cn(
-              "rounded-[1.35rem] border px-4 py-4 text-left transition",
+              "rounded-lg border px-4 py-4 text-left transition",
               args.fechaTurno === item
-                ? "border-sage-300 bg-sage-50"
-                : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+                ? "border-sage-500 bg-sage-50"
+                : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
             )}
           >
             <span className="block text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -1102,7 +1102,7 @@ function renderStepContent(args: {
   if (args.currentStep === 5) {
     if (args.slots.length === 0) {
       return (
-        <div className="rounded-[1.35rem] border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
+        <div className="rounded-lg border border-dashed border-stone-200 bg-cream/60 px-4 py-5 text-sm text-stone-700">
           No encontramos horarios para esa combinacion. Puedes volver y cambiar
           profesional o fecha.
         </div>
@@ -1117,10 +1117,10 @@ function renderStepContent(args: {
             type="button"
             onClick={() => args.onSlotChange(`${slot.profesional_id}-${slot.hora}`)}
             className={cn(
-              "rounded-[1.35rem] border px-4 py-3 text-left transition",
+              "rounded-lg border px-4 py-3 text-left transition",
               args.slotKey === `${slot.profesional_id}-${slot.hora}`
-                ? "border-sage-300 bg-sage-50"
-                : "border-stone-100 bg-white hover:border-sage-100 hover:bg-sage-50/40",
+                ? "border-sage-500 bg-sage-50"
+                : "border-stone-200 bg-white hover:border-sage-500 hover:bg-sage-50/50",
             )}
           >
             <span className="block text-base font-medium text-ink">
@@ -1145,7 +1145,7 @@ function renderStepContent(args: {
           <input
             name="cliente_nombre"
             required
-            className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-300"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-500"
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -1153,7 +1153,7 @@ function renderStepContent(args: {
           <input
             name="cliente_telefono"
             required
-            className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-300"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-500"
           />
         </label>
         <label className="space-y-1 text-sm">
@@ -1161,7 +1161,7 @@ function renderStepContent(args: {
           <input
             name="cliente_email"
             type="email"
-            className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-300"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-500"
           />
         </label>
         <label className="space-y-1 text-sm md:col-span-2">
@@ -1169,7 +1169,7 @@ function renderStepContent(args: {
           <textarea
             name="observacion"
             rows={3}
-            className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-300"
+            className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2.5 outline-none focus:border-sage-500"
           />
         </label>
       </div>
@@ -1189,9 +1189,9 @@ function ModalStep({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-4 rounded-[1.8rem] border border-stone-100 bg-white p-5 shadow-[0_14px_40px_rgba(44,53,37,0.05)]">
+    <section className="space-y-4 border border-stone-200 bg-white p-5 sm:p-6">
       <div className="space-y-1">
-        <h3 className="text-2xl font-semibold text-ink">{title}</h3>
+        <h3 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{title}</h3>
         <p className="text-sm leading-6 text-stone-700">{text}</p>
       </div>
       {children}
@@ -1211,16 +1211,16 @@ function SummaryLine({
   onEdit?: () => void;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-stone-100 bg-white/78 px-4 py-3">
+    <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+        <p className="text-[0.7rem] uppercase tracking-[0.22em] text-stone-500">
           {label}
         </p>
         {editable && onEdit ? (
           <button
             type="button"
             onClick={onEdit}
-            className="text-xs font-medium uppercase tracking-[0.2em] text-sage-900 transition hover:text-sage-700"
+            className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-sage-700 transition hover:text-brown-500"
           >
             Cambiar
           </button>
