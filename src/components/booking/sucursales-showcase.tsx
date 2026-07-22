@@ -103,7 +103,7 @@ function SucursalCard({
         <button
           type="button"
           onClick={onReserve}
-          className="absolute bottom-0 right-5 z-10 translate-y-1/2 rounded-lg bg-ink px-6 py-3 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(43,34,26,0.25)] transition hover:bg-brown-500 sm:right-8 sm:text-[0.64rem]"
+          className="absolute bottom-0 left-5 z-10 translate-y-1/2 rounded-lg bg-ink px-6 py-3 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(43,34,26,0.25)] transition hover:bg-brown-500 sm:left-8 sm:text-[0.64rem]"
         >
           Reserva tu turno
         </button>
