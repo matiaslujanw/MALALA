@@ -87,7 +87,9 @@ function SucursalCard({
               alt={sucursal.nombre}
               width={1286}
               height={860}
-              className="h-full w-full object-cover grayscale"
+              // La foto es vertical y lo bueno (sofá, mesa, sillas) está abajo;
+              // bajamos el encuadre para no mostrar solo la pared/el techo.
+              className="h-full w-full object-cover object-[center_75%] grayscale"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(150deg,var(--sand)_0%,var(--brown-100)_55%,var(--sage-100)_100%)]">
