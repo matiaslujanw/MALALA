@@ -41,11 +41,11 @@
 | A3 | Egreso cruzado por URL | Como **encargada.norte**, abrí `/egresos/<id-de-Centro>` (o su detalle) | No muestra el egreso ajeno |✅ |
 | A4 | Listado de ventas | Comparar `/ventas` entre las 2 encargadas | Cada una ve SOLO ventas de su sucursal | ✅|
 | A5 | Listado de caja | Comparar `/caja` entre las 2 encargadas | Cierres separados por sucursal |✅ |
-| A6 | Stock | Comparar `/stock` entre las 2 encargadas | Cantidades independientes por sucursal | |
-| A7 | Bancos / cuentas | Comparar `/bancos` y `/catalogos/cuentas-bancarias` | Cuentas y saldos no se cruzan | |
-| A8 | Reportes | Comparar `/reportes/*` entre encargadas | Cifras solo de su sucursal | |
-| A9 | Selector de sucursal (admin) | Como **admin**, abrí el selector de sucursal | **Ver nota ⚠️**: confirmá si aparecen las 2 sucursales o solo Centro | |
-| A10 | Cookie forzada | Editá la cookie `malala_sucursal` poniéndole el ID de la sucursal ajena, recargá | Debe ignorarla y mantenerte en tu sucursal | |
+| A6 | Stock | Comparar `/stock` entre las 2 encargadas | Cantidades independientes por sucursal |✅ |
+| A7 | Bancos / cuentas | Comparar `/bancos` y `/catalogos/cuentas-bancarias` | Cuentas y saldos no se cruzan |✅ |
+| A8 | Reportes | Comparar `/reportes/*` entre encargadas | Cifras solo de su sucursal | ✅|
+| A9 | Selector de sucursal (admin) | Como **admin**, abrí el selector de sucursal | **Ver nota ⚠️**: confirmá si aparecen las 2 sucursales o solo Centro |✅ |
+| A10 | Cookie forzada | Editá la cookie `malala_sucursal` poniéndole el ID de la sucursal ajena, recargá | Debe ignorarla y mantenerte en tu sucursal | ✅|
 | A11 | Compartidos vs separados | Verificá que clientes/servicios/insumos/proveedores SÍ se comparten, y stock/caja/ingresos/egresos/turnos NO | Coincide con la regla de negocio | |
 
 > ⚠️ **A9 — Hallazgo a confirmar:** en el seed no hay usuario `superadmin`, y el código confina a `admin` a su sucursal default. El spec dice que admin ve ambas. Si el selector solo muestra Centro, es una divergencia con el spec (decidir si el rol "ve todo" debería ser admin o solo superadmin).
