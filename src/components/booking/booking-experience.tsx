@@ -739,7 +739,12 @@ function BookingModal({
                     </h3>
                     <p className="text-sm text-stone-700">
                       {servicio
-                        ? `${servicio.duracion_min} min · desde ${formatARS(servicio.precio_efectivo)}`
+                        ? [
+                            servicio.duracion_min ? `${servicio.duracion_min} min` : null,
+                            `desde ${formatARS(servicio.precio_efectivo)}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
                         : "Estas a un paso de confirmar tu cita."}
                     </p>
                     {servicio?.promo_componentes &&
@@ -952,10 +957,14 @@ function renderStepContent(args: {
                   <span className="line-through text-stone-400">
                     {formatARS(item.precio_lista)}
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Clock3 className="h-4 w-4 text-sage-700" />
-                    {item.duracion_min} min
-                  </span>
+                  {/* Sin duración cargada no se muestra el reloj: si no, queda
+                      un " min" suelto sin número. */}
+                  {item.duracion_min ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock3 className="h-4 w-4 text-sage-700" />
+                      {item.duracion_min} min
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </button>
