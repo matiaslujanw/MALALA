@@ -97,6 +97,7 @@ function mapPromocion(
     id: row.id,
     rubro: row.rubro,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     precio_lista: row.precioLista,
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,

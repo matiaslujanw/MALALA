@@ -31,6 +31,19 @@ export function success(message?: string): ActionResult {
   return message ? { ok: true, message } : { ok: true };
 }
 
+/**
+ * Postgres tira 23505 (unique_violation) cuando se repite un código de planilla
+ * (ver los índices de drizzle/0026_codigos_unicos.sql). Sin esto, escribir un
+ * código que ya existe reventaba el server action con una excepción cruda en vez
+ * de marcar el campo en el formulario.
+ */
+export function esCodigoDuplicado(err: unknown): boolean {
+  if (!err || typeof err !== "object" || !("code" in err)) return false;
+  const e = err as { code?: unknown; constraint_name?: unknown; detail?: unknown };
+  if (e.code !== "23505") return false;
+  return /codigo/i.test(`${e.constraint_name ?? ""} ${e.detail ?? ""}`);
+}
+
 export async function requireRole(roles: Rol[]): Promise<Usuario> {
   const user = await requireUser();
   // superadmin es superset de admin: si el endpoint permite admin, también permite superadmin

@@ -3,6 +3,13 @@ import { z } from "zod";
 export const insumoSchema = z
   .object({
     nombre: z.string().min(1, "Nombre requerido").transform((s) => s.trim()),
+    // Código de la planilla del salón ("INS001"). Ver servicioSchema.codigo.
+    codigo: z
+      .string()
+      .trim()
+      .max(20, "Máximo 20 caracteres")
+      .nullish()
+      .transform((s) => (s ? s.toUpperCase() : undefined)),
     proveedor_ids: z
       .array(z.string())
       .default([])

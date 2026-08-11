@@ -130,6 +130,9 @@ export interface Servicio {
   id: ID;
   rubro: string;
   nombre: string;
+  // Código de la planilla del salón ("PEL100"). Puede no estar: Centro se cargó
+  // sin códigos.
+  codigo?: string;
   precio_lista: number;
   precio_efectivo: number;
   comision_default_pct: number; // 0-100
@@ -245,6 +248,8 @@ export interface Insumo {
   id: ID;
   sucursal_id: ID;
   nombre: string;
+  // Código de la planilla del salón ("INS001", "VPC100"). Ver Servicio.codigo.
+  codigo?: string;
   proveedor_ids?: ID[];
   unidad_medida: UnidadMedida;
   tamano_envase: number;
@@ -266,6 +271,9 @@ export interface Receta {
   servicio_id: ID;
   insumo_id: ID;
   cantidad: number;
+  // false = propuesta que el salón todavía tiene que confirmar. Cuenta igual
+  // para el costo; sólo se muestra distinto.
+  confirmada?: boolean;
 }
 
 export interface MedioPago {

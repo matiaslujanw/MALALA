@@ -78,6 +78,16 @@ export function InsumoForm({
             error={errors.nombre}
             required
           />
+          <Field
+            label="Código"
+            name="codigo"
+            defaultValue={insumo?.codigo ?? ""}
+            error={errors.codigo}
+            maxLength={20}
+            placeholder="INS001"
+            hint="Código de la planilla del salón. Opcional."
+            className="uppercase"
+          />
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Proveedores

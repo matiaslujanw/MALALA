@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import {
@@ -7,7 +7,13 @@ import {
 } from "@/lib/db/schema";
 import { getActiveSucursalForUser, requireUser } from "@/lib/auth/session";
 import { servicioSchema } from "@/lib/validations/servicio";
+import { esCodigoDuplicado } from "./_helpers";
 import type { Servicio } from "@/lib/types";
+
+const CODIGO_REPETIDO = {
+  ok: false as const,
+  errors: { codigo: ["Ese código ya lo usa otro servicio"] },
+};
 
 function createId() {
   return crypto.randomUUID();
@@ -18,6 +24,7 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
     id: row.id,
     rubro: row.rubro,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     precio_lista: row.precioLista,
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,
@@ -35,23 +42,26 @@ export async function listServicios(opts?: {
   incluirInactivos?: boolean;
   /** Si se pasa, solo servicios habilitados en esa sucursal (membresía). */
   sucursalId?: string;
+  /** Búsqueda por nombre o por código de planilla ("PEL100"). */
+  q?: string;
 }): Promise<Servicio[]> {
   const db = getDb();
   // Las promociones también son filas de `servicios` (es_promo=true) pero se
   // gestionan en su propio catálogo; acá se excluyen.
-  const rows = opts?.incluirInactivos
-    ? await db
-        .select()
-        .from(serviciosTable)
-        .where(eq(serviciosTable.esPromo, false))
-        .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre))
-    : await db
-        .select()
-        .from(serviciosTable)
-        .where(
-          and(eq(serviciosTable.activo, true), eq(serviciosTable.esPromo, false)),
-        )
-        .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
+  const filtros = [eq(serviciosTable.esPromo, false)];
+  if (!opts?.incluirInactivos) filtros.push(eq(serviciosTable.activo, true));
+  if (opts?.q) {
+    const patron = `%${opts.q}%`;
+    filtros.push(
+      or(ilike(serviciosTable.nombre, patron), ilike(serviciosTable.codigo, patron))!,
+    );
+  }
+
+  const rows = await db
+    .select()
+    .from(serviciosTable)
+    .where(and(...filtros))
+    .orderBy(asc(serviciosTable.rubro), asc(serviciosTable.nombre));
 
   if (opts?.sucursalId) {
     const miembros = await db
@@ -129,6 +139,7 @@ function parse(formData: FormData) {
   return servicioSchema.safeParse({
     rubro: formData.get("rubro"),
     nombre: formData.get("nombre"),
+    codigo: formData.get("codigo"),
     precio_lista: formData.get("precio_lista"),
     precio_efectivo: formData.get("precio_efectivo"),
     duracion_min: formData.get("duracion_min"),
@@ -153,17 +164,23 @@ export async function createServicio(formData: FormData): Promise<ActionResult> 
 
   const db = getDb();
   const servicioId = createId();
-  await db.insert(serviciosTable).values({
-    id: servicioId,
-    rubro: parsed.data.rubro,
-    nombre: parsed.data.nombre,
-    precioLista: parsed.data.precio_lista,
-    precioEfectivo: parsed.data.precio_efectivo,
-    comisionDefaultPct: 0, // la comisión la define el % del empleado
-    duracionMin: parsed.data.duracion_min,
-    activo: parsed.data.activo,
-    visibleReserva: parsed.data.visible_reserva,
-  });
+  try {
+    await db.insert(serviciosTable).values({
+      id: servicioId,
+      rubro: parsed.data.rubro,
+      nombre: parsed.data.nombre,
+      codigo: parsed.data.codigo ?? null,
+      precioLista: parsed.data.precio_lista,
+      precioEfectivo: parsed.data.precio_efectivo,
+      comisionDefaultPct: 0, // la comisión la define el % del empleado
+      duracionMin: parsed.data.duracion_min,
+      activo: parsed.data.activo,
+      visibleReserva: parsed.data.visible_reserva,
+    });
+  } catch (err) {
+    if (esCodigoDuplicado(err)) return CODIGO_REPETIDO;
+    throw err;
+  }
 
   // Membresía: el servicio queda habilitado en la sucursal activa del admin.
   const sucursalActiva = await getActiveSucursalForUser(user);
@@ -205,19 +222,25 @@ export async function updateServicio(
     return { ok: false, errors: { _: ["Servicio no encontrado"] } };
   }
 
-  await db
-    .update(serviciosTable)
-    .set({
-      rubro: parsed.data.rubro,
-      nombre: parsed.data.nombre,
-      precioLista: parsed.data.precio_lista,
-      precioEfectivo: parsed.data.precio_efectivo,
-      // comisionDefaultPct ya no se gestiona desde el servicio.
-      duracionMin: parsed.data.duracion_min,
-      activo: parsed.data.activo,
-      visibleReserva: parsed.data.visible_reserva,
-    })
-    .where(eq(serviciosTable.id, servicioId));
+  try {
+    await db
+      .update(serviciosTable)
+      .set({
+        rubro: parsed.data.rubro,
+        nombre: parsed.data.nombre,
+        codigo: parsed.data.codigo ?? null,
+        precioLista: parsed.data.precio_lista,
+        precioEfectivo: parsed.data.precio_efectivo,
+        // comisionDefaultPct ya no se gestiona desde el servicio.
+        duracionMin: parsed.data.duracion_min,
+        activo: parsed.data.activo,
+        visibleReserva: parsed.data.visible_reserva,
+      })
+      .where(eq(serviciosTable.id, servicioId));
+  } catch (err) {
+    if (esCodigoDuplicado(err)) return CODIGO_REPETIDO;
+    throw err;
+  }
 
   revalidatePath("/catalogos/servicios");
   revalidatePath("/");

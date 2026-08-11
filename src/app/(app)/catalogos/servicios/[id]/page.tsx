@@ -107,6 +107,9 @@ export default async function EditarServicioPage({
       ) : (
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border border-border bg-card p-5">
           <Dato label="Rubro" value={servicio.rubro} />
+          {/* La encargada ve la ficha en modo lectura: el código es como el
+              salón identifica el servicio en la planilla. */}
+          <Dato label="Código" value={servicio.codigo ?? "—"} />
           <Dato label="Nombre" value={servicio.nombre} />
           <Dato label="Precio lista" value={formatARS(servicio.precio_lista)} />
           <Dato label="Precio efectivo" value={formatARS(servicio.precio_efectivo)} />

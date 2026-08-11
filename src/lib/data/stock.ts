@@ -30,6 +30,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     id: row.id,
     sucursal_id: row.sucursalId,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
     precio_envase: row.precioEnvase,

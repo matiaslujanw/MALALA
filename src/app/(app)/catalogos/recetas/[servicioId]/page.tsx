@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AgregarInsumoReceta } from "@/components/forms/agregar-insumo-receta";
@@ -9,7 +10,15 @@ import {
 import { getServicio } from "@/lib/data/servicios";
 import { listInsumos } from "@/lib/data/insumos";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
+import { esAdmin } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
+import {
+  BadgeAConfirmar,
+  BadgeLineaPropuesta,
+  BadgeLineaSinPrecio,
+  BadgeSinPrecio,
+} from "../receta-badges";
+import { ConfirmarRecetaButton } from "./confirmar-receta-button";
 
 const UNIDAD_LABEL: Record<string, string> = {
   ud: "ud",
@@ -39,10 +48,19 @@ export default async function EditarRecetaPage({
   if (!servicio) notFound();
 
   const isAdmin = user.rol === "admin";
+  // La server action de confirmar también la puede correr la encargada.
+  const puedeConfirmar = esAdmin(user.rol) || user.rol === "encargada";
 
   // Insumos disponibles para agregar (los que no están ya en la receta)
   const insumosUsados = new Set(items.map((i) => i.insumo.id));
   const insumosDisponibles = insumos.filter((i) => !insumosUsados.has(i.id));
+
+  // Líneas que el sistema propuso desde la planilla y nadie validó, y líneas
+  // que no suman al costo porque el insumo no tiene precio cargado.
+  const propuestas = items.filter((i) => i.receta.confirmada === false).length;
+  const sinPrecio = items.filter(
+    (i) => i.insumo.precio_unitario == null,
+  ).length;
 
   const costoTotal = items.reduce((acc, i) => acc + i.costo, 0);
   // Comisión estimada de la empleada: % del precio efectivo (precio pleno).
@@ -82,10 +100,65 @@ export default async function EditarRecetaPage({
         <h1 className="font-display text-3xl tracking-[0.2em] uppercase">
           Receta
         </h1>
-        <p className="text-sm text-muted-foreground">
-          {servicio.rubro} · <span className="font-medium text-foreground">{servicio.nombre}</span>
+        <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {servicio.codigo && (
+            <span className="tabular-nums font-medium text-foreground">
+              {servicio.codigo}
+            </span>
+          )}
+          <span>
+            {servicio.rubro} ·{" "}
+            <span className="font-medium text-foreground">
+              {servicio.nombre}
+            </span>
+          </span>
+          <BadgeAConfirmar cantidad={propuestas} />
+          <BadgeSinPrecio cantidad={sinPrecio} />
         </p>
       </header>
+
+      {propuestas > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-warning/30 bg-warning/10 p-4 text-sm text-brown-900">
+          <div className="space-y-1">
+            <p className="font-medium">
+              {propuestas}{" "}
+              {propuestas === 1 ? "línea propuesta" : "líneas propuestas"} sin
+              confirmar
+            </p>
+            <p className="text-xs">
+              Las armó el sistema a partir de la planilla. Revisá las cantidades
+              y confirmá la receta; editar una cantidad también confirma esa
+              línea.
+            </p>
+          </div>
+          {puedeConfirmar && (
+            <ConfirmarRecetaButton
+              servicioId={servicioId}
+              sucursalId={sucursal.id}
+              pendientes={propuestas}
+            />
+          )}
+        </div>
+      )}
+
+      {sinPrecio > 0 && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive space-y-1">
+          <p className="font-medium">
+            Costo incompleto: {sinPrecio}{" "}
+            {sinPrecio === 1
+              ? "insumo sin precio cargado"
+              : "insumos sin precio cargado"}
+          </p>
+          <p className="text-xs">
+            Esas líneas suman $ 0 al costo, así que el costo real de esta receta
+            es mayor y el margen menor que el que ves acá. Cargá el precio en{" "}
+            <Link href="/catalogos/insumos" className="underline">
+              Catálogos → Insumos
+            </Link>
+            .
+          </p>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -104,6 +177,12 @@ export default async function EditarRecetaPage({
           <p className="font-display text-2xl mt-2 tabular-nums">
             −{formatARS(costoTotal)}
           </p>
+          {sinPrecio > 0 && (
+            <p className="text-xs text-destructive mt-1">
+              Incompleto: falta el precio de {sinPrecio}{" "}
+              {sinPrecio === 1 ? "insumo" : "insumos"}
+            </p>
+          )}
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -112,6 +191,12 @@ export default async function EditarRecetaPage({
           <p className="font-display text-2xl mt-2 tabular-nums">
             −{formatARS(comision)}
           </p>
+          {servicio.comision_default_pct === 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              El servicio no tiene % cargado: la comisión la define el % de cada
+              empleada
+            </p>
+          )}
         </div>
         <div className="bg-card border border-border rounded-md p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -123,11 +208,22 @@ export default async function EditarRecetaPage({
               color: margen >= 0 ? "var(--sage-700)" : "var(--danger)",
             }}
           >
+            {sinPrecio > 0 ? "≤ " : ""}
             {formatARS(margen)}
           </p>
+          {/* Con comisión en 0 el margen no descuenta nada de la empleada:
+              decirlo evita leer este número como el margen final. */}
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {margenPct.toFixed(0)}% · después de insumos y comisión
+            {margenPct.toFixed(0)}% ·{" "}
+            {servicio.comision_default_pct > 0
+              ? "después de insumos y comisión"
+              : "después de insumos, sin comisión"}
           </p>
+          {sinPrecio > 0 && (
+            <p className="text-xs text-destructive mt-1">
+              Es el margen máximo: el real es menor
+            </p>
+          )}
         </div>
       </div>
 
@@ -155,72 +251,104 @@ export default async function EditarRecetaPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {items.map(({ receta, insumo, costo }) => (
-                  <tr key={receta.id} className="hover:bg-cream/30">
-                    <td className="px-4 py-3 font-medium">{insumo.nombre}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {isAdmin ? (
-                        <form action={update} className="flex items-center gap-1 justify-end">
-                          <input
-                            type="hidden"
-                            name="insumo_id"
-                            value={insumo.id}
-                          />
-                          <input
-                            type="number"
-                            name="cantidad"
-                            step="0.01"
-                            min="0.01"
-                            defaultValue={receta.cantidad}
-                            className="w-20 px-2 py-1 text-right border border-border rounded-md text-sm bg-card focus:outline-none focus:ring-2 focus:ring-ring"
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {UNIDAD_LABEL[insumo.unidad_medida]}
-                          </span>
-                          <button
-                            type="submit"
-                            className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 ml-1"
-                          >
-                            ↻
-                          </button>
-                        </form>
-                      ) : (
-                        <>
-                          {receta.cantidad}{" "}
-                          <span className="text-xs text-muted-foreground">
-                            {UNIDAD_LABEL[insumo.unidad_medida]}
-                          </span>
-                        </>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {insumo.precio_unitario != null
-                        ? formatARS(insumo.precio_unitario)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {formatARS(costo)}
-                    </td>
-                    {isAdmin && (
-                      <td className="px-4 py-3 text-right">
-                        <form action={remove}>
-                          <input
-                            type="hidden"
-                            name="receta_id"
-                            value={receta.id}
-                          />
-                          <button
-                            type="submit"
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                            title="Quitar"
-                          >
-                            <Trash2 className="h-4 w-4 stroke-[1.5]" />
-                          </button>
-                        </form>
+                {items.map(({ receta, insumo, costo }) => {
+                  const esPropuesta = receta.confirmada === false;
+                  const insumoSinPrecio = insumo.precio_unitario == null;
+                  return (
+                    <tr
+                      key={receta.id}
+                      className={
+                        esPropuesta
+                          ? "bg-warning/5 hover:bg-warning/10"
+                          : "hover:bg-cream/30"
+                      }
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {insumo.codigo && (
+                            <span className="text-xs tabular-nums text-muted-foreground">
+                              {insumo.codigo}
+                            </span>
+                          )}
+                          <span className="font-medium">{insumo.nombre}</span>
+                          {esPropuesta && <BadgeLineaPropuesta />}
+                          {insumoSinPrecio && <BadgeLineaSinPrecio />}
+                        </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {isAdmin ? (
+                          <form
+                            action={update}
+                            className="flex items-center gap-1 justify-end"
+                          >
+                            <input
+                              type="hidden"
+                              name="insumo_id"
+                              value={insumo.id}
+                            />
+                            <input
+                              type="number"
+                              name="cantidad"
+                              step="0.01"
+                              min="0.01"
+                              defaultValue={receta.cantidad}
+                              className="w-20 px-2 py-1 text-right border border-border rounded-md text-sm bg-card focus:outline-none focus:ring-2 focus:ring-ring"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {UNIDAD_LABEL[insumo.unidad_medida]}
+                            </span>
+                            <button
+                              type="submit"
+                              className="text-xs uppercase tracking-wider text-sage-700 hover:text-sage-900 ml-1"
+                            >
+                              ↻
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            {receta.cantidad}{" "}
+                            <span className="text-xs text-muted-foreground">
+                              {UNIDAD_LABEL[insumo.unidad_medida]}
+                            </span>
+                          </>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                        {insumo.precio_unitario != null ? (
+                          formatARS(insumo.precio_unitario)
+                        ) : (
+                          <span className="text-destructive">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {/* Sin precio no se muestra $ 0: sería mentir sobre el costo. */}
+                        {insumoSinPrecio ? (
+                          <span className="text-destructive">—</span>
+                        ) : (
+                          formatARS(costo)
+                        )}
+                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-right">
+                          <form action={remove}>
+                            <input
+                              type="hidden"
+                              name="receta_id"
+                              value={receta.id}
+                            />
+                            <button
+                              type="submit"
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title="Quitar"
+                            >
+                              <Trash2 className="h-4 w-4 stroke-[1.5]" />
+                            </button>
+                          </form>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

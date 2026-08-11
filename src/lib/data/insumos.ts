@@ -12,7 +12,12 @@ import {
 import type { Insumo } from "@/lib/types";
 import { insumoSchema } from "@/lib/validations/insumo";
 import { getActiveSucursalForUser } from "@/lib/auth/session";
-import { fieldErrors, requireRole, type ActionResult } from "./_helpers";
+import {
+  esCodigoDuplicado,
+  fieldErrors,
+  requireRole,
+  type ActionResult,
+} from "./_helpers";
 import { createEgreso, type CreateEgresoResult } from "./egresos";
 
 function mapInsumo(
@@ -23,6 +28,7 @@ function mapInsumo(
     id: row.id,
     sucursal_id: row.sucursalId,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     proveedor_ids: proveedorIds,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
@@ -91,6 +97,8 @@ export async function listInsumos(opts?: {
    * "venta" = productos de venta directa. Sin filtro devuelve ambos.
    */
   tipo?: "bacha" | "venta";
+  /** Búsqueda por nombre o por código de planilla ("INS001"). */
+  q?: string;
 }): Promise<Insumo[]> {
   requireSupabaseRuntime(
     "Los insumos del sistema solo se cargan desde Supabase.",
@@ -101,6 +109,12 @@ export async function listInsumos(opts?: {
   if (!opts?.incluirInactivos) filtros.push(eq(insumosTable.activo, true));
   if (opts?.sucursalId) filtros.push(eq(insumosTable.sucursalId, opts.sucursalId));
   if (opts?.tipo) filtros.push(eq(insumosTable.tipo, opts.tipo));
+  if (opts?.q) {
+    const patron = `%${opts.q}%`;
+    filtros.push(
+      or(ilike(insumosTable.nombre, patron), ilike(insumosTable.codigo, patron))!,
+    );
+  }
 
   const rows = await db
     .select()
@@ -131,6 +145,7 @@ export async function getInsumo(insumoId: string): Promise<Insumo | null> {
 function parse(formData: FormData) {
   return insumoSchema.safeParse({
     nombre: formData.get("nombre"),
+    codigo: formData.get("codigo"),
     proveedor_ids: formData.getAll("proveedor_ids"),
     unidad_medida: formData.get("unidad_medida"),
     tamano_envase: formData.get("tamano_envase"),
@@ -223,6 +238,8 @@ export async function registrarCompraInsumo(
       id: insumoId,
       sucursalId: sucursalActiva.id,
       nombre,
+      // Alta inline desde una compra: sin código de planilla.
+      codigo: null,
       unidadMedida: unidad as (typeof UNIDADES_INSUMO)[number],
       tamanoEnvase: tamano,
       precioEnvase,
@@ -468,21 +485,28 @@ export async function createInsumo(formData: FormData): Promise<ActionResult> {
 
   const db = getDb();
   const insumoId = crypto.randomUUID();
-  await db.insert(insumosTable).values({
-    id: insumoId,
-    sucursalId: sucursalActiva.id,
-    nombre: parsed.data.nombre,
-    unidadMedida: parsed.data.unidad_medida,
-    tamanoEnvase: parsed.data.tamano_envase,
-    precioEnvase: parsed.data.precio_envase,
-    precioUnitario: parsed.data.precio_unitario,
-    rinde: parsed.data.rinde ?? null,
-    umbralStockBajo: parsed.data.umbral_stock_bajo,
-    activo: parsed.data.activo,
-    tipo: parsed.data.tipo,
-    vendible: parsed.data.vendible,
-    precioVenta: parsed.data.precio_venta ?? null,
-  });
+  try {
+    await db.insert(insumosTable).values({
+      id: insumoId,
+      sucursalId: sucursalActiva.id,
+      nombre: parsed.data.nombre,
+      codigo: parsed.data.codigo ?? null,
+      unidadMedida: parsed.data.unidad_medida,
+      tamanoEnvase: parsed.data.tamano_envase,
+      precioEnvase: parsed.data.precio_envase,
+      precioUnitario: parsed.data.precio_unitario,
+      rinde: parsed.data.rinde ?? null,
+      umbralStockBajo: parsed.data.umbral_stock_bajo,
+      activo: parsed.data.activo,
+      tipo: parsed.data.tipo,
+      vendible: parsed.data.vendible,
+      precioVenta: parsed.data.precio_venta ?? null,
+    });
+  } catch (err) {
+    if (esCodigoDuplicado(err))
+      return { ok: false, errors: { codigo: ["Ese código ya lo usa otro insumo"] } };
+    throw err;
+  }
   await syncProveedoresInsumo(insumoId, parsed.data.proveedor_ids);
 
   // Compra inicial opcional
@@ -544,22 +568,29 @@ export async function updateInsumo(
   const existing = await getInsumo(insumoId);
   if (!existing) return { ok: false, errors: { _: ["No encontrado"] } };
 
-  await db
-    .update(insumosTable)
-    .set({
-      nombre: parsed.data.nombre,
-      unidadMedida: parsed.data.unidad_medida,
-      tamanoEnvase: parsed.data.tamano_envase,
-      precioEnvase: parsed.data.precio_envase,
-      precioUnitario: parsed.data.precio_unitario,
-      rinde: parsed.data.rinde ?? null,
-      umbralStockBajo: parsed.data.umbral_stock_bajo,
-      activo: parsed.data.activo,
-      tipo: parsed.data.tipo,
-      vendible: parsed.data.vendible,
-      precioVenta: parsed.data.precio_venta ?? null,
-    })
-    .where(eq(insumosTable.id, insumoId));
+  try {
+    await db
+      .update(insumosTable)
+      .set({
+        nombre: parsed.data.nombre,
+        codigo: parsed.data.codigo ?? null,
+        unidadMedida: parsed.data.unidad_medida,
+        tamanoEnvase: parsed.data.tamano_envase,
+        precioEnvase: parsed.data.precio_envase,
+        precioUnitario: parsed.data.precio_unitario,
+        rinde: parsed.data.rinde ?? null,
+        umbralStockBajo: parsed.data.umbral_stock_bajo,
+        activo: parsed.data.activo,
+        tipo: parsed.data.tipo,
+        vendible: parsed.data.vendible,
+        precioVenta: parsed.data.precio_venta ?? null,
+      })
+      .where(eq(insumosTable.id, insumoId));
+  } catch (err) {
+    if (esCodigoDuplicado(err))
+      return { ok: false, errors: { codigo: ["Ese código ya lo usa otro insumo"] } };
+    throw err;
+  }
   await syncProveedoresInsumo(insumoId, parsed.data.proveedor_ids);
 
   revalidatePath("/catalogos/insumos");

@@ -131,6 +131,7 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
     id: row.id,
     rubro: row.rubro,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     precio_lista: row.precioLista,
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,
@@ -163,6 +164,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     id: row.id,
     sucursal_id: row.sucursalId,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
     precio_envase: row.precioEnvase,
@@ -183,6 +185,7 @@ function mapReceta(row: typeof recetasTable.$inferSelect): Receta {
     servicio_id: row.servicioId,
     insumo_id: row.insumoId,
     cantidad: row.cantidad,
+    confirmada: row.confirmada,
   };
 }
 

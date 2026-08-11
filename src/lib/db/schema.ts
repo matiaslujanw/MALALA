@@ -13,6 +13,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 const auth = pgSchema("auth");
 
@@ -214,27 +215,41 @@ export const proveedores = pgTable("proveedores", {
   deudaPendiente: doublePrecision("deuda_pendiente").notNull().default(0),
 });
 
-export const servicios = pgTable("servicios", {
-  id: text("id").primaryKey(),
-  rubro: text("rubro").notNull(),
-  nombre: text("nombre").notNull(),
-  precioLista: doublePrecision("precio_lista").notNull(),
-  precioEfectivo: doublePrecision("precio_efectivo").notNull(),
-  comisionDefaultPct: doublePrecision("comision_default_pct").notNull(),
-  activo: boolean("activo").notNull().default(true),
-  // Visible en la reserva pública / agenda de turnos. Cuando es false el
-  // servicio se puede vender en la caja pero NO aparece en el menú del cliente
-  // ni genera turnos: sirve para los precios internos por largo de pelo
-  // (tiers 1/2/3/4) de los que en la web se muestra un único "desde".
-  visibleReserva: boolean("visible_reserva").notNull().default(true),
-  duracionMin: integer("duracion_min"),
-  descripcionCorta: text("descripcion_corta"),
-  destacadoPct: integer("destacado_pct"),
-  // Promociones: una promo es un servicio (es_promo=true) que combina varios
-  // servicios componentes (ver promocion_items). vence_el = vencimiento opcional.
-  esPromo: boolean("es_promo").notNull().default(false),
-  venceEl: date("vence_el"),
-});
+export const servicios = pgTable(
+  "servicios",
+  {
+    id: text("id").primaryKey(),
+    rubro: text("rubro").notNull(),
+    nombre: text("nombre").notNull(),
+    // Código de la planilla del salón ("PEL100"). Nullable: Centro se cargó sin
+    // códigos. Se muestra en las tablas y se puede buscar por él.
+    codigo: text("codigo"),
+    precioLista: doublePrecision("precio_lista").notNull(),
+    precioEfectivo: doublePrecision("precio_efectivo").notNull(),
+    comisionDefaultPct: doublePrecision("comision_default_pct").notNull(),
+    activo: boolean("activo").notNull().default(true),
+    // Visible en la reserva pública / agenda de turnos. Cuando es false el
+    // servicio se puede vender en la caja pero NO aparece en el menú del cliente
+    // ni genera turnos: sirve para los precios internos por largo de pelo
+    // (tiers 1/2/3/4) de los que en la web se muestra un único "desde".
+    visibleReserva: boolean("visible_reserva").notNull().default(true),
+    duracionMin: integer("duracion_min"),
+    descripcionCorta: text("descripcion_corta"),
+    destacadoPct: integer("destacado_pct"),
+    // Promociones: una promo es un servicio (es_promo=true) que combina varios
+    // servicios componentes (ver promocion_items). vence_el = vencimiento opcional.
+    esPromo: boolean("es_promo").notNull().default(false),
+    venceEl: date("vence_el"),
+  },
+  (table) => ({
+    // Único parcial y GLOBAL: `servicios` no tiene sucursal_id (la pertenencia
+    // vive en servicio_sucursal), así que no se puede hacer único por sucursal.
+    // Ver el comentario de drizzle/0026_codigos_unicos.sql.
+    codigoUq: uniqueIndex("servicios_codigo_uq")
+      .on(table.codigo)
+      .where(sql`${table.codigo} is not null`),
+  }),
+);
 
 export const promocionItems = pgTable("promocion_items", {
   id: text("id").primaryKey(),
@@ -323,42 +338,68 @@ export const profesionalesServicios = pgTable(
 
 // Cada insumo pertenece a una sola sucursal: la definición, el costo y el stock
 // son propios de esa sede (no hay producto "global" compartido entre sucursales).
-export const insumos = pgTable("insumos", {
-  id: text("id").primaryKey(),
-  sucursalId: text("sucursal_id")
-    .notNull()
-    .references(() => sucursales.id, { onDelete: "cascade" }),
-  nombre: text("nombre").notNull(),
-  unidadMedida: unidadMedidaEnum("unidad_medida").notNull(),
-  tamanoEnvase: doublePrecision("tamano_envase").notNull(),
-  precioEnvase: doublePrecision("precio_envase").notNull(),
-  precioUnitario: doublePrecision("precio_unitario"),
-  rinde: doublePrecision("rinde"),
-  umbralStockBajo: doublePrecision("umbral_stock_bajo").notNull(),
-  activo: boolean("activo").notNull().default(true),
-  // Clasificación bacha/venta (fuente de verdad de "para qué sirve el insumo").
-  tipo: insumoTipoEnum("tipo").notNull().default("bacha"),
-  // Legacy: se mantiene sincronizado (vendible = tipo === "venta") por compat
-  // con lecturas existentes. El código nuevo clasifica por `tipo`.
-  vendible: boolean("vendible").notNull().default(false),
-  precioVenta: doublePrecision("precio_venta"),
-});
+export const insumos = pgTable(
+  "insumos",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+    nombre: text("nombre").notNull(),
+    // Código de la planilla del salón ("INS001", "VPC100"). Ver servicios.codigo.
+    codigo: text("codigo"),
+    unidadMedida: unidadMedidaEnum("unidad_medida").notNull(),
+    tamanoEnvase: doublePrecision("tamano_envase").notNull(),
+    precioEnvase: doublePrecision("precio_envase").notNull(),
+    precioUnitario: doublePrecision("precio_unitario"),
+    rinde: doublePrecision("rinde"),
+    umbralStockBajo: doublePrecision("umbral_stock_bajo").notNull(),
+    activo: boolean("activo").notNull().default(true),
+    // Clasificación bacha/venta (fuente de verdad de "para qué sirve el insumo").
+    tipo: insumoTipoEnum("tipo").notNull().default("bacha"),
+    // Legacy: se mantiene sincronizado (vendible = tipo === "venta") por compat
+    // con lecturas existentes. El código nuevo clasifica por `tipo`.
+    vendible: boolean("vendible").notNull().default(false),
+    precioVenta: doublePrecision("precio_venta"),
+  },
+  (table) => ({
+    // Cada sede tiene su catálogo, así que el código es único por sucursal.
+    codigoSucursalUq: uniqueIndex("insumos_sucursal_codigo_uq")
+      .on(table.sucursalId, table.codigo)
+      .where(sql`${table.codigo} is not null`),
+  }),
+);
 
 // La receta también es por sucursal: el mismo servicio puede consumir distintos
 // insumos/cantidades en cada sede. El insumo referenciado pertenece a esa sucursal.
-export const recetas = pgTable("recetas", {
-  id: text("id").primaryKey(),
-  sucursalId: text("sucursal_id")
-    .notNull()
-    .references(() => sucursales.id, { onDelete: "cascade" }),
-  servicioId: text("servicio_id")
-    .notNull()
-    .references(() => servicios.id, { onDelete: "cascade" }),
-  insumoId: text("insumo_id")
-    .notNull()
-    .references(() => insumos.id, { onDelete: "cascade" }),
-  cantidad: doublePrecision("cantidad").notNull(),
-});
+export const recetas = pgTable(
+  "recetas",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id, { onDelete: "cascade" }),
+    servicioId: text("servicio_id")
+      .notNull()
+      .references(() => servicios.id, { onDelete: "cascade" }),
+    insumoId: text("insumo_id")
+      .notNull()
+      .references(() => insumos.id, { onDelete: "cascade" }),
+    cantidad: doublePrecision("cantidad").notNull(),
+    // false = la línea es una propuesta que el salón todavía tiene que confirmar.
+    // Cuenta igual para el costo; sólo se marca distinto en pantalla.
+    confirmada: boolean("confirmada").notNull().default(true),
+  },
+  (table) => ({
+    // Un insumo no puede estar dos veces en la misma receta: sin esto, volver a
+    // correr un script de carga duplicaba las líneas y el costo se sumaba doble.
+    servicioInsumoUq: uniqueIndex("recetas_sucursal_servicio_insumo_uq").on(
+      table.sucursalId,
+      table.servicioId,
+      table.insumoId,
+    ),
+  }),
+);
 
 // Relación N:N entre insumos y proveedores: un insumo se puede comprar a varios
 // proveedores y un proveedor surte varios insumos.

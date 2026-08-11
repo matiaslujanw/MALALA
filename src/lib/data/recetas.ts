@@ -19,6 +19,10 @@ export interface RecetaResumen {
   servicio: Servicio;
   cantidadInsumos: number;
   costoTotal: number;
+  /** Líneas que vinieron como propuesta de la planilla y nadie confirmó. */
+  propuestas: number;
+  /** Líneas cuyo insumo todavía no tiene precio: el costo queda incompleto. */
+  sinPrecio: number;
 }
 
 export interface RecetaItemDetalle {
@@ -32,6 +36,7 @@ function mapServicio(row: typeof serviciosTable.$inferSelect): Servicio {
     id: row.id,
     rubro: row.rubro,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     precio_lista: row.precioLista,
     precio_efectivo: row.precioEfectivo,
     comision_default_pct: row.comisionDefaultPct,
@@ -47,6 +52,7 @@ function mapInsumo(row: typeof insumosTable.$inferSelect): Insumo {
     id: row.id,
     sucursal_id: row.sucursalId,
     nombre: row.nombre,
+    codigo: row.codigo ?? undefined,
     unidad_medida: row.unidadMedida,
     tamano_envase: row.tamanoEnvase,
     precio_envase: row.precioEnvase,
@@ -67,6 +73,7 @@ function mapReceta(row: typeof recetasTable.$inferSelect): Receta {
     servicio_id: row.servicioId,
     insumo_id: row.insumoId,
     cantidad: row.cantidad,
+    confirmada: row.confirmada,
   };
 }
 
@@ -124,7 +131,17 @@ export async function listRecetasResumen(opts?: {
         if (!insumo || insumo.precio_unitario == null) return acc;
         return acc + receta.cantidad * insumo.precio_unitario;
       }, 0);
-      return { servicio, cantidadInsumos: items.length, costoTotal };
+      const sinPrecio = items.filter((receta) => {
+        const insumo = insumoMap.get(receta.insumo_id);
+        return !insumo || insumo.precio_unitario == null;
+      }).length;
+      return {
+        servicio,
+        cantidadInsumos: items.length,
+        costoTotal,
+        propuestas: items.filter((receta) => receta.confirmada === false).length,
+        sinPrecio,
+      };
     });
 }
 
@@ -280,9 +297,11 @@ export async function upsertRecetaItem(
   );
 
   if (duplicate) {
+    // Si alguien toca la cantidad desde la app, la línea deja de ser una
+    // propuesta de la planilla: la está confirmando el salón.
     await db
       .update(recetasTable)
-      .set({ cantidad: parsed.data.cantidad })
+      .set({ cantidad: parsed.data.cantidad, confirmada: true })
       .where(eq(recetasTable.id, duplicate.id));
   } else {
     await db.insert(recetasTable).values({
@@ -298,6 +317,35 @@ export async function upsertRecetaItem(
   revalidatePath(`/catalogos/recetas/${parsed.data.servicio_id}`);
   revalidatePath("/ventas");
   revalidatePath("/stock");
+  return { ok: true };
+}
+
+/**
+ * Marca como confirmada toda la receta de un servicio. Es el botón que usa el
+ * salón cuando revisa una receta que vino propuesta en la planilla y la da por
+ * buena, sin tener que tocar línea por línea.
+ */
+export async function confirmarRecetaServicio(
+  servicioId: string,
+  sucursalId: string,
+): Promise<ActionResult> {
+  await requireRole(["admin", "encargada"]);
+  requireSupabaseRuntime(
+    "La edicion de recetas requiere Supabase configurado.",
+  );
+
+  await getDb()
+    .update(recetasTable)
+    .set({ confirmada: true })
+    .where(
+      and(
+        eq(recetasTable.servicioId, servicioId),
+        eq(recetasTable.sucursalId, sucursalId),
+      ),
+    );
+
+  revalidatePath("/catalogos/recetas");
+  revalidatePath(`/catalogos/recetas/${servicioId}`);
   return { ok: true };
 }
 
@@ -326,6 +374,10 @@ export async function removeRecetaItem(
   return { ok: true };
 }
 
+/**
+ * Reemplaza la receta completa de un servicio. Las líneas quedan confirmadas:
+ * si alguien la editó desde la app, ya no es una propuesta de la planilla.
+ */
 export async function replaceRecetasServicio(
   servicioId: string,
   sucursalId: string,

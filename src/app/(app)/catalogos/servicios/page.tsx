@@ -6,15 +6,26 @@ import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { buildAccessScope } from "@/lib/auth/access";
 import { formatARS } from "@/lib/utils";
+import { ServiciosSearch } from "./servicios-search";
 
-export default async function ServiciosPage() {
+export default async function ServiciosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
   const user = await requireUser();
   const scope = buildAccessScope(user);
   if (!scope.puedeVerCatalogos) redirect("/dashboard");
   const sucursal = await getActiveSucursal();
+  const sp = await searchParams;
+  // Next entrega un array si el parámetro viene repetido (?q=a&q=b): nos
+  // quedamos con el primero para no llamar .trim() sobre un array.
+  const qParam = Array.isArray(sp.q) ? sp.q[0] : sp.q;
+  const q = qParam?.trim() || undefined;
   const servicios = await listServicios({
     incluirInactivos: true,
     sucursalId: sucursal?.id,
+    q,
   });
 
   // Agrupar por rubro
@@ -34,7 +45,9 @@ export default async function ServiciosPage() {
             Servicios
           </h1>
           <p className="text-sm text-muted-foreground">
-            Catálogo compartido entre sucursales · {servicios.length} servicios
+            {q
+              ? `${servicios.length} ${servicios.length === 1 ? "resultado" : "resultados"} para “${q}”`
+              : `Catálogo compartido entre sucursales · ${servicios.length} servicios`}
           </p>
         </div>
 
@@ -49,16 +62,26 @@ export default async function ServiciosPage() {
         )}
       </header>
 
+      <ServiciosSearch />
+
       <div className="space-y-8">
+        {servicios.length === 0 ? (
+          <div className="bg-card border border-border rounded-md px-4 py-10 text-center text-sm text-muted-foreground">
+            {q ? `Sin resultados para “${q}”.` : "No hay servicios cargados."}
+          </div>
+        ) : null}
         {Object.entries(grupos).map(([rubro, items]) => (
           <section key={rubro} className="space-y-3">
             <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
               {rubro}
             </h2>
-            <div className="bg-card border border-border rounded-md overflow-hidden">
-              <table className="w-full text-sm">
+            {/* Con la columna de código la tabla queda justa: scrollea en
+                pantallas chicas en vez de que se corten las acciones. */}
+            <div className="bg-card border border-border rounded-md overflow-x-auto">
+              <table className="w-full min-w-[52rem] text-sm">
                 <thead className="bg-cream/50 text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
+                    <th className="text-left font-medium px-4 py-3 w-24">Código</th>
                     <th className="text-left font-medium px-4 py-3">Nombre</th>
                     <th className="text-right font-medium px-4 py-3">P. lista</th>
                     <th className="text-right font-medium px-4 py-3">P. efectivo</th>
@@ -71,6 +94,11 @@ export default async function ServiciosPage() {
                 <tbody className="divide-y divide-border">
                   {items.map((s) => (
                     <tr key={s.id} className="hover:bg-cream/30">
+                      <td className="px-4 py-3 font-medium tabular-nums">
+                        {s.codigo ?? (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">{s.nombre}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatARS(s.precio_lista)}

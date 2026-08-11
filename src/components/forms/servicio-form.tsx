@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useActionStateFeedback } from "@/components/feedback/action-feedback";
+import { cn } from "@/lib/utils";
 import { CurrencyField, LoadingButton } from "./field";
 import type { Servicio } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/servicios";
@@ -86,6 +87,21 @@ export function ServicioForm({
           <p className="text-xs text-destructive">{errors.rubro.join(", ")}</p>
         )}
       </div>
+
+      <Field
+        label="Código"
+        name="codigo"
+        defaultValue={servicio?.codigo ?? ""}
+        error={errors.codigo}
+        maxLength={20}
+        placeholder="PEL100"
+        className="uppercase"
+      />
+      {/* El Field local de este archivo no acepta `hint`; la aclaración va suelta. */}
+      <p className="-mt-3 text-xs text-muted-foreground">
+        Código de la planilla del salón. Opcional: dejalo vacío si esta sede no
+        maneja códigos.
+      </p>
 
       <Field
         label="Nombre"
@@ -184,7 +200,7 @@ interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string[];
 }
 
-function Field({ label, error, name, ...rest }: FieldProps) {
+function Field({ label, error, name, className, ...rest }: FieldProps) {
   return (
     <div className="space-y-1.5">
       <label
@@ -197,7 +213,10 @@ function Field({ label, error, name, ...rest }: FieldProps) {
         id={name}
         name={name}
         {...rest}
-        className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring"
+        className={cn(
+          "w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring",
+          className,
+        )}
       />
       {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
     </div>
