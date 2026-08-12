@@ -100,17 +100,26 @@ function leerXlsx(ruta: string): Map<string, string[][]> {
     compartidas.push(partes.join(""));
   }
 
+  // Los atributos vienen en cualquier orden según qué programa haya escrito el
+  // archivo (Id/Target o Type/Target/Id), así que se lee cada tag entero y
+  // después se sacan los atributos por separado.
+  const atributo = (tag: string, nombre: string) =>
+    new RegExp(`${nombre}="([^"]*)"`).exec(tag)?.[1];
+
   const rels = new Map<string, string>();
-  for (const m of texto("xl/_rels/workbook.xml.rels").matchAll(
-    /<Relationship[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g,
-  ))
-    rels.set(m[1], m[2]);
+  for (const m of texto("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\b[^>]*>/g)) {
+    const id = atributo(m[0], "Id");
+    const target = atributo(m[0], "Target");
+    if (id && target) rels.set(id, target);
+  }
 
   const hojas = new Map<string, string[][]>();
-  for (const m of texto("xl/workbook.xml").matchAll(
-    /<sheet[^>]*name="([^"]+)"[^>]*r:id="([^"]+)"/g,
-  )) {
-    const destino = (rels.get(m[2]) ?? "").replace(/^\//, "").replace(/^xl\//, "");
+  for (const tag of texto("xl/workbook.xml").matchAll(/<sheet\b[^>]*>/g)) {
+    const nombreHoja = atributo(tag[0], "name");
+    const rid = atributo(tag[0], "r:id");
+    if (!nombreHoja || !rid) continue;
+    const destino = (rels.get(rid) ?? "").replace(/^\//, "").replace(/^xl\//, "");
+    if (!destino) continue;
     const xml = texto(`xl/${destino}`);
     const filas: string[][] = [];
     for (const fm of xml.matchAll(/<row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
@@ -133,7 +142,7 @@ function leerXlsx(ruta: string): Map<string, string[][]> {
       }
       filas[Number(fm[1]) - 1] = celdas;
     }
-    hojas.set(desescapar(m[1]), filas);
+    hojas.set(desescapar(nombreHoja), filas);
   }
   return hojas;
 }
