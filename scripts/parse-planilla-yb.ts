@@ -209,8 +209,11 @@ function contenido(s: string): number | null {
  * c/IVA". Los nombres que vienen todo en minúscula se capitalizan.
  */
 function partirProveedor(bruto: string): { nombre: string; nota: string | null } {
-  const m = /^([^(]+?)\s*(?:\((.+)\))?\s*$/.exec(bruto.trim());
-  let nombre = (m?.[1] ?? bruto).trim();
+  // Hay proveedores anotados enteros entre paréntesis ("(compra directa)"): se
+  // les saca el envoltorio antes de partir, si no el nombre queda con paréntesis.
+  const limpio = /^\((.+)\)$/.exec(bruto.trim())?.[1]?.trim() ?? bruto.trim();
+  const m = /^([^(]+?)\s*(?:\((.+)\))?\s*$/.exec(limpio);
+  let nombre = (m?.[1] ?? limpio).trim();
   const nota = m?.[2]?.trim() ?? null;
   if (nombre === nombre.toLowerCase())
     nombre = nombre

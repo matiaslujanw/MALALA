@@ -27,9 +27,6 @@
  * Uso: npx tsx scripts/import-recuento-yb.ts [--commit] [--insumos <ruta>] [--reventa <ruta>]
  */
 import "../envConfig";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { and, eq } from "drizzle-orm";
 import { getDb, getSqlClient } from "../src/lib/db/client/postgres";
 import {
@@ -95,7 +92,8 @@ const MAPEO: Record<string, string | null> = {
     "INS002",
   "Ampollas (Ampolla Repair, caja x12) :: Exiline Cosméticos Biocell Repair": "INS601",
   "Ampollas (Ampolla Complex, caja x12) :: Biocell Therapy": null,
-  "Ampollas/Tratamiento :: SOW Must Hair Elixir 21 (caja x10 ampollas)": null,
+  // La revisión de la planilla dio de alta el insumo, así que ahora tiene dónde ir.
+  "Ampollas/Tratamiento :: SOW Must Hair Elixir 21 (caja x10 ampollas)": "INS710",
   "Tratamiento (Restructuring Multiplier) :: Alfaparf Milano Semi di Lino Sublime": "INS003",
   "Shampoo :: Olaplex No.4P Blonde Enhancer Toning Shampoo": "INS504",
   "Aceite (Bonding Oil) :: Olaplex No.7": "INS503",
@@ -244,18 +242,12 @@ async function main() {
     .where(eq(insumosTable.sucursalId, YB_ID));
   const porCodigo = new Map(catalogo.filter((i) => i.codigo).map((i) => [i.codigo!, i]));
 
-  // La planilla original sabe a qué insumos NUNCA se les supo el tamaño del
-  // envase: al cargarlos se les puso 1 como relleno, así que en la base ya no
-  // se distingue un envase de 1 ml (que no existe) de un dato faltante.
-  const planilla = JSON.parse(
-    readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), "data", "yb-planilla-ago26.json"),
-      "utf8",
-    ),
-  ) as { insumos: Array<{ codigo: string; tamanoEnvase: number | null }> };
-  const envaseDesconocido = new Set(
-    planilla.insumos.filter((i) => i.tamanoEnvase == null).map((i) => i.codigo),
-  );
+  // A los insumos sin envase conocido la carga inicial les puso 1/0 de relleno,
+  // así que en la base no se distingue un envase de 1 ml (que no existe) de un
+  // dato faltante. Ese par exacto es la marca del relleno: un envase real de una
+  // unidad siempre tiene precio (una ampolla, una lima).
+  const esRelleno = (i: (typeof catalogo)[number]) =>
+    i.tamanoEnvase === 1 && i.precioEnvase === 0;
 
   const aCargar: Array<{
     claves: string[];
@@ -293,7 +285,7 @@ async function main() {
     // se cuentan en envases y se guardan en ml/gr.
     const esUnidad = insumo.tipo === "venta" || insumo.unidadMedida === "ud";
     const envase = esUnidad ? 1 : insumo.tamanoEnvase;
-    if (!esUnidad && (envaseDesconocido.has(codigo) || !envase || envase <= 0)) {
+    if (!esUnidad && (esRelleno(insumo) || !envase || envase <= 0)) {
       sinEnvase.push({ clave: e.claves.join(" + "), uds: e.uds, codigo, nombre: insumo.nombre });
       continue;
     }
