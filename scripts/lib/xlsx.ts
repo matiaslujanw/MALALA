@@ -67,8 +67,8 @@ export function leerXlsx(ruta: string): Map<string, string[][]> {
   const texto = (n: string) => zip.get(n)?.toString("utf8") ?? "";
 
   const compartidas: string[] = [];
-  for (const m of texto("xl/sharedStrings.xml").matchAll(/<si>([\s\S]*?)<\/si>/g)) {
-    const partes = [...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map((t) => desescapar(t[1]));
+  for (const m of texto("xl/sharedStrings.xml").matchAll(/<(?:\w+:)?si\b[^>]*>([\s\S]*?)<\/(?:\w+:)?si>/g)) {
+    const partes = [...m[1].matchAll(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)].map((t) => desescapar(t[1]));
     compartidas.push(partes.join(""));
   }
 
@@ -86,7 +86,7 @@ export function leerXlsx(ruta: string): Map<string, string[][]> {
   }
 
   const hojas = new Map<string, string[][]>();
-  for (const tag of texto("xl/workbook.xml").matchAll(/<sheet\b[^>]*>/g)) {
+  for (const tag of texto("xl/workbook.xml").matchAll(/<(?:\w+:)?sheet\b[^>]*>/g)) {
     const nombreHoja = atributo(tag[0], "name");
     const rid = atributo(tag[0], "r:id");
     if (!nombreHoja || !rid) continue;
@@ -94,20 +94,20 @@ export function leerXlsx(ruta: string): Map<string, string[][]> {
     if (!destino) continue;
     const xml = texto(`xl/${destino}`);
     const filas: string[][] = [];
-    for (const fm of xml.matchAll(/<row[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/row>/g)) {
+    for (const fm of xml.matchAll(/<(?:\w+:)?row\b[^>]*r="(\d+)"[^>]*>([\s\S]*?)<\/(?:\w+:)?row>/g)) {
       const celdas: string[] = [];
       // Ojo: hay celdas vacías auto-cerradas (<c r="Q4" s="7"/>) que deben
       // consumirse, si no se traga el contenido de las celdas siguientes.
-      for (const cm of fm[2].matchAll(/<c([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      for (const cm of fm[2].matchAll(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
         const attrs = cm[1];
         const cuerpo = cm[2] ?? "";
         const ref = /r="([A-Z]+)\d+"/.exec(attrs)?.[1];
         const tipo = /t="([^"]+)"/.exec(attrs)?.[1];
-        const v = /<v>([\s\S]*?)<\/v>/.exec(cuerpo);
+        const v = /<(?:\w+:)?v\b[^>]*>([\s\S]*?)<\/(?:\w+:)?v>/.exec(cuerpo);
         let valor = v ? desescapar(v[1]) : "";
         if (tipo === "s" && v) valor = compartidas[Number(v[1])] ?? "";
         if (tipo === "inlineStr")
-          valor = [...cuerpo.matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)]
+          valor = [...cuerpo.matchAll(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/g)]
             .map((t) => desescapar(t[1]))
             .join("");
         if (ref) celdas[columnaANumero(ref) - 1] = valor;
