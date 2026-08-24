@@ -8,7 +8,7 @@
  * Uso: npx tsx scripts/aplicar-respuestas-yb.ts [--commit]
  */
 import "../envConfig";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { getDb, getSqlClient } from "../src/lib/db/client/postgres";
 import {
   insumoProveedores as insumoProveedoresTable,
