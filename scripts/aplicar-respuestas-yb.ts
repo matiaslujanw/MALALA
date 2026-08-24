@@ -76,6 +76,20 @@ const ALTAS: Alta[] = [
     porque: 'contestaron "1000 ml"; el precio ya lo habían puesto en la planilla',
   },
   {
+    codigo: "INS859",
+    nombre: "Oxidante New Blond Crema Oxigenada",
+    unidadMedida: "ml",
+    tamanoEnvase: 1000,
+    precioEnvase: 7900,
+    tipo: "bacha",
+    proveedor: "New Blond",
+    stock: 1,
+    // Confirmaron: "new blond es el de la foto y es 1000 ml, el de Question es
+    // otro". O sea que los $7.900 son de este y el oxidante Question queda como
+    // estaba, a $14.613,02.
+    porque: 'contestaron "es el de la foto y es 1000 ml"; $7.900 el frasco',
+  },
+  {
     codigo: "VPC148",
     nombre: "Serum Keratin Alpha Sleek 50 ml",
     unidadMedida: "ud",
