@@ -43,6 +43,10 @@ const YB_ID = "seed-000002";
 
 async function main() {
   const commit = process.argv.includes("--commit");
+  // Que la planilla no traiga un servicio no siempre significa que lo dieron
+  // de baja: a veces es que esa version del archivo no lo incluye. Con
+  // --sin-bajas se aplica todo lo demas y las bajas quedan para revisar.
+  const sinBajas = process.argv.includes("--sin-bajas");
   const i = process.argv.indexOf("--json");
   const ruta = i >= 0 ? process.argv[i + 1] : undefined;
   if (!ruta) {
@@ -168,7 +172,13 @@ async function main() {
         });
     }
   }
-  const recBaja = recetasDb.filter((r) => !claveNueva.has(`${r.servicioId}|${r.insumoId}`));
+  // Con --sin-bajas los servicios que la planilla no trae quedan intactos, asi
+  // que tampoco se les toca la receta: si se los deja activos pero sin receta,
+  // se siguen vendiendo mostrando costo $0.
+  const idsSvBaja = new Set(svBaja.map((s) => s.id));
+  const recBaja = recetasDb
+    .filter((r) => !claveNueva.has(`${r.servicioId}|${r.insumoId}`))
+    .filter((r) => !(sinBajas && idsSvBaja.has(r.servicioId)));
 
   // ---- Reporte ----
   const fmt = (n: number) => n.toLocaleString("es-AR");
@@ -195,7 +205,7 @@ async function main() {
   console.log(`\n  SERVICIOS nuevos: ${svNuevos.length}`);
   for (const s of svNuevos)
     console.log(`      ${s.codigo} ${s.nombre.padEnd(34)} ${s.rubro} · L=$${fmt(s.precioLista)} E=$${fmt(s.precioEfectivo)}`);
-  console.log(`\n  SERVICIOS a desactivar: ${svBaja.length}`);
+  console.log(`\n  SERVICIOS a desactivar: ${svBaja.length}${sinBajas ? " (NO se tocan: --sin-bajas)" : ""}`);
   for (const s of svBaja) console.log(`      ${s.codigo} ${s.nombre}`);
   console.log(`\n  SERVICIOS con precio distinto: ${svPrecio.length}`);
   for (const s of svPrecio) {
@@ -310,7 +320,7 @@ async function main() {
         .set({ precioLista: s.precioLista, precioEfectivo: s.precioEfectivo })
         .where(eq(serviciosTable.id, s.id));
 
-    if (svBaja.length)
+    if (svBaja.length && !sinBajas)
       await tx
         .update(serviciosTable)
         .set({ activo: false })
