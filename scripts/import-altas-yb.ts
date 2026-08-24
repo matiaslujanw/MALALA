@@ -76,6 +76,23 @@ const ALTAS: Alta[] = [
     stock: 9,
     fuente: "pomo de 60 g, igual que las otras Igora",
   },
+  {
+    codigo: "INS212",
+    nombre: "Tintura Livesolut Color",
+    unidadMedida: "g",
+    tamanoEnvase: 60,
+    // El salon paso el precio del proveedor: $3.000 el pomo, promocional hasta
+    // fin de agosto de 2026. Cuando vuelva al precio de lista hay que tocarlo.
+    precioEnvase: 3000,
+    tipo: "bacha",
+    proveedor: "Livesolut",
+    stock: 3,
+    // NO es la tintura Question: el salon confirmo que es otra marca, y el
+    // precio real ($3.000 contra $7.448,67) lo termina de despegar. Los 60 g
+    // son el pomo estandar de tintura en crema, igual que las demas del
+    // catalogo, pero no lo dijeron: si viene en otro formato hay que corregirlo.
+    fuente: "pomo de 60 g por analogia con las otras tinturas (a confirmar)",
+  },
   // --- El envase está escrito en la observación ---
   {
     codigo: "INS209",
@@ -217,10 +234,6 @@ const PREGUNTAR: Array<[string, string]> = [
   [
     "Oxidante Question Revelador Superaclarante (1)",
     "no dice el tamaño en ningún lado y los oxidantes van de 900 a 5000 ml: asumirlo es arriesgado",
-  ],
-  [
-    "Tintura Livesolut Color (3)",
-    "sale exactamente $7.448,67, el mismo precio que INS207 'Tintura con amoniaco Question' de 60 g. Puede ser el mismo producto con otro nombre",
   ],
   [
     "Serum Keratin Alpha Sleek Discipline Miroir 50 ml (5)",
