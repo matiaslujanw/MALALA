@@ -113,6 +113,19 @@ const ALTAS: Alta[] = [
     fuente: 'nombre y observación: "Pre tratamiento 190ml"',
   },
   {
+    codigo: "INS211",
+    nombre: "Q Style Oil Molecular Flex Question",
+    unidadMedida: "ml",
+    tamanoEnvase: 75,
+    precioEnvase: 30452.55,
+    tipo: "bacha",
+    proveedor: "Question Professional",
+    stock: 2,
+    // Es un tercer oleo Question distinto: el salon confirmo que INS204 son el
+    // Lumiere y el Keratin Lift, y este sale otro precio ($30.452,55).
+    fuente: 'nombre: "75ml"',
+  },
+  {
     codigo: "INS210",
     nombre: "Q Style Curl Cream Question",
     unidadMedida: "ml",
@@ -177,6 +190,24 @@ const ALTAS: Alta[] = [
   },
 ];
 
+/**
+ * Insumos que ya existen y hay que corregir, no crear.
+ *
+ * INS204 estaba cargado como "Serum" a secas y es el oleo tratante de Question:
+ * el salon mando las fotos de los dos frascos (Lumiere con argan y Keratin Lift
+ * con vitamina E) y aclaro que los usan indistintamente. Como los dos cuestan
+ * lo mismo al centavo, un solo insumo generico sirve y es lo que ya piden las
+ * 75 recetas; se le arregla el nombre para que se entienda cual es.
+ */
+const RENOMBRAR: Array<{ codigo: string; nombre: string; stockEnvases?: number }> = [
+  {
+    codigo: "INS204",
+    nombre: "Óleo tratante Question (Lumière / Keratin Lift)",
+    // El recuento conto 2 frascos de cada uno.
+    stockEnvases: 4,
+  },
+];
+
 /** Lo que no se carga y por qué, para que quede en el reporte. */
 const PREGUNTAR: Array<[string, string]> = [
   [
@@ -186,14 +217,6 @@ const PREGUNTAR: Array<[string, string]> = [
   [
     "Oxidante Question Revelador Superaclarante (1)",
     "no dice el tamaño en ningún lado y los oxidantes van de 900 a 5000 ml: asumirlo es arriesgado",
-  ],
-  [
-    "Óleo Lumière con Argán 75 ml (2) y Óleo Keratin Lift 75 ml (2)",
-    "los dos figuran a $28.334,58, el mismo precio exacto que INS204 (cargado como 'Serum', Question, 75 ml, usado en 75 recetas). Uno de los dos ES INS204: hay que saber cuál para renombrarlo en vez de duplicarlo",
-  ],
-  [
-    "Q Style Oil Molecular Flex 75 ml (2)",
-    "tercer óleo Question de 75 ml; hay que descartar que sea INS204 antes de crearlo",
   ],
   [
     "Tintura Livesolut Color (3)",
@@ -243,6 +266,17 @@ async function main() {
   }
   if (yaEstaban.length)
     console.log(`\n  Ya existían, no se tocan: ${yaEstaban.map((a) => a.codigo).join(", ")}`);
+  const renombres = RENOMBRAR.map((r) => ({ r, actual: porCodigo.get(r.codigo) })).filter(
+    (x) => x.actual && x.actual.nombre !== x.r.nombre,
+  );
+  if (renombres.length) {
+    console.log(`
+  A renombrar (ya existen, no se duplican): ${renombres.length}`);
+    for (const x of renombres)
+      console.log(
+        `      ${x.r.codigo} "${x.actual!.nombre}" → "${x.r.nombre}"${x.r.stockEnvases ? `  · stock ${x.r.stockEnvases} env × ${x.actual!.tamanoEnvase} = ${x.r.stockEnvases * x.actual!.tamanoEnvase} ${x.actual!.unidadMedida}` : ""}`,
+      );
+  }
   if (provFaltantes.length)
     console.log(`\n  Proveedores a crear: ${provFaltantes.join(", ")}`);
 
@@ -269,6 +303,21 @@ async function main() {
         .values({ id: crypto.randomUUID(), proveedorId: id, sucursalId: YB_ID })
         .onConflictDoNothing();
       provPorNombre.set(nombre.toLowerCase(), { id, nombre, telefono: null, cuit: null, deudaPendiente: 0 });
+    }
+
+    for (const x of renombres) {
+      await tx
+        .update(insumosTable)
+        .set({ nombre: x.r.nombre })
+        .where(eq(insumosTable.id, x.actual!.id));
+      if (x.r.stockEnvases) {
+        const cantidad = x.r.stockEnvases * x.actual!.tamanoEnvase;
+        // El recuento es un valor absoluto: se fija, no se suma.
+        await tx
+          .update(stockSucursalTable)
+          .set({ cantidad })
+          .where(eq(stockSucursalTable.insumoId, x.actual!.id));
+      }
     }
 
     for (const a of nuevos) {
