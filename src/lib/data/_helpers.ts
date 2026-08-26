@@ -36,12 +36,32 @@ export function success(message?: string): ActionResult {
  * (ver los índices de drizzle/0026_codigos_unicos.sql). Sin esto, escribir un
  * código que ya existe reventaba el server action con una excepción cruda en vez
  * de marcar el campo en el formulario.
+ *
+ * OJO CON EL `cause`: drizzle 0.45 no propaga el error de postgres tal cual, lo
+ * envuelve en un DrizzleQueryError y deja el PostgresError —el único que tiene
+ * `code` y `constraint_name`— colgado de `.cause`. Mirar sólo el error de arriba
+ * devolvía siempre false y esta función no servía para nada. Se recorre la
+ * cadena para no depender de cuántas capas envuelva la versión de turno.
  */
 export function esCodigoDuplicado(err: unknown): boolean {
-  if (!err || typeof err !== "object" || !("code" in err)) return false;
-  const e = err as { code?: unknown; constraint_name?: unknown; detail?: unknown };
-  if (e.code !== "23505") return false;
-  return /codigo/i.test(`${e.constraint_name ?? ""} ${e.detail ?? ""}`);
+  let actual: unknown = err;
+  for (let nivel = 0; nivel < 5 && actual; nivel++) {
+    if (typeof actual !== "object") return false;
+    const e = actual as {
+      code?: unknown;
+      constraint_name?: unknown;
+      detail?: unknown;
+      cause?: unknown;
+    };
+    if (
+      e.code === "23505" &&
+      /codigo/i.test(`${e.constraint_name ?? ""} ${e.detail ?? ""}`)
+    ) {
+      return true;
+    }
+    actual = e.cause;
+  }
+  return false;
 }
 
 export async function requireRole(roles: Rol[]): Promise<Usuario> {
