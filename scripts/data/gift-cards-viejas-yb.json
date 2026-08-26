@@ -1,0 +1,13 @@
+[
+  {
+    "_ejemplo": "Borrá esta fila y cargá las reales. codigo e importe son obligatorios; el resto es opcional. usada:true carga la tarjeta con saldo 0 (ya se canjeó, queda como registro). venceEl vacío = sin vencimiento (las viejas no lo tenían anotado).",
+    "codigo": "GC-EJEMPLO",
+    "importe": 50000,
+    "fechaVenta": "2026-08-01",
+    "venceEl": null,
+    "compradora": "",
+    "beneficiaria": "",
+    "usada": false,
+    "observacion": ""
+  }
+]

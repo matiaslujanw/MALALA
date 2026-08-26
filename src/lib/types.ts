@@ -562,3 +562,59 @@ export interface AccessScope {
   puedeVerCatalogos: boolean;
 }
 
+
+// ---------------------------------------------------------------------------
+// Gift cards
+// ---------------------------------------------------------------------------
+// Vender una gift card no es facturar: es cobrar por adelantado un servicio que
+// todavía no se prestó. Por eso la emisión no genera un Ingreso — genera una
+// tarjeta con saldo, y la facturación aparece recién cuando se canjea.
+
+/** Lo único que se guarda en la columna `estado`. Ver GiftCardEstadoVista. */
+export type GiftCardEstado = "activa" | "anulada";
+
+/**
+ * El estado que ve la usuaria. "canjeada" y "vencida" NO se guardan: se deducen
+ * del saldo y de la fecha cada vez que se lee. Guardarlas obligaría a mantener
+ * sincronizada una columna con dos números que ya están ahí, y el vencimiento
+ * además no es terminal (el salón hace excepciones).
+ */
+export type GiftCardEstadoVista = GiftCardEstado | "canjeada" | "vencida";
+
+export interface GiftCard {
+  id: ID;
+  sucursal_id: ID;
+  codigo: string;
+  importe: number;
+  /** Lo que queda por usar. Baja en cada canje; puede quedar a mitad de camino. */
+  saldo: number;
+  estado: GiftCardEstado;
+  fecha_emision: string; // ISO
+  vence_el?: string; // YYYY-MM-DD
+  compradora?: string;
+  beneficiaria?: string;
+  observacion?: string;
+  /** Vendida antes de que existiera esta pantalla; ya se contó como facturación. */
+  emitida_pre_sistema: boolean;
+  usuario_id: ID;
+}
+
+export type GiftCardMovimientoTipo =
+  | "emision"
+  | "canje"
+  | "anulacion"
+  | "ajuste"
+  | "correccion_codigo";
+
+export interface GiftCardMovimiento {
+  id: ID;
+  gift_card_id: ID;
+  fecha: string; // ISO
+  tipo: GiftCardMovimientoTipo;
+  /** Firmado: la emisión suma, el canje resta. Los que no mueven plata van en 0. */
+  monto: number;
+  saldo_resultante: number;
+  ingreso_id?: ID;
+  descripcion?: string;
+  usuario_id: ID;
+}

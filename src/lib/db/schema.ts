@@ -1091,6 +1091,84 @@ export const anticipos = pgTable(
   }),
 );
 
+// Gift cards. Ver drizzle/0027_gift_cards.sql para el porqué del modelo; en
+// resumen: emitir una tarjeta NO es una venta, así que no escribe en `ingresos`.
+//
+// `estado` sólo guarda 'activa' | 'anulada'. "Canjeada" y "vencida" se deducen
+// del saldo y de vence_el al leer (src/lib/gift-card-estado.ts): son datos que
+// ya están en los números y el vencimiento además no es terminal, porque el
+// salón hace excepciones con la fecha.
+export const giftCards = pgTable(
+  "gift_cards",
+  {
+    id: text("id").primaryKey(),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    codigo: text("codigo").notNull(),
+    importe: doublePrecision("importe").notNull(),
+    saldo: doublePrecision("saldo").notNull(),
+    estado: text("estado").notNull().default("activa"), // "activa" | "anulada"
+    fechaEmision: timestamp("fecha_emision", { withTimezone: true }).notNull(),
+    venceEl: date("vence_el"),
+    compradora: text("compradora"),
+    beneficiaria: text("beneficiaria"),
+    observacion: text("observacion"),
+    emitidaPreSistema: boolean("emitida_pre_sistema").notNull().default(false),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    // Único POR SUCURSAL: cada salón numera sus tarjetas por su cuenta y una
+    // gift card sólo se canjea donde se vendió. Sobre upper() para que no entre
+    // un duplicado por diferencia de mayúsculas.
+    sucursalCodigoUq: uniqueIndex("gift_cards_sucursal_codigo_uq").on(
+      table.sucursalId,
+      sql`upper(${table.codigo})`,
+    ),
+    sucursalEstadoIdx: index("gift_cards_sucursal_estado_idx").on(
+      table.sucursalId,
+      table.estado,
+    ),
+  }),
+);
+
+// Historial append-only de cada tarjeta. `monto` va firmado (la emisión suma, el
+// canje resta) y `saldo_resultante` se guarda redundante a propósito, para poder
+// auditar el historial sin recalcular la suma entera.
+export const giftCardMovimientos = pgTable(
+  "gift_card_movimientos",
+  {
+    id: text("id").primaryKey(),
+    giftCardId: text("gift_card_id")
+      .notNull()
+      .references(() => giftCards.id, { onDelete: "cascade" }),
+    fecha: timestamp("fecha", { withTimezone: true }).notNull(),
+    // "emision" | "canje" | "anulacion" | "ajuste" | "correccion_codigo"
+    tipo: text("tipo").notNull(),
+    monto: doublePrecision("monto").notNull().default(0),
+    saldoResultante: doublePrecision("saldo_resultante").notNull(),
+    // Sin foreign key, igual que movimientos_cc y liquidacion_lineas: las ventas
+    // no se borran nunca (se anulan), así que la FK sólo ataría el orden de los
+    // inserts sin proteger de nada.
+    ingresoId: text("ingreso_id"),
+    descripcion: text("descripcion"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tarjetaFechaIdx: index("gift_card_mov_tarjeta_fecha_idx").on(
+      table.giftCardId,
+      table.fecha,
+    ),
+    ingresoIdx: index("gift_card_mov_ingreso_idx").on(table.ingresoId),
+  }),
+);
+
 export const schema = {
   authUsers,
   profiles,
@@ -1131,4 +1209,6 @@ export const schema = {
   liquidacionLineas,
   movimientosCc,
   anticipos,
+  giftCards,
+  giftCardMovimientos,
 };

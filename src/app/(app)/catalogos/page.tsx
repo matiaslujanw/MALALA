@@ -13,6 +13,7 @@ import {
   Tags,
   Clock3,
   MessageCircle,
+  Gift,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
@@ -29,6 +30,7 @@ import {
   listServicios,
   listPromociones,
   listCuentas,
+  listGiftCards,
 } from "./_counts";
 import { listRecetasResumen } from "@/lib/data/recetas";
 
@@ -44,6 +46,12 @@ const items = [
     label: "Promociones",
     Icon: Tags,
     desc: "Combos de servicios con franja y vencimiento",
+  },
+  {
+    href: "/catalogos/gift-cards",
+    label: "Gift cards",
+    Icon: Gift,
+    desc: "Emitir, buscar por código y ver saldos",
   },
   {
     href: "/catalogos/insumos",
@@ -131,6 +139,7 @@ export default async function CatalogosPage() {
   const rubrosGasto = await listRubrosGasto({ sucursalId: sid });
   const motivosDescuento = await listMotivosDescuento({ sucursalId: sid });
   const cuentas = await listCuentas({ sucursalId: sid });
+  const giftCards = await listGiftCards({ sucursalId: sid });
   const sucursales = await listSucursales();
 
   const recetasCargadas = recetas.filter((r) => r.cantidadInsumos > 0).length;
@@ -138,6 +147,7 @@ export default async function CatalogosPage() {
   const counts: Record<string, number> = {
     "/catalogos/servicios": servicios.length,
     "/catalogos/promociones": promociones.length,
+    "/catalogos/gift-cards": giftCards.length,
     "/catalogos/insumos": insumos.length,
     "/catalogos/recetas": recetasCargadas,
     "/catalogos/clientes": clientes.length,
