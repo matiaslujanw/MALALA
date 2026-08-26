@@ -17,7 +17,12 @@ export default async function NuevaGiftCardPage() {
 
   const [codigoSugerido, mediosPago, cuentasBanco] = await Promise.all([
     sugerirCodigoGiftCard(sucursal.id),
-    listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+    // Sin GIFT: no se compra una gift card pagando con otra gift card.
+    listMediosPago({
+      sucursalId: sucursal.id,
+      soloActivos: true,
+      excluirGiftCard: true,
+    }),
     listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
   ]);
 

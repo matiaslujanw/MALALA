@@ -12,6 +12,7 @@ import type {
   Cliente,
   CuentaBancaria,
   Empleado,
+  GiftCard,
   Insumo,
   MedioPago,
   MotivoDescuento,
@@ -20,6 +21,7 @@ import type {
   ServicioHorario,
 } from "@/lib/types";
 import { estaVigente } from "@/lib/promo-vigencia";
+import { esCanjeable, estadoGiftCard, hoyAr } from "@/lib/gift-card-estado";
 import { formatARS } from "@/lib/utils";
 import { CurrencyInput } from "@/components/forms/currency-input";
 import { ClienteCombobox } from "@/components/forms/cliente-combobox";
@@ -60,6 +62,8 @@ interface Props {
   cuentasBanco: CuentaBancaria[];
   promociones: Promocion[];
   promoHorariosById: Record<string, ServicioHorario[]>;
+  /** Tarjetas canjeables. Incluye las vencidas: se avisa, no se bloquea. */
+  giftCards: GiftCard[];
 }
 
 const newLineaServicio = (): LineaServicioForm => ({
@@ -74,12 +78,13 @@ const newLineaServicio = (): LineaServicioForm => ({
 });
 
 // ¿El medio de pago impacta en una cuenta de banco? (habilita elegir a cuál).
-// Efectivo (EF) y Cuenta corriente (CC) no van a bancos, así que no muestran
-// selector de cuenta; el resto (tarjeta, transferencia, etc.) sí.
+// Efectivo (EF), Cuenta corriente (CC) y Gift card (GIFT) no van a bancos, así
+// que no muestran selector de cuenta; el resto (tarjeta, transferencia, etc.) sí.
+// En el canje de una gift card no entra plata: entró cuando se vendió.
 function usaCuentaBanco(mp: MedioPago | undefined): boolean {
   if (!mp) return false;
   const cod = mp.codigo.toUpperCase();
-  return cod !== "EF" && cod !== "CC";
+  return cod !== "EF" && cod !== "CC" && cod !== "GIFT";
 }
 
 const newLineaProducto = (): LineaProductoForm => ({
@@ -124,6 +129,7 @@ export function NuevaVentaForm({
   cuentasBanco,
   promociones,
   promoHorariosById,
+  giftCards,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -220,6 +226,10 @@ export function NuevaVentaForm({
   const [valor2, setValor2] = useState<number>(0);
   const [mp2CuentaId, setMp2CuentaId] = useState("");
 
+  // Qué tarjeta se canjea en cada tramo, cuando el medio es GIFT.
+  const [giftCard1Id, setGiftCard1Id] = useState("");
+  const [giftCard2Id, setGiftCard2Id] = useState("");
+
   // Resultado server
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -257,6 +267,14 @@ export function NuevaVentaForm({
   const montoFiado =
     (mp1EsCc ? Number(valor1) || 0 : 0) + (mp2EsCc ? Number(valor2) || 0 : 0);
 
+  // Gift card: el medio "GIFT" tampoco cobra plata, descuenta el saldo de una
+  // tarjeta ya vendida. Hay que decir cuál.
+  const medioGift = mediosPago.find((m) => m.codigo === "GIFT");
+  const mp1EsGift = !!medioGift && mp1Id === medioGift.id;
+  const mp2EsGift = !!medioGift && mp2Id === medioGift.id;
+  const giftCard1 = giftCards.find((g) => g.id === giftCard1Id);
+  const giftCard2 = giftCards.find((g) => g.id === giftCard2Id);
+
   // Recargo automático por medio de pago (ej. tarjeta de crédito).
   const mp1 = mediosPago.find((m) => m.id === mp1Id);
   const mp2 = mp2Id ? mediosPago.find((m) => m.id === mp2Id) : undefined;
@@ -268,6 +286,15 @@ export function NuevaVentaForm({
   const pagado = (Number(valor1) || 0) + (Number(valor2) || 0);
   const diff = total - pagado;
   const pagosOk = Math.abs(diff) < 0.01;
+
+  // Gift card: hay que haber elegido cuál, y no se puede cobrar más de lo que
+  // le queda. La base lo frena igual con el UPDATE condicional, pero ahí ya se
+  // perdió la carga entera; acá se ve antes de apretar Guardar.
+  const giftFalta = (mp1EsGift && !giftCard1Id) || (mp2EsGift && !giftCard2Id);
+  const giftSinSaldo =
+    (!!giftCard1 && (Number(valor1) || 0) > giftCard1.saldo + 0.005) ||
+    (!!giftCard2 && (Number(valor2) || 0) > giftCard2.saldo + 0.005);
+  const giftOk = !giftFalta && !giftSinSaldo;
 
   // Aviso (no bloquea): descuento manual + línea a precio efectivo = 20% + otro descuento.
   const hayLineaEfectivo = lineas.some(
@@ -530,6 +557,7 @@ export function NuevaVentaForm({
       "mp1_cuenta_id",
       usaCuentaBanco(mp1) ? mp1CuentaId : "",
     );
+    formData.set("gift_card_1_id", mp1EsGift ? giftCard1Id : "");
     if (mp2Id) {
       formData.set("mp2_id", mp2Id);
       formData.set("valor2", String(Number(valor2) || 0));
@@ -537,6 +565,7 @@ export function NuevaVentaForm({
         "mp2_cuenta_id",
         usaCuentaBanco(mp2) ? mp2CuentaId : "",
       );
+      formData.set("gift_card_2_id", mp2EsGift ? giftCard2Id : "");
     }
     formData.set("observacion", observacion);
     formData.set("cliente_satisfecho", clienteSatisfecho ? "true" : "false");
@@ -968,7 +997,11 @@ export function NuevaVentaForm({
             </label>
             <select
               value={mp1Id}
-              onChange={(e) => setMp1Id(e.target.value)}
+              onChange={(e) => {
+                setMp1Id(e.target.value);
+                // Si deja de ser gift card, la tarjeta elegida no aplica más.
+                if (!medioGift || e.target.value !== medioGift.id) setGiftCard1Id("");
+              }}
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
               required
             >
@@ -1012,6 +1045,26 @@ export function NuevaVentaForm({
           />
         )}
 
+        {mp1EsGift && (
+          <GiftCardSelector
+            label="Gift card (Medio 1)"
+            giftCards={giftCards}
+            value={giftCard1Id}
+            error={errors.gift_card_1_id}
+            onChange={(id) => {
+              setGiftCard1Id(id);
+              // Se propone lo máximo que cubre la tarjeta: si no alcanza para
+              // todo, el resto queda para el medio 2.
+              const g = giftCards.find((x) => x.id === id);
+              if (g) {
+                const aplica = Math.min(g.saldo, total);
+                setValor1(aplica);
+                if (mp2Id) setValor2(Math.max(0, total - aplica));
+              }
+            }}
+          />
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -1022,6 +1075,7 @@ export function NuevaVentaForm({
               onChange={(e) => {
                 const v = e.target.value;
                 setMp2Id(v);
+                if (!medioGift || v !== medioGift.id) setGiftCard2Id("");
                 if (!v) {
                   setValor1(total);
                   setValor2(0);
@@ -1073,6 +1127,23 @@ export function NuevaVentaForm({
             value={mp2CuentaId}
             onChange={setMp2CuentaId}
             label="Cuenta de cobro (Medio 2)"
+          />
+        )}
+
+        {mp2EsGift && (
+          <GiftCardSelector
+            label="Gift card (Medio 2)"
+            giftCards={giftCards.filter((g) => g.id !== giftCard1Id)}
+            value={giftCard2Id}
+            error={errors.gift_card_2_id}
+            onChange={(id) => {
+              setGiftCard2Id(id);
+              const g = giftCards.find((x) => x.id === id);
+              if (g) {
+                const aplica = Math.min(g.saldo, Math.max(0, total - (Number(valor1) || 0)));
+                setValor2(aplica);
+              }
+            }}
           />
         )}
 
@@ -1220,7 +1291,7 @@ export function NuevaVentaForm({
           type="submit"
           pending={pending}
           pendingLabel="Guardando..."
-          disabled={!pagosOk || lineas.length === 0 || pending}
+          disabled={!pagosOk || !giftOk || lineas.length === 0 || pending}
           className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700 disabled:cursor-not-allowed"
         >
           Guardar venta
@@ -1229,6 +1300,16 @@ export function NuevaVentaForm({
           <span className="text-xs text-destructive">
             La suma de pagos no coincide con el total ({formatARS(diff)} de
             diferencia).
+          </span>
+        )}
+        {!pending && pagosOk && giftFalta && (
+          <span className="text-xs text-destructive">
+            Elegí qué gift card se está canjeando.
+          </span>
+        )}
+        {!pending && pagosOk && !giftFalta && giftSinSaldo && (
+          <span className="text-xs text-destructive">
+            La gift card no tiene saldo suficiente para ese monto.
           </span>
         )}
         <Link
@@ -1568,6 +1649,85 @@ function BancoSelector({
           ))}
         </select>
       )}
+    </div>
+  );
+}
+
+/**
+ * Qué gift card se está canjeando.
+ *
+ * Muestra TAMBIÉN las que no se pueden usar, deshabilitadas y con el motivo al
+ * lado ("ya canjeada", "anulada"). Una lista vacía y una tarjeta falsa se ven
+ * igual desde el mostrador; el motivo visible le dice a la recepcionista qué
+ * pasó y le evita el papelón de decirle a la clienta "no existe" cuando en
+ * realidad ya la usó.
+ *
+ * Las vencidas SÍ se pueden elegir: el salón hace excepciones con la fecha.
+ * Aparecen con el aviso de que el canje va a quedar registrado fuera de término.
+ */
+function GiftCardSelector({
+  label,
+  giftCards,
+  value,
+  error,
+  onChange,
+}: {
+  label: string;
+  giftCards: GiftCard[];
+  value: string;
+  error?: string[];
+  onChange: (v: string) => void;
+}) {
+  const hoy = hoyAr();
+  const elegida = giftCards.find((g) => g.id === value);
+  const chequeo = elegida ? esCanjeable(elegida, hoy) : undefined;
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </label>
+      {giftCards.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No hay gift cards emitidas en esta sucursal. Se emiten en Catálogos →
+          Gift cards.
+        </p>
+      ) : (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">— Elegí la tarjeta —</option>
+          {giftCards.map((g) => {
+            const estado = estadoGiftCard(g, hoy);
+            const usable = esCanjeable(g, hoy).canjeable;
+            const quien = g.beneficiaria ? ` · ${g.beneficiaria}` : "";
+            const detalle = usable
+              ? `saldo ${formatARS(g.saldo)}${estado === "vencida" ? " · VENCIDA" : ""}`
+              : estado === "canjeada"
+                ? "ya canjeada"
+                : "anulada";
+            return (
+              <option key={g.id} value={g.id} disabled={!usable}>
+                {g.codigo}{quien} · {detalle}
+              </option>
+            );
+          })}
+        </select>
+      )}
+      {chequeo?.advertencia && (
+        <p className="text-[10px] text-warning">{chequeo.advertencia}</p>
+      )}
+      {elegida && (
+        <p className="text-[10px] text-muted-foreground tabular-nums">
+          Le quedan {formatARS(elegida.saldo)}
+          {elegida.emitida_pre_sistema
+            ? " · se vendió antes del sistema: su venta ya se contó como facturación"
+            : ""}
+        </p>
+      )}
+      {error && <p className="text-xs text-destructive">{error.join(", ")}</p>}
     </div>
   );
 }

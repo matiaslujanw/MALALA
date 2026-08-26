@@ -54,6 +54,20 @@ function Rentabilidad({ resumen }: { resumen: ResumenDelDia }) {
           no entró a caja.
         </p>
       )}
+      {resumen.giftCards.vendidas > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Se vendieron {formatARS(resumen.giftCards.vendidas)} en gift cards.
+          Esa plata entró a la caja pero <strong>no está en Facturado</strong>:
+          se cuenta cuando la clienta venga a usar la tarjeta.
+        </p>
+      )}
+      {resumen.giftCards.canjeadas > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Se canjearon {formatARS(resumen.giftCards.canjeadas)} en gift cards.
+          Eso <strong>sí está en Facturado</strong> —el servicio se prestó— pero
+          no entró plata hoy: entró cuando se vendió la tarjeta.
+        </p>
+      )}
     </section>
   );
 }

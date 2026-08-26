@@ -44,6 +44,7 @@ export default async function LiquidacionDetallePage({
   const mediosPagoActivos = await listMediosPago({
     sucursalId: liquidacion.sucursal_id,
     soloActivos: true,
+    excluirGiftCard: true,
   });
 
   const diferencia = efectivo.neto_ef - liquidacion.total_pagar;

@@ -34,6 +34,7 @@ import {
   emitMovimientoBancarioTx,
   getCuentaIdForMpTx,
 } from "./movimientos-bancarios-helpers";
+import { canjearGiftCardTx } from "./gift-cards";
 import type {
   Cliente,
   Empleado,
@@ -569,6 +570,25 @@ export async function createIngreso(
     };
   }
 
+  // Gift card: el medio "GIFT" tampoco es un cobro real. La plata entró cuando
+  // se vendió la tarjeta; acá sólo se descuenta el saldo. Esto sí es una venta
+  // -el servicio se prestó- así que el ingreso se registra completo y la
+  // empleada cobra su comisión; lo único que no pasa es que entre plata.
+  const mp1EsGift = codigoById.get(data.mp1_id) === "GIFT";
+  const mp2EsGift = data.mp2_id ? codigoById.get(data.mp2_id) === "GIFT" : false;
+  if (mp1EsGift && !data.gift_card_1_id) {
+    return {
+      ok: false,
+      errors: { gift_card_1_id: ["Elegí qué gift card se está canjeando"] },
+    };
+  }
+  if (mp2EsGift && !data.gift_card_2_id) {
+    return {
+      ok: false,
+      errors: { gift_card_2_id: ["Elegí qué gift card se está canjeando"] },
+    };
+  }
+
   const { valor1Cobrado, valor2Cobrado, total } =
     computeRecargos({
       totalNeto,
@@ -825,12 +845,14 @@ export async function createIngreso(
         monto: number;
         cuentaOverride?: string;
         esCc: boolean;
+        giftCardId?: string;
       }> = [
         {
           mpId: data.mp1_id,
           monto: valor1Cobrado,
           cuentaOverride: data.mp1_cuenta_id,
           esCc: mp1EsCc,
+          giftCardId: mp1EsGift ? data.gift_card_1_id : undefined,
         },
       ];
       if (data.mp2_id && valor2Cobrado != null) {
@@ -839,6 +861,24 @@ export async function createIngreso(
           monto: valor2Cobrado,
           cuentaOverride: data.mp2_cuenta_id,
           esCc: mp2EsCc,
+          giftCardId: mp2EsGift ? data.gift_card_2_id : undefined,
+        });
+      }
+
+      // Canje: descuenta el saldo de cada tarjeta usada. canjearGiftCardTx hace
+      // un UPDATE condicional; si la tarjeta no da (sin saldo, anulada, de otra
+      // sucursal) tira y toda la venta hace rollback, que es lo que queremos:
+      // no puede quedar registrada una venta cobrada con una tarjeta que no
+      // existía.
+      for (const cobro of cobros) {
+        if (!cobro.giftCardId || cobro.monto <= 0) continue;
+        await canjearGiftCardTx(tx, {
+          giftCardId: cobro.giftCardId,
+          sucursalId: data.sucursal_id,
+          monto: cobro.monto,
+          ingresoId,
+          usuarioId: user.id,
+          fecha,
         });
       }
 
@@ -880,6 +920,9 @@ export async function createIngreso(
 
       for (const cobro of cobros) {
         if (cobro.esCc) continue; // lo fiado no entra a bancos
+        // Un canje tampoco: esa plata entró cuando se vendió la tarjeta. Si
+        // emitiera movimiento acá, el arqueo del día daría sobrante.
+        if (cobro.giftCardId) continue;
         const cuentaId =
           cobro.cuentaOverride ?? (await getCuentaIdForMpTx(tx, cobro.mpId));
         if (!cuentaId) {

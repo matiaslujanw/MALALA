@@ -38,6 +38,21 @@ export interface ListMediosPagoOpts {
    * para el resumen de caja.
    */
   incluirCuentaCorriente?: boolean;
+  /**
+   * Excluir el medio "GIFT" (Gift card).
+   *
+   * Va al revés que CC —incluido por defecto, se excluye a mano— y es a
+   * propósito. GIFT tiene que aparecer en los agregados por medio de pago
+   * (caja, reportes), porque el canje SÍ es facturación: el servicio se prestó.
+   * Si se excluyera por defecto, esos agregados descartarían el tramo en
+   * silencio y el "facturado del día" quedaría corto.
+   *
+   * Se excluye sólo donde se PAGA plata hacia afuera —gastos, liquidaciones,
+   * compras a proveedor, pagos de cuenta corriente— porque ahí no tiene
+   * sentido: con una gift card no se le paga a nadie, y un gasto marcado como
+   * pagado con gift card sería plata que nunca salió.
+   */
+  excluirGiftCard?: boolean;
 }
 
 export async function listMediosPago(
@@ -57,6 +72,9 @@ export async function listMediosPago(
   }
   if (!opts.incluirCuentaCorriente) {
     filters.push(ne(mediosPagoTable.codigo, "CC"));
+  }
+  if (opts.excluirGiftCard) {
+    filters.push(ne(mediosPagoTable.codigo, "GIFT"));
   }
 
   const rows = await db

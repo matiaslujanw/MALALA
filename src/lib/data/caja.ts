@@ -1,6 +1,6 @@
 "use server";
 
-import { and, desc, eq, gte, inArray, lt, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/db/client/postgres";
 import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
@@ -10,6 +10,8 @@ import {
   cierresCaja as cierresCajaTable,
   cierreCajaCuentas as cierreCajaCuentasTable,
   cuentasBancarias as cuentasBancariasTable,
+  giftCardMovimientos as giftCardMovimientosTable,
+  giftCards as giftCardsTable,
   movimientosBancarios as movimientosBancariosTable,
   profiles as profilesTable,
   sucursales as sucursalesTable,
@@ -58,6 +60,23 @@ export interface ResumenDelDia {
   netoNegocio: number;
   // Fiado del día: ventas cobradas con cuenta corriente (NO entra a caja).
   fiado: FiadoDelDia;
+  // Gift cards del día. Las dos cifras son necesarias y significan cosas
+  // distintas: lo vendido es plata que entró y NO es facturación, lo canjeado es
+  // facturación que NO trajo plata. Sin mostrarlas, el desglose por medio de
+  // pago no cierra contra lo que hay en el cajón y dejan de confiar en la
+  // pantalla.
+  giftCards: GiftCardsDelDia;
+}
+
+export interface GiftCardsDelDia {
+  /** Tarjetas vendidas hoy: plata cobrada por adelantado, todavía no facturada. */
+  vendidas: number;
+  cantidadVendidas: number;
+  /** Canjeadas hoy: ya está contado en la facturación, pero no entró plata. */
+  canjeadas: number;
+  cantidadCanjeadas: number;
+  /** Saldo total sin usar de la sucursal: lo que el salón todavía debe. */
+  pasivo: number;
 }
 
 export interface FiadoDelDia {
@@ -349,6 +368,12 @@ export async function getResumenDelDia(
     if (mp) mp.egresos += row.egreso.valor;
   }
 
+  const giftCards = await getGiftCardsDelDia(
+    sucursalId,
+    new Date(desde),
+    new Date(hasta),
+  );
+
   const porMp: ResumenMpRow[] = mediosPago.map((mp) => {
     const totals = acc.get(mp.id) ?? { ingresos: 0, egresos: 0 };
     return {
@@ -443,6 +468,58 @@ export async function getResumenDelDia(
         (a, b) => b.monto - a.monto,
       ),
     },
+    giftCards,
+  };
+}
+
+/**
+ * Movimiento de gift cards del día, leído de gift_card_movimientos.
+ *
+ * No sale de `ingresos` porque justamente la emisión no escribe ahí: es plata
+ * cobrada por un servicio que todavía no se prestó.
+ */
+async function getGiftCardsDelDia(
+  sucursalId: string,
+  desde: Date,
+  hasta: Date,
+): Promise<GiftCardsDelDia> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      vendidas: sql<number>`coalesce(sum(case when ${giftCardMovimientosTable.tipo} = 'emision' then ${giftCardMovimientosTable.monto} else 0 end), 0)`,
+      cantidadVendidas: sql<number>`count(*) filter (where ${giftCardMovimientosTable.tipo} = 'emision')`,
+      canjeadas: sql<number>`coalesce(-sum(case when ${giftCardMovimientosTable.tipo} = 'canje' then ${giftCardMovimientosTable.monto} else 0 end), 0)`,
+      cantidadCanjeadas: sql<number>`count(*) filter (where ${giftCardMovimientosTable.tipo} = 'canje')`,
+    })
+    .from(giftCardMovimientosTable)
+    .innerJoin(
+      giftCardsTable,
+      eq(giftCardsTable.id, giftCardMovimientosTable.giftCardId),
+    )
+    .where(
+      and(
+        eq(giftCardsTable.sucursalId, sucursalId),
+        gte(giftCardMovimientosTable.fecha, desde),
+        lte(giftCardMovimientosTable.fecha, hasta),
+      ),
+    );
+
+  const [pasivoRow] = await db
+    .select({ total: sql<number>`coalesce(sum(${giftCardsTable.saldo}), 0)` })
+    .from(giftCardsTable)
+    .where(
+      and(
+        eq(giftCardsTable.sucursalId, sucursalId),
+        eq(giftCardsTable.estado, "activa"),
+      ),
+    );
+
+  return {
+    vendidas: Number(row?.vendidas ?? 0),
+    cantidadVendidas: Number(row?.cantidadVendidas ?? 0),
+    canjeadas: Number(row?.canjeadas ?? 0),
+    cantidadCanjeadas: Number(row?.cantidadCanjeadas ?? 0),
+    pasivo: Number(pasivoRow?.total ?? 0),
   };
 }
 

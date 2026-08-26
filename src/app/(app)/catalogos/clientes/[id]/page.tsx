@@ -47,7 +47,7 @@ export default async function EditarClientePage({
   const [movimientosCc, mediosPago, cuentas] = await Promise.all([
     listMovimientosCc(id),
     sucursal
-      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
+      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true, excluirGiftCard: true })
       : Promise.resolve([]),
     sucursal
       ? listCuentas({ sucursalId: sucursal.id, soloActivas: true })

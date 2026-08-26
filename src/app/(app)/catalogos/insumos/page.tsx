@@ -36,7 +36,7 @@ export default async function InsumosPage({
     listInsumos({ incluirInactivos: true, sucursalId: sucursalActiva?.id, q }),
     listProveedores(),
     listSucursales({ soloActivas: true }),
-    listMediosPago({ soloActivos: true }),
+    listMediosPago({ soloActivos: true, excluirGiftCard: true }),
   ]);
   const provMap = new Map(proveedores.map((p) => [p.id, p]));
   // Se cuenta sobre la lista que se está mostrando, así el número no contradice

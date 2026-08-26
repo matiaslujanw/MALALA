@@ -33,7 +33,7 @@ export default async function NuevoEgresoPage({
     await Promise.all([
       listRubrosGasto({ sucursalId: sucursal.id }),
       listProveedores({ sucursalId: sucursal.id }),
-      listMediosPago({ sucursalId: sucursal.id, soloActivos: true }),
+      listMediosPago({ sucursalId: sucursal.id, soloActivos: true, excluirGiftCard: true }),
       listInsumos({ sucursalId: sucursal.id }),
       listCuentas({ sucursalId: sucursal.id, soloActivas: true }),
     ]);

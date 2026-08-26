@@ -77,7 +77,7 @@ export default async function EditarEmpleadoPage({
   const [anticipos, mediosPago, acceso, agendas] = await Promise.all([
     listAnticipos(id),
     sucursal
-      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true })
+      ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true, excluirGiftCard: true })
       : Promise.resolve([]),
     getAccesoDeEmpleado(id),
     listProfesionalAgendaConfigsByEmpleado(id, {

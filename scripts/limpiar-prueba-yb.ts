@@ -41,6 +41,9 @@ async function main() {
   const stock = await q(
     `select count(*)::int n from stock_sucursal where sucursal_id = '${YB}' and cantidad <> 0`,
   );
+  const giftCards = await q(
+    `select count(*)::int n from gift_cards where sucursal_id = '${YB}'`,
+  );
 
   console.log("=== LIMPIEZA DE DATOS DE PRUEBA · YERBA BUENA ===\n");
   console.log(`  Ventas a borrar: ${ventas.length}`);
@@ -49,8 +52,9 @@ async function main() {
   console.log(`  Movimientos bancarios: ${movBanco[0].n}`);
   console.log(`  Aperturas de caja: ${aperturas[0].n}`);
   console.log(`  Insumos con stock distinto de 0: ${stock[0].n} → vuelven a 0`);
+  console.log(`  Gift cards emitidas: ${giftCards[0].n} → se borran con su historial`);
   console.log("\n  NO se toca: servicios, insumos, recetas, proveedores,");
-  console.log("  la cuenta 'Caja Efectivo' ni el medio de pago 'EF'.");
+  console.log("  la cuenta 'Caja Efectivo' ni los medios de pago 'EF' y 'GIFT'.");
   console.log(`\n  Modo: ${commit ? "COMMIT" : "DRY-RUN"}`);
 
   if (!commit) {
@@ -77,6 +81,12 @@ async function main() {
       `delete from cierre_caja_cuentas where cierre_id in (select id from cierres_caja where sucursal_id = '${YB}')`,
     );
     await run(`delete from cierres_caja where sucursal_id = '${YB}'`);
+    // Las gift cards de prueba: el historial va primero aunque la FK sea ON
+    // DELETE CASCADE, para que el borrado sea explícito y no dependa del schema.
+    await run(
+      `delete from gift_card_movimientos where gift_card_id in (select id from gift_cards where sucursal_id = '${YB}')`,
+    );
+    await run(`delete from gift_cards where sucursal_id = '${YB}'`);
     await run(`update stock_sucursal set cantidad = 0 where sucursal_id = '${YB}'`);
   });
 

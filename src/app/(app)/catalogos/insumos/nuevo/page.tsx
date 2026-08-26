@@ -13,7 +13,7 @@ export default async function NuevoInsumoPage() {
     await Promise.all([
       listProveedores(),
       listSucursales({ soloActivas: true }),
-      listMediosPago({ soloActivos: true }),
+      listMediosPago({ soloActivos: true, excluirGiftCard: true }),
       getActiveSucursal(),
     ]);
 

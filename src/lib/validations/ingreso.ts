@@ -66,6 +66,16 @@ export const ingresoSchema = z
       .string()
       .nullish()
       .transform((s) => (s ? s : undefined)),
+    // Qué tarjeta se canjea, cuando el medio de pago es GIFT. Va por tramo
+    // porque una venta puede pagarse parte con gift card y parte con otra cosa.
+    gift_card_1_id: z
+      .string()
+      .nullish()
+      .transform((s) => (s ? s : undefined)),
+    gift_card_2_id: z
+      .string()
+      .nullish()
+      .transform((s) => (s ? s : undefined)),
     observacion: z
       .string()
       .nullish()
@@ -106,6 +116,20 @@ export const ingresoSchema = z
         code: "custom",
         path: ["descuento_motivo_id"],
         message: "Elegí un motivo para el descuento",
+      });
+    }
+    // La misma tarjeta en los dos tramos gastaría el saldo dos veces sobre una
+    // lectura sola. El UPDATE condicional del canje lo frenaría igual, pero acá
+    // el error se ve en el formulario en vez de reventar la venta entera.
+    if (
+      data.gift_card_1_id &&
+      data.gift_card_2_id &&
+      data.gift_card_1_id === data.gift_card_2_id
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["gift_card_2_id"],
+        message: "Es la misma gift card que el primer medio de pago",
       });
     }
   });
