@@ -11,7 +11,8 @@ import {
 import type { Cliente } from "@/lib/types";
 import { clienteSchema } from "@/lib/validations/cliente";
 import { tryNormalizarTelefonoAR } from "@/lib/phone";
-import { getActiveSucursalForUser } from "@/lib/auth/session";
+import { getActiveSucursalForUser, requireUser } from "@/lib/auth/session";
+import { buildAccessScope } from "@/lib/auth/access";
 import type { Usuario } from "@/lib/types";
 import {
   fieldErrors,
@@ -56,6 +57,10 @@ export async function listClientes(opts?: {
   sucursalId?: string;
 }): Promise<Cliente[]> {
   const q = opts?.q?.trim();
+  // Endpoint (este archivo es "use server"): sin sesión no se lista la base de
+  // clientes. El recorte por sucursal sigue viniendo por opts.sucursalId, que es
+  // lo que pasan las pantallas.
+  await requireUser();
   requireSupabaseRuntime(
     "Los clientes del sistema solo se cargan desde Supabase.",
   );
@@ -96,7 +101,23 @@ export async function listClientes(opts?: {
   return rows.map(mapCliente);
 }
 
+/**
+ * Ficha de un cliente.
+ *
+ * El chequeo de sesión y de sucursal NO es opcional acá: este archivo tiene
+ * "use server" en la línea 1, así que cada export es un endpoint que se puede
+ * llamar con cualquier id. Sin esto, entrar a /catalogos/clientes/<id> con el id
+ * de un cliente de la otra sede devolvía la ficha completa — teléfono, email,
+ * saldo de cuenta corriente y los campos de salud (alergias, estado del
+ * cabello). Son datos de 1989 personas reales.
+ *
+ * La pertenencia sale de cliente_sucursal, igual que en listClientes. Se
+ * verificó que los 1989 clientes tienen membresía y que no hay huérfanos, así
+ * que este filtro no esconde a nadie que antes se viera.
+ */
 export async function getCliente(clienteId: string): Promise<Cliente | null> {
+  const user = await requireUser();
+  const scope = buildAccessScope(user);
   requireSupabaseRuntime(
     "Los clientes del sistema solo se cargan desde Supabase.",
   );
@@ -107,8 +128,20 @@ export async function getCliente(clienteId: string): Promise<Cliente | null> {
     .from(clientesTable)
     .where(eq(clientesTable.id, clienteId))
     .limit(1);
+  if (!row) return null;
 
-  return row ? mapCliente(row) : null;
+  if (!scope.puedeVerGlobal) {
+    const miembro = await db
+      .select({ sucursalId: clienteSucursalTable.sucursalId })
+      .from(clienteSucursalTable)
+      .where(eq(clienteSucursalTable.clienteId, clienteId));
+    const alcanzable = miembro.some((m) =>
+      scope.sucursalIdsPermitidas.includes(m.sucursalId),
+    );
+    if (!alcanzable) return null;
+  }
+
+  return mapCliente(row);
 }
 
 function parse(formData: FormData) {

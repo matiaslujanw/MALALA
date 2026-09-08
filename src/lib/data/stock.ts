@@ -196,7 +196,16 @@ export async function applyMovementTx(
   };
 }
 
-export async function applyMovement(args: {
+/**
+ * NO SE EXPORTA, y es a propósito: este archivo tiene "use server" en la línea
+ * 1, así que todo export async es un endpoint invocable desde afuera. Estando
+ * exportada, cualquiera podía reescribir el stock de cualquier sucursal —
+ * recibe sucursal_id y usuario_id del que llama, o sea que además falsificaba
+ * la autoría del movimiento, que es la fuente de la auditoría de stock.
+ *
+ * Su único llamador es createAjusteManual, acá abajo, que sí valida admin.
+ */
+async function applyMovement(args: {
   insumo_id: string;
   sucursal_id: string;
   delta: number;
