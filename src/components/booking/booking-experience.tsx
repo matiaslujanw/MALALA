@@ -32,7 +32,7 @@ import type {
   Servicio,
   ServicioHorario,
   Sucursal,
-  Turno,
+  TurnoOcupacion,
 } from "@/lib/types";
 
 interface Props {
@@ -41,7 +41,7 @@ interface Props {
     servicios: Servicio[];
     horarios: HorarioSucursal[];
     profesionales: ProfesionalReserva[];
-    turnos: Turno[];
+    turnos: TurnoOcupacion[];
     serviciosHorarios: ServicioHorario[];
     profesionalesHorarios: ProfesionalHorario[];
     profesionalesServicios: ProfesionalServicio[];

@@ -52,6 +52,7 @@ import type {
   Sucursal,
   Turno,
   TurnoEstado,
+  TurnoOcupacion,
 } from "@/lib/types";
 
 export function mapSucursal(
@@ -488,6 +489,20 @@ async function buildAgendaTurnos(args: {
     );
 }
 
+/**
+ * Datos para la reserva pública de la home.
+ *
+ * OJO CON LO QUE SE AGREGUE ACÁ: este objeto se le pasa como prop a
+ * <BookingExperience>, que es un componente cliente, así que se serializa entero
+ * al HTML que recibe cualquier visitante sin sesión. Lo que entra a este
+ * snapshot es público, punto.
+ *
+ * Por eso los turnos se proyectan a TurnoOcupacion y no salen como `Turno`: un
+ * Turno completo incluye `token_acceso` (el magic link que permite cancelar y
+ * reprogramar ese turno), el teléfono, el email y las observaciones de la
+ * clienta. Con eso, un `curl` a la home alcanzaba para llevarse la agenda entera
+ * de las dos sucursales y poder cancelarle el turno a cualquiera.
+ */
 export async function getReservaPublicaSnapshot() {
   const today = hoyAr();
   const [
@@ -517,7 +532,18 @@ export async function getReservaPublicaSnapshot() {
     servicios,
     horarios,
     profesionales,
-    turnos,
+    // Proyección deliberada: sólo la ocupación de la franja, sin datos de la
+    // clienta ni el token del turno. Ver el comentario de arriba.
+    turnos: turnos.map(
+      (t): TurnoOcupacion => ({
+        sucursal_id: t.sucursal_id,
+        profesional_id: t.profesional_id,
+        fecha_turno: t.fecha_turno,
+        hora: t.hora,
+        duracion_min: t.duracion_min,
+        estado: t.estado,
+      }),
+    ),
     serviciosHorarios,
     profesionalesHorarios,
     profesionalesServicios,

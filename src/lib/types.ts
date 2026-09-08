@@ -207,6 +207,26 @@ export interface ProfesionalAgenda {
   activo_publico: boolean;
 }
 
+/**
+ * Lo MÍNIMO que hace falta para calcular disponibilidad: qué franja está tomada,
+ * de qué profesional y en qué sede.
+ *
+ * Existe por seguridad, no por prolijidad. La home es pública y le pasa este
+ * snapshot a un componente cliente, así que todo lo que entre acá se serializa
+ * al HTML de cualquier visitante anónimo. Un `Turno` completo lleva
+ * `token_acceso` —el magic link para cancelar y reprogramar—, teléfono, email y
+ * observaciones de la clienta. Nada de eso puede salir a la calle.
+ */
+export type TurnoOcupacion = Pick<
+  Turno,
+  | "sucursal_id"
+  | "profesional_id"
+  | "fecha_turno"
+  | "hora"
+  | "duracion_min"
+  | "estado"
+>;
+
 export interface Turno {
   id: ID;
   sucursal_id: ID;

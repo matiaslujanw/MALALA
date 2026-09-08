@@ -9,6 +9,7 @@ import type {
   Sucursal,
   Turno,
   TurnoEstado,
+  TurnoOcupacion,
 } from "@/lib/types";
 
 const AR_TZ = "America/Argentina/Buenos_Aires";
@@ -173,7 +174,7 @@ export function buildAvailableSlots(args: {
   servicioId: string;
   profesionalId?: string;
   servicios: Servicio[];
-  turnos: Turno[];
+  turnos: TurnoOcupacion[];
   horarios: HorarioSucursal[];
   profesionales: ProfesionalReserva[];
   serviciosHorarios?: ServicioHorario[];
@@ -339,7 +340,7 @@ export function listReservableDates(args: {
   horarios: HorarioSucursal[];
   profesionales: ProfesionalReserva[];
   servicios: Servicio[];
-  turnos: Turno[];
+  turnos: TurnoOcupacion[];
   serviciosHorarios?: ServicioHorario[];
   profesionalesHorarios?: ProfesionalHorario[];
   profesionalesServicios?: ProfesionalServicio[];
