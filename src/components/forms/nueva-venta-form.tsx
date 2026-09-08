@@ -81,6 +81,28 @@ const newLineaServicio = (): LineaServicioForm => ({
 // Efectivo (EF), Cuenta corriente (CC) y Gift card (GIFT) no van a bancos, así
 // que no muestran selector de cuenta; el resto (tarjeta, transferencia, etc.) sí.
 // En el canje de una gift card no entra plata: entró cuando se vendió.
+/**
+ * Medio de pago con el que arranca la venta.
+ *
+ * Antes esto era `efectivo?.id ?? mediosNormales[0]?.id ?? ""`, y ese fallback
+ * al primero de la lista hizo daño real: en Centro no existe el medio "EF", así
+ * que caía en el primero por orden alfabético — CHEQUE, con 4% de recargo — y
+ * toda venta se facturaba 4% por encima de lo cobrado. La única venta real que
+ * hay en la base salió así ($31.250 cobrados, $32.500 registrados).
+ *
+ * Ahora, si no hay efectivo, no se elige nada: la operadora tiene que decir con
+ * qué cobró. Un recargo puede aplicarse porque alguien lo eligió, nunca porque
+ * el formulario lo puso por descarte.
+ */
+function medioPorDefecto(
+  efectivo: MedioPago | undefined,
+  medios: MedioPago[],
+): string {
+  if (efectivo) return efectivo.id;
+  const sinRecargo = medios.find((m) => (m.recargo_pct ?? 0) === 0);
+  return sinRecargo?.id ?? "";
+}
+
 function usaCuentaBanco(mp: MedioPago | undefined): boolean {
   if (!mp) return false;
   const cod = mp.codigo.toUpperCase();
@@ -185,7 +207,7 @@ export function NuevaVentaForm({
       // Un cliente recién creado no tiene CC: si había un medio en CC, lo reseteamos.
       if (medioCc) {
         if (mp1Id === medioCc.id) {
-          setMp1Id(efectivo?.id ?? mediosNormales[0]?.id ?? "");
+          setMp1Id(medioPorDefecto(efectivo, mediosNormales));
         }
         if (mp2Id === medioCc.id) setMp2Id("");
       }
@@ -218,7 +240,7 @@ export function NuevaVentaForm({
   // Pagos
   const efectivo = mediosNormales.find((m) => m.codigo === "EF");
   const [mp1Id, setMp1Id] = useState(
-    efectivo?.id ?? mediosNormales[0]?.id ?? "",
+    medioPorDefecto(efectivo, mediosNormales),
   );
   const [valor1, setValor1] = useState<number>(0);
   const [mp1CuentaId, setMp1CuentaId] = useState("");
@@ -492,7 +514,7 @@ export function NuevaVentaForm({
     const nuevo = clientesList.find((c) => c.id === nuevoClienteId);
     if (nuevo?.cuenta_corriente_habilitada) return;
     if (mp1Id === medioCc.id) {
-      setMp1Id(efectivo?.id ?? mediosNormales[0]?.id ?? "");
+      setMp1Id(medioPorDefecto(efectivo, mediosNormales));
     }
     if (mp2Id === medioCc.id) setMp2Id("");
   }
@@ -1005,9 +1027,13 @@ export function NuevaVentaForm({
               className="w-full px-3 py-2 border border-border rounded-md bg-card text-sm"
               required
             >
+              {/* Sólo cuando no se pudo elegir uno seguro por defecto: obliga a
+                  decidir en vez de aplicar un recargo por descarte. */}
+              {!mp1Id && <option value="">— Elegí cómo cobrás —</option>}
               {mediosNormales.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.codigo} — {m.nombre}
+                  {m.recargo_pct > 0 ? ` (+${m.recargo_pct}%)` : ""}
                 </option>
               ))}
               {clienteTieneCc && medioCc && (
@@ -1291,7 +1317,7 @@ export function NuevaVentaForm({
           type="submit"
           pending={pending}
           pendingLabel="Guardando..."
-          disabled={!pagosOk || !giftOk || lineas.length === 0 || pending}
+          disabled={!pagosOk || !giftOk || !mp1Id || lineas.length === 0 || pending}
           className="rounded-md bg-primary px-6 py-2.5 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700 disabled:cursor-not-allowed"
         >
           Guardar venta
