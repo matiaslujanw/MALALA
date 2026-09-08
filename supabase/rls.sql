@@ -85,6 +85,26 @@ alter table public.liquidaciones enable row level security;
 alter table public.liquidacion_lineas enable row level security;
 alter table public.integraciones_manychat enable row level security;
 alter table public.whatsapp_envios enable row level security;
+-- OJO: toda tabla nueva de `public` tiene que sumarse acá. Supabase le da al rol
+-- `anon` grants completos por defecto, y la anon key es pública (viaja en el
+-- bundle del navegador). Una tabla sin RLS es una tabla escribible desde
+-- internet: así estuvieron 14 de ellas hasta drizzle/0029_rls_tablas_faltantes.sql,
+-- incluida gift_cards, donde cualquiera podía insertarse un saldo y canjearlo.
+-- Sin política asociada alcanza: RLS activo y cero políticas = denegar todo.
+alter table public.gift_cards enable row level security;
+alter table public.gift_card_movimientos enable row level security;
+alter table public.cliente_ficha_registros enable row level security;
+alter table public.cliente_sucursal enable row level security;
+alter table public.cuenta_impuestos enable row level security;
+alter table public.motivo_sucursal enable row level security;
+alter table public.profesionales_servicios enable row level security;
+alter table public.promocion_items enable row level security;
+alter table public.proveedor_sucursal enable row level security;
+alter table public.push_notification_queue enable row level security;
+alter table public.push_subscriptions enable row level security;
+alter table public.rubro_sucursal enable row level security;
+alter table public.servicio_sucursal enable row level security;
+alter table public.servicios_horarios enable row level security;
 
 create policy "profiles self or admin"
 on public.profiles
