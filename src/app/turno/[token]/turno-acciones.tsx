@@ -7,6 +7,7 @@ import {
   type PublicActionResult,
 } from "@/lib/data/turnos-publico";
 import type { SlotDisponible } from "@/lib/turnos-helpers";
+import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   token: string;
@@ -187,7 +188,7 @@ function ReprogramarForm({
           type="date"
           value={fecha}
           onChange={(e) => setFecha(e.target.value)}
-          min={new Date().toISOString().slice(0, 10)}
+          min={hoyAr()}
           className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
           required
         />

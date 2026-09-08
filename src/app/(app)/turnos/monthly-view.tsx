@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { TurnoDetalle } from "@/lib/turnos-helpers";
+import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string; // any date within the month (used to derive the month)
@@ -57,7 +58,7 @@ function getMonthGrid(isoDate: string) {
 
 export function MonthlyView({ fecha, turnosPorFecha }: Props) {
   const searchParams = useSearchParams();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyAr();
   const cells = getMonthGrid(fecha);
   const HEADERS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 

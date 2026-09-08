@@ -21,6 +21,7 @@ import {
 } from "./movimientos-bancarios-helpers";
 import { anticipoSchema } from "@/lib/validations/anticipo";
 import type { Anticipo } from "@/lib/types";
+import { hoyAr } from "@/lib/fecha-ar";
 
 function createId() {
   return crypto.randomUUID();
@@ -148,7 +149,8 @@ export async function registrarAnticipo(
   }
 
   const ahora = new Date();
-  const ymdHoy = ahora.toISOString().slice(0, 10);
+  // Fecha argentina: el cierre de caja se guarda con la fecha local, no UTC.
+  const ymdHoy = hoyAr();
   const egresoId = createId();
   const anticipoId = createId();
   const observacionEgreso =

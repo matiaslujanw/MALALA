@@ -42,6 +42,7 @@ import {
   getCuentaIdForMpTx,
 } from "./movimientos-bancarios-helpers";
 import { notificarLiquidacionEmpleadoPush } from "@/lib/integraciones/push";
+import { fechaArDeISO, hoyAr } from "@/lib/fecha-ar";
 
 function createId() {
   return crypto.randomUUID();
@@ -783,7 +784,8 @@ export async function marcarLiquidacionPagada(
   }
 
   const ahora = new Date();
-  const ymdHoy = ahora.toISOString().slice(0, 10);
+  // Fecha argentina: el cierre de caja se guarda con la fecha local, no UTC.
+  const ymdHoy = hoyAr();
   const egresoId = createId();
   const observacionEgreso =
     `Liquidación ${empleado?.nombre ?? "empleado"} ` +
@@ -905,7 +907,8 @@ export async function anularLiquidacion(
           .limit(1);
 
         if (eg) {
-          const ymdEgreso = eg.fecha.toISOString().slice(0, 10);
+          // El egreso es un instante guardado: su dia de negocio es el dia AR.
+          const ymdEgreso = fechaArDeISO(eg.fecha.toISOString());
           const [cierre] = await tx
             .select({ id: cierresCajaTable.id })
             .from(cierresCajaTable)

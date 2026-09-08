@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { TurnoDetalle } from "@/lib/turnos-helpers";
 import { ESTADO_DOT, estadoEfectivo } from "@/lib/turno-estado";
+import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string; // Monday of the week
@@ -27,7 +28,7 @@ function getWeekDays(mondayIso: string) {
 
 export function WeeklyView({ fecha, turnosPorFecha }: Props) {
   const searchParams = useSearchParams();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyAr();
   const weekDays = getWeekDays(fecha);
 
   function buildDayHref(dayIso: string) {

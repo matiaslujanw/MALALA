@@ -45,6 +45,7 @@ import type {
   Receta,
   Servicio,
 } from "@/lib/types";
+import { hoyAr } from "@/lib/fecha-ar";
 
 export interface IngresoFiltros {
   sucursalId?: string;
@@ -638,7 +639,14 @@ export async function createIngreso(
 
   const ingresoId = createId();
   const fecha = new Date();
-  const hoyYmd = fecha.toISOString().slice(0, 10);
+  // hoyAr y no toISOString: el server corre en UTC y la apertura de caja se
+  // guarda con la fecha ARGENTINA (ver caja/apertura). Con toISOString, a partir
+  // de las 21:00 hora argentina esto devolvía la fecha de MAÑANA, así que la
+  // venta buscaba una apertura que no existía y tiraba "Tenés que abrir la caja
+  // de hoy" aunque estuviera abierta — todas las noches, en el horario en que un
+  // salón justamente cierra. Y de paso el chequeo de caja cerrada tampoco
+  // encontraba el cierre de hoy, o sea que dejaba vender sobre un día cerrado.
+  const hoyYmd = hoyAr();
   const warnings: string[] = [];
 
   try {

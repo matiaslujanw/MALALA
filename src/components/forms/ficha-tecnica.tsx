@@ -6,6 +6,7 @@ import { useActionStateFeedback } from "@/components/feedback/action-feedback";
 import { LoadingButton } from "./field";
 import type { Cliente, FichaRegistro } from "@/lib/types";
 import type { ActionResult } from "@/lib/data/_helpers";
+import { hoyAr } from "@/lib/fecha-ar";
 
 type Accion = (
   state: ActionResult | null,
@@ -65,7 +66,7 @@ export function FichaTecnica({
 
   const perfilErr = perfilState && !perfilState.ok ? perfilState.errors : {};
   const regErr = regState && !regState.ok ? regState.errors : {};
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyAr();
 
   return (
     <section className="space-y-6 border-t border-border pt-6">

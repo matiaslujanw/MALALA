@@ -11,6 +11,7 @@ import {
   ESTADO_LABEL,
   estadoEfectivo,
 } from "@/lib/turno-estado";
+import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string;
@@ -32,7 +33,7 @@ function minutesToLabel(m: number) {
 
 export function DailyTimelineView({ fecha, turnos, profesionales, horarios }: Props) {
   const searchParams = useSearchParams();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyAr();
   const isToday = fecha === today;
 
   // Determine visible range from sucursal schedule

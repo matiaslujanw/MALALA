@@ -5,13 +5,14 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-reac
 import Link from "next/link";
 import { useRef } from "react";
 import type { VistaAgenda } from "./view-selector";
+import { hoyAr } from "@/lib/fecha-ar";
 
 export function DateSelector({ fecha, vista = "diaria" }: { fecha: string; vista?: VistaAgenda }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isToday = fecha === new Date().toISOString().slice(0, 10);
+  const isToday = fecha === hoyAr();
 
   function buildHref(overrides: { fecha: string }) {
     const params = new URLSearchParams(searchParams.toString());

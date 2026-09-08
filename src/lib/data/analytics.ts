@@ -9,7 +9,7 @@ import {
 import { buildAccessScope, clampSucursalId } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client/postgres";
-import { hoyAr } from "@/lib/fecha-ar";
+import { fechaArDeISO, hoyAr } from "@/lib/fecha-ar";
 import { estadoEfectivo } from "@/lib/turno-estado";
 import {
   empleados as empleadosTable,
@@ -120,8 +120,11 @@ function resolveDateRange(filters: AnalyticsFilters) {
   return { desde, hasta };
 }
 
+// Día de negocio (AR) de un instante. Con toISOString, un límite de rango de las
+// 23:59 hora argentina caía en el día siguiente en UTC y el rango se ensanchaba
+// un día contra turnos.fecha_turno, que guarda fechas argentinas.
 function isoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
+  return fechaArDeISO(date.toISOString());
 }
 
 function getAuthorizedContext(filters: AnalyticsFilters, scope: AccessScope) {
@@ -298,7 +301,7 @@ export async function getAnalyticsSnapshot(
 
   const byDay = new Map<string, number>();
   for (const ingreso of ingresosRows) {
-    const key = ingreso.fecha.toISOString().slice(0, 10);
+    const key = fechaArDeISO(ingreso.fecha.toISOString());
     byDay.set(key, (byDay.get(key) ?? 0) + ingreso.total);
   }
 
