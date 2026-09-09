@@ -1172,6 +1172,45 @@ export const giftCardMovimientos = pgTable(
   }),
 );
 
+
+// Viáticos cargados a mano, por empleada y por día. Ver drizzle/0032_viaticos.sql
+// para el porqué: antes salían de un monto fijo en la ficha multiplicado por una
+// cantidad de días que el sistema adivinaba contando ventas.
+export const viaticos = pgTable(
+  "viaticos",
+  {
+    id: text("id").primaryKey(),
+    empleadoId: text("empleado_id")
+      .notNull()
+      .references(() => empleados.id, { onDelete: "cascade" }),
+    sucursalId: text("sucursal_id")
+      .notNull()
+      .references(() => sucursales.id),
+    fecha: date("fecha").notNull(),
+    monto: doublePrecision("monto").notNull(),
+    /** La plata ya se le dio: entonces hay egreso y no se vuelve a pagar al liquidar. */
+    pagado: boolean("pagado").notNull().default(false),
+    egresoId: text("egreso_id").references(() => egresos.id),
+    liquidacionId: text("liquidacion_id").references(() => liquidaciones.id),
+    observacion: text("observacion"),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => profiles.userId),
+    creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    empleadoFechaUq: uniqueIndex("viaticos_empleado_fecha_uq").on(
+      table.empleadoId,
+      table.fecha,
+    ),
+    sucursalFechaIdx: index("viaticos_sucursal_fecha_idx").on(
+      table.sucursalId,
+      table.fecha,
+    ),
+    liquidacionIdx: index("viaticos_liquidacion_idx").on(table.liquidacionId),
+  }),
+);
+
 export const schema = {
   authUsers,
   profiles,

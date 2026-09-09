@@ -10,6 +10,7 @@ import { buildAccessScope, isSucursalAllowed } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
 import {
   anticipos as anticiposTable,
+  viaticos as viaticosTable,
   cierresCaja as cierresCajaTable,
   empleados as empleadosTable,
   egresos as egresosTable,
@@ -483,9 +484,36 @@ export async function createLiquidacion(
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
   const sueldoHoras = horasTrabajadas * valorHora;
-  const totalViatico = diasViatico * viaticoPorDia;
+
+  // Viáticos del período: los que se cargaron día por día, no un fijo por una
+  // cantidad de días adivinada. Se toman sólo los que no entraron todavía en
+  // otra liquidación.
+  const viaticosPeriodo = await getDb()
+    .select()
+    .from(viaticosTable)
+    .where(
+      and(
+        eq(viaticosTable.empleadoId, parsed.data.empleado_id),
+        eq(viaticosTable.sucursalId, parsed.data.sucursal_id),
+        gte(viaticosTable.fecha, parsed.data.periodo_desde),
+        lte(viaticosTable.fecha, parsed.data.periodo_hasta),
+        isNull(viaticosTable.liquidacionId),
+      ),
+    );
+
+  // El total de viáticos entra en lo que la empleada COBRÓ en el período: es
+  // parte de su ingreso y por eso se muestra.
+  const totalViatico = viaticosPeriodo.reduce((s, v) => s + v.monto, 0);
+  // Pero sólo se PAGA acá lo que todavía no se le dio. Los que se entregaron en
+  // el momento ya salieron de la caja como egreso; sumarlos otra vez sería
+  // pagarle dos veces el mismo almuerzo.
+  const viaticoAPagar = viaticosPeriodo
+    .filter((v) => !v.pagado)
+    .reduce((s, v) => s + v.monto, 0);
+
   const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
-  const totalPagar = totalComision + sueldoHoras + totalViatico - totalAnticipos;
+  const totalPagar =
+    totalComision + sueldoHoras + viaticoAPagar - totalAnticipos;
   const liquidacionId = createId();
 
   let solapadaError: ReturnType<typeof errorSolapada> | null = null;
@@ -536,6 +564,20 @@ export async function createLiquidacion(
           inArray(
             anticiposTable.id,
             anticipos.map((a) => a.id),
+          ),
+        );
+    }
+
+    // Y los viáticos, por lo mismo: es lo que impide que el mismo almuerzo entre
+    // en dos liquidaciones.
+    if (viaticosPeriodo.length > 0) {
+      await tx
+        .update(viaticosTable)
+        .set({ liquidacionId })
+        .where(
+          inArray(
+            viaticosTable.id,
+            viaticosPeriodo.map((v) => v.id),
           ),
         );
     }
