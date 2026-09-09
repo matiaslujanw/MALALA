@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { HorarioSucursal } from "@/lib/types";
-import type { TurnoDetalle } from "@/lib/turnos-helpers";
+import type { TurnoAgenda } from "@/lib/types";
 import type { ProfesionalReserva } from "@/lib/turnos-helpers";
 import {
   ESTADO_BADGE_BORDE,
@@ -15,7 +15,7 @@ import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string;
-  turnos: TurnoDetalle[];
+  turnos: TurnoAgenda[];
   profesionales: ProfesionalReserva[];
   horarios: HorarioSucursal[];
 }
@@ -77,7 +77,7 @@ export function DailyTimelineView({ fecha, turnos, profesionales, horarios }: Pr
   }
 
   // Group turnos by profesional
-  const turnosByProf: Record<string, TurnoDetalle[]> = {};
+  const turnosByProf: Record<string, TurnoAgenda[]> = {};
   for (const t of turnos) {
     (turnosByProf[t.profesional_id] ??= []).push(t);
   }
@@ -188,7 +188,7 @@ export function DailyTimelineView({ fecha, turnos, profesionales, horarios }: Pr
                       {!isSmall && (
                         <>
                           <p className="text-[10px] truncate opacity-80">
-                            {turno.servicio?.nombre}
+                            {turno.servicio_nombre}
                           </p>
                           <p className="text-[10px] opacity-60">
                             {turno.duracion_min} min · {ESTADO_LABEL[estadoEfectivo(turno)]}

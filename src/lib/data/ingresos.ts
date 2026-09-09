@@ -480,7 +480,14 @@ export type CreateIngresoResult =
 export async function createIngreso(
   formData: FormData,
 ): Promise<CreateIngresoResult> {
-  const user = await requireRole(["admin", "encargada", "empleado"]);
+  // Sin "empleado": las ventas las carga el mostrador.
+  //
+  // No es sólo la regla del salón. Esta función nunca validó que las líneas se
+  // le asignen a quien la llama, y el selector de empleada del formulario ofrece
+  // a todas las activas: con el rol empleado habilitado, cualquiera podía
+  // registrar una venta y adjudicarle la comisión a otra persona. El chequeo de
+  // rol que había en listIngresos era sólo para LEER.
+  const user = await requireRole(["admin", "encargada"]);
   const scope = buildAccessScope(user);
 
   const lineasRaw = formData.get("lineas");

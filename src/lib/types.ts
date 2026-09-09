@@ -227,6 +227,37 @@ export type TurnoOcupacion = Pick<
   | "estado"
 >;
 
+/**
+ * Un turno tal como lo necesitan las vistas de la agenda (diaria, semanal,
+ * mensual), que son componentes cliente.
+ *
+ * Igual que TurnoOcupacion, existe por seguridad. Las tres vistas recibían el
+ * `TurnoDetalle` completo —que extiende `Turno` y le cuelga el `Empleado`
+ * entero—, así que al navegador de cualquiera que abriera la agenda le viajaban
+ * el `token_acceso` de cada clienta (el link para cancelar y reprogramar su
+ * turno), su teléfono y su mail, más el `valor_hora`, el `porcentaje_default` y
+ * el `viatico_por_dia` de las empleadas. En vista mensual, seis semanas de eso
+ * de una sola vez, y el rol empleado lo recibía igual.
+ *
+ * Lo que queda es lo que las vistas realmente pintan, más lo que necesita el
+ * resumen al pasar el mouse: quién es, qué se hace y quién la atiende.
+ */
+export interface TurnoAgenda {
+  id: ID;
+  fecha_turno: string;
+  hora: string;
+  duracion_min: number;
+  estado: TurnoEstado;
+  profesional_id: ID;
+  cliente_nombre: string;
+  servicio_nombre?: string;
+  servicio_precio?: number;
+  canal: TurnoCanal;
+  profesional_nombre?: string;
+  profesional_color?: string;
+  observacion?: string;
+}
+
 export interface Turno {
   id: ID;
   sucursal_id: ID;
@@ -580,6 +611,7 @@ export interface AccessScope {
   puedeVerReportes: boolean;
   puedeVerCaja: boolean;
   puedeVerCatalogos: boolean;
+  puedeCargarVentas: boolean;
 }
 
 

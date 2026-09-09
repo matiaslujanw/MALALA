@@ -319,10 +319,10 @@ export default async function TurnosPage({
                               </div>
                               <p className="mt-2 font-medium text-ink">{turno.cliente_nombre}</p>
                               <p className="text-sm text-stone-700">
-                                {turno.servicio?.nombre}
+                                {turno.servicio_nombre}
                               </p>
                               <p className="mt-2 text-xs text-muted-foreground">
-                                Canal {turno.canal} · {formatARS(turno.servicio?.precio_efectivo ?? 0)}
+                                Canal {turno.canal} · {formatARS(turno.servicio_precio ?? 0)}
                               </p>
                             </Link>
                           ))
@@ -364,8 +364,8 @@ export default async function TurnosPage({
                       <tr key={turno.id} className="hover:bg-cream/30">
                         <td className="px-4 py-3 font-medium">{turno.hora}</td>
                         <td className="px-4 py-3">{turno.cliente_nombre}</td>
-                        <td className="px-4 py-3">{turno.servicio?.nombre}</td>
-                        <td className="px-4 py-3">{turno.profesional?.empleado.nombre}</td>
+                        <td className="px-4 py-3">{turno.servicio_nombre}</td>
+                        <td className="px-4 py-3">{turno.profesional_nombre}</td>
                         <td className="px-4 py-3">
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_BADGE[estadoEfectivo(turno)]}`}

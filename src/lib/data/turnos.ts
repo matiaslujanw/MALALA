@@ -37,6 +37,7 @@ import {
 import {
   buildAvailableSlots,
   buildTurnoDetalle,
+  toTurnoAgenda,
   listOpenDatesForSucursal,
   listReservableDates,
   type ProfesionalReserva,
@@ -52,6 +53,7 @@ import type {
   Sucursal,
   Turno,
   TurnoEstado,
+  TurnoAgenda,
   TurnoOcupacion,
 } from "@/lib/types";
 
@@ -668,7 +670,9 @@ export async function getTurnosAgendaData(args?: {
   return {
     fecha,
     sucursalId,
-    turnos,
+    // Proyectado por lo mismo que turnosPorFecha: la vista diaria es un
+    // componente cliente. Ver toTurnoAgenda.
+    turnos: turnos.map(toTurnoAgenda),
     resumen,
     profesionales: profesionalesDeSucursal,
     sucursales,
@@ -717,9 +721,12 @@ export async function getTurnosAgendaRangeData(args: {
       buildTurnoDetalle({ turno, servicios, sucursales, profesionales: allProfs }),
     );
 
-  const turnosPorFecha: Record<string, typeof detallados> = {};
+  // Proyección a TurnoAgenda: las vistas semanal y mensual son componentes
+  // cliente, y un TurnoDetalle les mandaría al navegador el token de acceso de
+  // cada clienta y los datos de sueldo de cada empleada. Ver toTurnoAgenda.
+  const turnosPorFecha: Record<string, TurnoAgenda[]> = {};
   for (const t of detallados) {
-    (turnosPorFecha[t.fecha_turno] ??= []).push(t);
+    (turnosPorFecha[t.fecha_turno] ??= []).push(toTurnoAgenda(t));
   }
 
   const profesionalesDeSucursal = allProfs

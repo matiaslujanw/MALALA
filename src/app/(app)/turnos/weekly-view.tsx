@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { TurnoDetalle } from "@/lib/turnos-helpers";
+import type { TurnoAgenda } from "@/lib/types";
 import { ESTADO_DOT, estadoEfectivo } from "@/lib/turno-estado";
 import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string; // Monday of the week
-  turnosPorFecha: Record<string, TurnoDetalle[]>;
+  turnosPorFecha: Record<string, TurnoAgenda[]>;
 }
 
 function getWeekDays(mondayIso: string) {
@@ -99,7 +99,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                     <div className="flex items-center gap-1.5">
                       <div
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: turno.profesional?.color ?? "#78766f" }}
+                        style={{ backgroundColor: turno.profesional_color ?? "#78766f" }}
                       />
                       <span className="text-xs font-semibold text-ink tabular-nums">
                         {turno.hora}
@@ -174,7 +174,7 @@ export function WeeklyView({ fecha, turnosPorFecha }: Props) {
                     >
                       <div
                         className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: turno.profesional?.color ?? "#78766f" }}
+                        style={{ backgroundColor: turno.profesional_color ?? "#78766f" }}
                       />
                       <span className="text-xs font-medium text-ink">{turno.hora}</span>
                       <span className="text-xs text-stone-600 truncate flex-1">

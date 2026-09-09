@@ -113,3 +113,18 @@ describe("clampSucursalId", () => {
     expect(clampSucursalId(scope, undefined)).toBe(SUC_A);
   });
 });
+
+describe("puedeCargarVentas — las empleadas no cargan ventas", () => {
+  it("admin y encargada sí", () => {
+    expect(buildAccessScope(usuario({ rol: "admin" })).puedeCargarVentas).toBe(true);
+    expect(buildAccessScope(usuario({ rol: "superadmin" })).puedeCargarVentas).toBe(true);
+    expect(buildAccessScope(usuario({ rol: "encargada" })).puedeCargarVentas).toBe(true);
+  });
+
+  it("empleado NO", () => {
+    // No es sólo una regla del salón: createIngreso nunca validó que la línea se
+    // le asigne a quien la carga, y el selector ofrece a todas las empleadas.
+    // Con el rol habilitado, cualquiera podía adjudicarle la comisión a otra.
+    expect(buildAccessScope(usuario({ rol: "empleado" })).puedeCargarVentas).toBe(false);
+  });
+});

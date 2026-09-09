@@ -9,6 +9,7 @@ import type {
   Sucursal,
   Turno,
   TurnoEstado,
+  TurnoAgenda,
   TurnoOcupacion,
 } from "@/lib/types";
 
@@ -394,5 +395,31 @@ export function buildTurnoDetalle(args: {
       args.profesionales.find(
         (item) => item.empleado_id === args.turno.profesional_id,
       ) ?? null,
+  };
+}
+
+/**
+ * Achica un TurnoDetalle a lo que la agenda realmente necesita mostrar.
+ *
+ * Las vistas de la agenda son componentes cliente, así que todo lo que reciben
+ * viaja al navegador. Un TurnoDetalle lleva el token de acceso de la clienta y
+ * los datos de sueldo de la empleada; nada de eso se pinta ni se necesita.
+ * Ver el comentario de TurnoAgenda en types.ts.
+ */
+export function toTurnoAgenda(t: TurnoDetalle): TurnoAgenda {
+  return {
+    id: t.id,
+    fecha_turno: t.fecha_turno,
+    hora: t.hora,
+    duracion_min: t.duracion_min,
+    estado: t.estado,
+    profesional_id: t.profesional_id,
+    cliente_nombre: t.cliente_nombre,
+    servicio_nombre: t.servicio?.nombre,
+    servicio_precio: t.servicio?.precio_efectivo,
+    canal: t.canal,
+    profesional_nombre: t.profesional?.empleado.nombre,
+    profesional_color: t.profesional?.color,
+    observacion: t.observacion,
   };
 }

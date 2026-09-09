@@ -26,6 +26,11 @@ export function buildAccessScope(user: Usuario): AccessScope {
     puedeVerReportes: adminOEncargada,
     puedeVerCaja: adminOEncargada,
     puedeVerCatalogos: adminOEncargada,
+    // Las empleadas NO cargan ventas: las carga el mostrador. Además de ser la
+    // regla del salón, es lo que impide que alguien registre una venta y le
+    // adjudique la comisión a otra persona — el selector de empleada ofrece a
+    // todas y createIngreso nunca validó que la línea fuera de quien la carga.
+    puedeCargarVentas: adminOEncargada,
   };
 }
 

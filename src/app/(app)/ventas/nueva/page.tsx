@@ -1,3 +1,4 @@
+import { buildAccessScope } from "@/lib/auth/access";
 import { redirect } from "next/navigation";
 import { NuevaVentaForm } from "@/components/forms/nueva-venta-form";
 import { listClientes } from "@/lib/data/clientes";
@@ -14,7 +15,9 @@ import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import type { ServicioHorario } from "@/lib/types";
 
 export default async function NuevaVentaPage() {
-  await requireUser();
+  const user = await requireUser();
+  // La ruta se abre tipeándola: esconder el botón no alcanza.
+  if (!buildAccessScope(user).puedeCargarVentas) redirect("/ventas");
   const sucursal = await getActiveSucursal();
   if (!sucursal) redirect("/dev/login");
 

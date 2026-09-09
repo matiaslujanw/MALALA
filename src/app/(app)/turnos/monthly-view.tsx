@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { TurnoDetalle } from "@/lib/turnos-helpers";
+import type { TurnoAgenda } from "@/lib/types";
 import { hoyAr } from "@/lib/fecha-ar";
 
 interface Props {
   fecha: string; // any date within the month (used to derive the month)
-  turnosPorFecha: Record<string, TurnoDetalle[]>;
+  turnosPorFecha: Record<string, TurnoAgenda[]>;
 }
 
 function getMonthGrid(isoDate: string) {
@@ -138,7 +138,7 @@ export function MonthlyView({ fecha, turnosPorFecha }: Props) {
                       >
                         <span
                           className="h-2 w-2 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: t.profesional?.color ?? "#78766f" }}
+                          style={{ backgroundColor: t.profesional_color ?? "#78766f" }}
                         />
                         <span className="text-xs font-medium text-ink tabular-nums">
                           {t.hora}

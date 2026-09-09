@@ -1,3 +1,4 @@
+import { buildAccessScope } from "@/lib/auth/access";
 import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
 import { Plus } from "lucide-react";
@@ -49,6 +50,7 @@ export default async function VentasPage({
   searchParams: Promise<SearchParams>;
 }) {
   const user = await requireUser();
+  const scope = buildAccessScope(user);
   const sucursal = await getActiveSucursal();
   if (!sucursal) return null;
 
@@ -273,9 +275,7 @@ export default async function VentasPage({
           </p>
         </div>
 
-        {(user.rol === "admin" ||
-          user.rol === "encargada" ||
-          user.rol === "empleado") && (
+        {scope.puedeCargarVentas && (
           <Link
             href="/ventas/nueva"
             className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"

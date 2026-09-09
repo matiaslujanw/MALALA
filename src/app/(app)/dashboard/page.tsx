@@ -103,12 +103,14 @@ export default async function DashboardPage() {
 
       {/* Accesos rápidos */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <QuickAction
-          href="/ventas/nueva"
-          label="Nueva venta"
-          Icon={Plus}
-          highlight
-        />
+        {scope.puedeCargarVentas && (
+          <QuickAction
+            href="/ventas/nueva"
+            label="Nueva venta"
+            Icon={Plus}
+            highlight
+          />
+        )}
         <QuickAction href="/turnos" label="Turnos" Icon={CalendarClock} />
         {scope.puedeVerCaja && (
           <QuickAction href="/caja" label="Caja" Icon={Wallet} />
