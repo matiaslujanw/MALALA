@@ -2,11 +2,13 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AnticiposPanel } from "@/components/anticipos-panel";
+import { ViaticosPanel } from "@/components/viaticos-panel";
 import { EmpleadoForm } from "@/components/forms/empleado-form";
 import { AccesoEmpleadoPanel } from "@/components/forms/acceso-empleado-panel";
 import { buildAccessScope } from "@/lib/auth/access";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
 import { listAnticipos } from "@/lib/data/anticipos";
+import { listViaticos } from "@/lib/data/viaticos";
 import {
   crearAccesoEmpleado,
   getAccesoDeEmpleado,
@@ -74,8 +76,9 @@ export default async function EditarEmpleadoPage({
   );
   const sucursal = await getActiveSucursal();
 
-  const [anticipos, mediosPago, acceso, agendas] = await Promise.all([
+  const [anticipos, viaticos, mediosPago, acceso, agendas] = await Promise.all([
     listAnticipos(id),
+    listViaticos({ empleadoId: id }),
     sucursal
       ? listMediosPago({ sucursalId: sucursal.id, soloActivos: true, excluirGiftCard: true })
       : Promise.resolve([]),
@@ -174,6 +177,13 @@ export default async function EditarEmpleadoPage({
       <AnticiposPanel
         empleadoId={empleado.id}
         anticipos={anticipos}
+        mediosPago={mediosPago}
+      />
+
+      <ViaticosPanel
+        empleadoId={empleado.id}
+        empleadoNombre={empleado.nombre}
+        viaticos={viaticos}
         mediosPago={mediosPago}
       />
 

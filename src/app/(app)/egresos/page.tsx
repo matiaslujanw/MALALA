@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Clock, Plus } from "lucide-react";
+import { Check, Clock, Plus, Sandwich } from "lucide-react";
 import { redirect } from "next/navigation";
 import { clampSucursalId, getAccessScopeForUser } from "@/lib/auth/access";
 import { requireUser } from "@/lib/auth/session";
@@ -99,13 +99,24 @@ export default async function EgresosPage({
         </div>
 
         {puedeCargar && (
-          <Link
-            href="/egresos/nuevo"
-            className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
-          >
-            <Plus className="h-4 w-4 stroke-[1.5]" />
-            Nuevo gasto
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* El viático se carga por empleada y por día, así que vive en su
+                ficha; desde acá se llega a la lista para elegir a quién. */}
+            <Link
+              href="/catalogos/empleados"
+              className="flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium uppercase tracking-wider transition-colors hover:bg-cream"
+            >
+              <Sandwich className="h-4 w-4 stroke-[1.5]" />
+              Cargar viático
+            </Link>
+            <Link
+              href="/egresos/nuevo"
+              className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
+            >
+              <Plus className="h-4 w-4 stroke-[1.5]" />
+              Nuevo gasto
+            </Link>
+          </div>
         )}
       </header>
 
