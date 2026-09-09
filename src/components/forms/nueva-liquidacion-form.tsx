@@ -118,7 +118,6 @@ export function NuevaLiquidacionForm({
       setPreview(res.preview);
       // Proponer las horas según la jornada del empleado (editable).
       setHoras(res.preview.horas_sugeridas);
-      setDiasViatico(res.preview.dias_viatico_sugeridos);
     });
   }
 
@@ -128,7 +127,7 @@ export function NuevaLiquidacionForm({
       setErrors({ _: ["Primero calculá el período"] });
       return;
     }
-    if (preview.lineas.length === 0 && horas <= 0 && diasViatico <= 0) {
+    if (preview.lineas.length === 0 && horas <= 0 && preview.total_viatico <= 0) {
       setErrors({ _: ["No hay servicios, horas ni viatico para liquidar"] });
       return;
     }
@@ -165,12 +164,13 @@ export function NuevaLiquidacionForm({
 
   // Desglose en vivo (depende de las horas que carga el usuario).
   const sueldoHoras = horas * (preview?.valor_hora ?? 0);
-  const totalViatico = diasViatico * (preview?.viatico_por_dia ?? 0);
+  // El viatico ya no se estima: sale de lo cargado dia por dia.
+  const totalViatico = preview?.viatico_a_pagar ?? 0;
   const totalPagar = preview
     ? preview.total_comision + sueldoHoras + totalViatico - preview.total_anticipos
     : 0;
   const puedeGuardar =
-    !!preview && (preview.lineas.length > 0 || horas > 0 || diasViatico > 0);
+    !!preview && (preview.lineas.length > 0 || horas > 0 || preview.total_viatico > 0);
 
   return (
     <div className="space-y-6">
@@ -372,59 +372,62 @@ export function NuevaLiquidacionForm({
               )}
             </div>
           </div>
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-xs uppercase tracking-widest text-muted-foreground">
+                Viáticos del período
+              </h3>
+              <span className="text-sm tabular-nums">
+                {formatARS(preview.total_viatico)}
+                {preview.viatico_a_pagar !== preview.total_viatico && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (a pagar acá: {formatARS(preview.viatico_a_pagar)})
+                  </span>
+                )}
+              </span>
+            </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:max-w-2xl">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Viatico por dia
-                </label>
-                <input
-                  type="text"
-                  value={formatARS(preview.viatico_por_dia)}
-                  readOnly
-                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-cream/40 text-sm text-muted-foreground"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Sale de la ficha del empleado y queda congelado en esta liquidacion.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Dias de viatico
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  value={diasViatico || ""}
-                  onChange={(e) =>
-                    setDiasViatico(Math.max(0, Number(e.target.value) || 0))
-                  }
-                  placeholder="0"
-                  className="w-full px-3 py-2 text-right tabular-nums border border-border rounded-md bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {diasViatico > 0
-                    ? `${diasViatico} dias × ${formatARS(preview.viatico_por_dia)} = ${formatARS(totalViatico)}`
-                    : "Ajustalo manualmente para descontar feriados o dias no trabajados"}
-                </p>
-                {preview.dias_viatico_sugeridos > 0 && (
+            {preview.viaticos.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                No hay viáticos cargados en este período. Se cargan día por día
+                desde la ficha de la empleada.
+              </p>
+            ) : (
+              <>
+                <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card text-sm">
+                  {preview.viaticos.map((v) => (
+                    <li
+                      key={v.id}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <span className="tabular-nums">{v.fecha}</span>
+                        {v.observacion && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {v.observacion}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {v.pagado && (
+                          <span className="rounded bg-stone-100 px-2 py-0.5 text-[10px] uppercase tracking-wider text-stone-500">
+                            ya entregado
+                          </span>
+                        )}
+                        <span className="tabular-nums">{formatARS(v.monto)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {preview.viatico_a_pagar !== preview.total_viatico && (
                   <p className="text-xs text-muted-foreground">
-                    Sugerido por dias con servicios: {preview.dias_viatico_sugeridos}.
-                    {diasViatico !== preview.dias_viatico_sugeridos && (
-                      <button
-                        type="button"
-                        onClick={() => setDiasViatico(preview.dias_viatico_sugeridos)}
-                        className="ml-1 underline hover:text-foreground"
-                      >
-                        Usar sugerido
-                      </button>
-                    )}
+                    Los marcados como ya entregados suman a lo que cobró en el
+                    período, pero no se vuelven a pagar acá: esa plata ya salió de
+                    la caja el día que se le dio.
                   </p>
                 )}
-              </div>
-            </div>
+              </>
+            )}
           </div>
 
           {/* Anticipos del período */}

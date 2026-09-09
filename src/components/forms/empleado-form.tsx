@@ -83,14 +83,11 @@ export function EmpleadoForm({
               required
             />
           </div>
+          {/* El viático ya no vive acá: se carga día por día, con su monto, en
+              la ficha de la empleada. Un fijo en el alta hacía creer que el
+              sistema sabía quién almorzó cada día, y en realidad lo adivinaba
+              contando ventas. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <CurrencyField
-              label="Viático por día"
-              name="viatico_por_dia"
-              defaultValue={empleado?.viatico_por_dia ?? 0}
-              error={errors.viatico_por_dia}
-              hint="Se propone automáticamente al crear la liquidación"
-            />
             <Field
               label="Horas por día"
               name="horas_por_dia"

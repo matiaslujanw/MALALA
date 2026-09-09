@@ -128,6 +128,14 @@ export interface LiquidacionPreviewAnticipo {
   observacion?: string;
 }
 
+export interface LiquidacionPreviewViatico {
+  id: string;
+  fecha: string;
+  monto: number;
+  pagado: boolean;
+  observacion?: string;
+}
+
 export interface LiquidacionPreview {
   empleado_id: string;
   sucursal_id: string;
@@ -139,9 +147,11 @@ export interface LiquidacionPreview {
   dias_trabajados: number;
   valor_hora: number;
   horas_sugeridas: number;
-  viatico_por_dia: number;
-  dias_viatico_sugeridos: number;
-  total_viatico_sugerido: number;
+  viaticos: LiquidacionPreviewViatico[];
+  /** Todo lo que cobró de viático en el período. Es lo que se muestra. */
+  total_viatico: number;
+  /** Sólo lo que todavía NO se le dio: lo único que se suma al total a pagar. */
+  viatico_a_pagar: number;
   anticipos: LiquidacionPreviewAnticipo[];
   total_anticipos: number;
 }
@@ -384,7 +394,7 @@ export async function previewLiquidacion(input: {
   const dias = new Set(lineas.map((l) => l.fecha));
   const totalComision = lineas.reduce((s, l) => s + l.comision_monto, 0);
 
-  const { valorHora, horasSugeridas, viaticoPorDia, anticipos } =
+  const { valorHora, horasSugeridas, anticipos } =
     await fetchValorHoraYAnticipos({
       empleadoId: parsed.data.empleado_id,
       sucursalId: parsed.data.sucursal_id,
@@ -392,8 +402,22 @@ export async function previewLiquidacion(input: {
       hasta: parsed.data.periodo_hasta,
     });
   const totalAnticipos = anticipos.reduce((s, a) => s + a.monto, 0);
-  const diasViaticoSugeridos = dias.size;
-  const totalViaticoSugerido = diasViaticoSugeridos * viaticoPorDia;
+
+  // Viáticos cargados día por día. Ya no se estima como "días × monto fijo": ese
+  // camino adivinaba la asistencia contando ventas y no dejaba que el monto
+  // variara de un día a otro.
+  const viaticosPeriodo = await getDb()
+    .select()
+    .from(viaticosTable)
+    .where(
+      and(
+        eq(viaticosTable.empleadoId, parsed.data.empleado_id),
+        eq(viaticosTable.sucursalId, parsed.data.sucursal_id),
+        gte(viaticosTable.fecha, parsed.data.periodo_desde),
+        lte(viaticosTable.fecha, parsed.data.periodo_hasta),
+        isNull(viaticosTable.liquidacionId),
+      ),
+    );
 
   return {
     ok: true,
@@ -408,9 +432,17 @@ export async function previewLiquidacion(input: {
       dias_trabajados: dias.size,
       valor_hora: valorHora,
       horas_sugeridas: horasSugeridas,
-      viatico_por_dia: viaticoPorDia,
-      dias_viatico_sugeridos: diasViaticoSugeridos,
-      total_viatico_sugerido: totalViaticoSugerido,
+      viaticos: viaticosPeriodo.map((v) => ({
+        id: v.id,
+        fecha: v.fecha,
+        monto: v.monto,
+        pagado: v.pagado,
+        observacion: v.observacion ?? undefined,
+      })),
+      total_viatico: viaticosPeriodo.reduce((acc, v) => acc + v.monto, 0),
+      viatico_a_pagar: viaticosPeriodo
+        .filter((v) => !v.pagado)
+        .reduce((acc, v) => acc + v.monto, 0),
       anticipos,
       total_anticipos: totalAnticipos,
     },

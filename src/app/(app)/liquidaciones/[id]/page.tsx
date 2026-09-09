@@ -153,7 +153,14 @@ export default async function LiquidacionDetallePage({
             )}
             {liquidacion.total_viatico > 0 && (
               <KV
-                label={`Viatico (${liquidacion.dias_viatico} dias × ${formatARS(liquidacion.viatico_por_dia)})`}
+                // Las liquidaciones viejas guardaron el viático como días ×
+                // monto fijo; las nuevas suman los cargados día por día, así que
+                // el detalle sólo tiene sentido si hay un monto por día.
+                label={
+                  liquidacion.viatico_por_dia > 0
+                    ? `Viatico (${liquidacion.dias_viatico} dias × ${formatARS(liquidacion.viatico_por_dia)})`
+                    : "Viatico del periodo"
+                }
                 value={formatARS(liquidacion.total_viatico)}
               />
             )}
