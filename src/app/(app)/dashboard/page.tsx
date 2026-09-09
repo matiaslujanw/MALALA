@@ -118,12 +118,14 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {user.empleado_id && (
-        <EmployeePushCard
-          configured={pushConfigured}
-          vapidPublicKey={vapidPublicKey}
-        />
-      )}
+      {/* Lo ve cualquier usuario logueado. Antes estaba detrás de
+          user.empleado_id, o sea que no lo veía nadie: los 7 perfiles tienen ese
+          campo vacío, y el dueño y las encargadas —que son quienes más avisos
+          van a querer— no tienen ni van a tener ficha de empleada. */}
+      <EmployeePushCard
+        configured={pushConfigured}
+        vapidPublicKey={vapidPublicKey}
+      />
 
       {/* Ventas de hoy */}
       <section className="rounded-[1.5rem] border border-border bg-card p-5 shadow-[0_14px_40px_rgba(44,53,37,0.04)]">

@@ -910,9 +910,12 @@ export const pushSubscriptions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => profiles.userId, { onDelete: "cascade" }),
-    empleadoId: text("empleado_id")
-      .notNull()
-      .references(() => empleados.id, { onDelete: "cascade" }),
+    // Nullable: el dueño y las encargadas no tienen ficha de empleada y también
+    // se suscriben. La suscripción cuelga de user_id; empleado_id es sólo el
+    // atajo para notificar "a esta empleada" sin resolver el profile.
+    empleadoId: text("empleado_id").references(() => empleados.id, {
+      onDelete: "cascade",
+    }),
     endpoint: text("endpoint").notNull(),
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),

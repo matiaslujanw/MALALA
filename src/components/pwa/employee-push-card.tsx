@@ -129,8 +129,9 @@ export function EmployeePushCard({
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Recibí avisos cuando te asignen un turno, se reprogramen o cancelen,
-            y cuando te creen una liquidación.
+            Recibí en este dispositivo los avisos que te correspondan según tu
+            rol. Funciona en la computadora y en el celular; en iPhone hay que
+            agregar la app a la pantalla de inicio antes de activarlas.
           </p>
 
           <StatusLine status={status} configured={configured} />

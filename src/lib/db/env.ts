@@ -10,8 +10,30 @@ export function isSupabaseConfigured() {
   return Boolean(publicUrl && publicAnonKey && serviceRoleKey && databaseUrl);
 }
 
+/** Largo en bytes de un valor base64url, sin decodificarlo. */
+function bytesDeBase64Url(valor: string): number {
+  const limpio = valor.replace(/=+$/, "");
+  return Math.floor((limpio.length * 3) / 4);
+}
+
+/**
+ * Las claves VAPID tienen que ser un par P-256 de verdad, no cualquier string.
+ *
+ * Chequear sólo que la variable no estuviera vacía nos costó caro: en .env.local
+ * había texto de relleno (27 bytes en la pública en vez de 65), la app mostraba
+ * el botón de suscribirse como si estuviera todo configurado, y recién fallaba
+ * cuando alguien lo apretaba. Un formato inválido acá es indistinguible de "no
+ * configurado", así que se trata igual.
+ *
+ * La pública es un punto sin comprimir: 65 bytes que arrancan con 0x04 (que en
+ * base64url es siempre una "B"). La privada es el escalar: 32 bytes.
+ */
 export function isWebPushConfigured() {
-  return Boolean(vapidPublicKey && vapidPrivateKey);
+  if (!vapidPublicKey || !vapidPrivateKey) return false;
+  if (bytesDeBase64Url(vapidPublicKey) !== 65) return false;
+  if (!vapidPublicKey.startsWith("B")) return false;
+  if (bytesDeBase64Url(vapidPrivateKey) !== 32) return false;
+  return true;
 }
 
 export function requireSupabaseRuntime(context?: string) {

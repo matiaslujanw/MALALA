@@ -11,9 +11,10 @@ function unauthorized() {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return unauthorized();
-  if (!user.empleado_id) {
-    return NextResponse.json({ error: "Perfil sin empleado" }, { status: 403 });
-  }
+  // Antes acá había un 403 "Perfil sin empleado". Dejaba afuera al dueño y a las
+  // encargadas, que no tienen ficha de empleada — o sea, a todos: los 7 profiles
+  // de producción tienen empleado_id en NULL. La suscripción cuelga de user.id;
+  // empleado_id se guarda si existe.
 
   const body = (await request.json()) as {
     endpoint?: string;
