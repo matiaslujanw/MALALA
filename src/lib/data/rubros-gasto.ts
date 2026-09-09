@@ -82,6 +82,17 @@ export async function createRubroGasto(
   return { ok: true };
 }
 
+/**
+ * Rubros que el código necesita que existan sí o sí.
+ *
+ * "Sueldos" lo buscan por nombre anticipos.ts y liquidaciones.ts para armar el
+ * egreso del pago. Si no está, el salón no puede cargar un anticipo ni pagarle
+ * una liquidación a nadie, y el error recién aparece al intentar hacerlo.
+ */
+function esRubroDelSistema(nombre: string): boolean {
+  return nombre.trim().toLowerCase() === "sueldos";
+}
+
 export async function toggleRubroGastoActivo(
   rgId: string,
 ): Promise<ActionResult> {
@@ -97,6 +108,21 @@ export async function toggleRubroGastoActivo(
     .where(eq(rubrosGastoTable.id, rgId))
     .limit(1);
   if (!rubro) return { ok: false, errors: { _: ["No encontrado"] } };
+
+  // "Sueldos" no se desactiva: los anticipos y el pago de liquidaciones lo
+  // buscan POR NOMBRE para armar el egreso (anticipos.ts, liquidaciones.ts) y
+  // fallan si no está. Sin este guard, un clic acá deja al salón sin poder
+  // pagarle a nadie, y el error aparece recién al intentar cargar el anticipo.
+  if (esRubroDelSistema(rubro.rubro) && rubro.activo) {
+    return {
+      ok: false,
+      errors: {
+        _: [
+          "El rubro Sueldos no se puede desactivar: lo usan los anticipos y el pago de liquidaciones.",
+        ],
+      },
+    };
+  }
 
   await db
     .update(rubrosGastoTable)

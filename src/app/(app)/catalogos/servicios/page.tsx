@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TableActionLink } from "@/components/table-action-link";
-import { Plus } from "lucide-react";
+import { Plus, TrendingUp } from "lucide-react";
 import { listServicios } from "@/lib/data/servicios";
 import { redirect } from "next/navigation";
 import { getActiveSucursal, requireUser } from "@/lib/auth/session";
@@ -52,13 +52,22 @@ export default async function ServiciosPage({
         </div>
 
         {user.rol === "admin" && (
-          <Link
-            href="/catalogos/servicios/nuevo"
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4 stroke-[1.5]" />
-            Nuevo
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/catalogos/servicios/aumento"
+              className="border border-border px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-cream transition-colors flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4 stroke-[1.5]" />
+              Aumento masivo
+            </Link>
+            <Link
+              href="/catalogos/servicios/nuevo"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium uppercase tracking-wider hover:bg-brown-700 transition-colors flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4 stroke-[1.5]" />
+              Nuevo
+            </Link>
+          </div>
         )}
       </header>
 
