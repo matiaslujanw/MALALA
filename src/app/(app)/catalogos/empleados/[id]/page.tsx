@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AnticiposPanel } from "@/components/anticipos-panel";
+import { ServiciosProfesionalForm } from "@/components/forms/servicios-profesional-form";
 import { ViaticosPanel } from "@/components/viaticos-panel";
 import { EmpleadoForm } from "@/components/forms/empleado-form";
 import { AccesoEmpleadoPanel } from "@/components/forms/acceso-empleado-panel";
@@ -234,8 +235,13 @@ function DisponibilidadPublicaPanel({
           Disponibilidad pública
         </h2>
         <p className="text-xs text-muted-foreground">
-          Configuración semanal por sucursal para la reserva web. Si no hay
-          franjas, la reserva usa solo horario de sucursal y servicio.
+          El horario semanal de cada sucursal se usa para <strong>dos cosas</strong>:
+          qué turnos se ofrecen en la reserva online, y cuántas horas se proponen
+          al liquidarle el sueldo. Cargalo con la jornada real.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Si no hay franjas, la reserva ofrece todo el horario de la sucursal y
+          las horas de la liquidación se calculan con la jornada de la ficha.
         </p>
       </div>
 
@@ -282,50 +288,12 @@ function DisponibilidadPublicaPanel({
                 </div>
               </div>
 
-              <form
-                action={async (formData) => {
-                  "use server";
-                  await replaceProfesionalServicios(agenda.id, formData);
-                }}
-                className="space-y-3 rounded-md border border-border bg-cream/20 p-4"
-              >
-                <div className="space-y-1">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Servicios que realiza
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Si no marcas ninguno, este profesional queda sin restriccion adicional para esta sucursal.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {serviciosPublicos.map((servicio) => (
-                    <label
-                      key={`${agenda.id}-${servicio.id}`}
-                      className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        name="servicio_id"
-                        value={servicio.id}
-                        defaultChecked={serviciosAsignadosIds.has(servicio.id)}
-                        className="mt-0.5 h-4 w-4 rounded border-border accent-sage-500"
-                      />
-                      <span>
-                        <span className="block font-medium">{servicio.nombre}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {servicio.rubro}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                <button
-                  type="submit"
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium uppercase tracking-wider text-primary-foreground transition-colors hover:bg-brown-700"
-                >
-                  Guardar servicios
-                </button>
-              </form>
+              <ServiciosProfesionalForm
+                agendaId={agenda.id}
+                servicios={serviciosPublicos}
+                asignados={[...serviciosAsignadosIds]}
+                guardar={replaceProfesionalServicios}
+              />
 
               {horarios.length === 0 ? (
                 <div className="rounded-md border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">

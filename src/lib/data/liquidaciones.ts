@@ -19,6 +19,7 @@ import {
   liquidacionLineas as liquidacionLineasTable,
   liquidaciones as liquidacionesTable,
   mediosPago as mediosPagoTable,
+  profesionalesHorarios as profesionalesHorariosTable,
   profiles as profilesTable,
   rubrosGasto as rubrosGastoTable,
   servicios as serviciosTable,
@@ -206,6 +207,38 @@ async function fetchLineasPendientes(args: {
     .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }
 
+/** "09:30" → 570. */
+function aMinutos(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/**
+ * Horas de jornada en el rango, sumando las franjas semanales que caen en cada
+ * día. Recorre día por día en vez de multiplicar por semanas: una quincena no
+ * tiene un número entero de semanas y el sábado del medio contaría de más.
+ */
+function horasDeFranjasEnRango(
+  desde: string,
+  hasta: string,
+  franjas: Array<{ diaSemana: number; apertura: string; cierre: string }>,
+): number {
+  const porDia = new Map<number, number>();
+  for (const f of franjas) {
+    const mins = Math.max(0, aMinutos(f.cierre) - aMinutos(f.apertura));
+    porDia.set(f.diaSemana, (porDia.get(f.diaSemana) ?? 0) + mins);
+  }
+
+  let minutos = 0;
+  const cur = new Date(`${desde}T12:00:00`);
+  const fin = new Date(`${hasta}T12:00:00`);
+  while (cur <= fin) {
+    minutos += porDia.get(cur.getDay()) ?? 0;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return Math.round((minutos / 60) * 100) / 100;
+}
+
 /** Cuenta los días del rango [desde, hasta] cuyo día de semana está en `dias`. */
 function contarDiasLaborables(
   desde: string,
@@ -263,10 +296,33 @@ async function fetchValorHoraYAnticipos(args: {
     )
     .orderBy(asc(anticiposTable.fecha));
 
-  const diasTrabajo = empleado?.diasTrabajo ?? [];
-  const horasPorDia = empleado?.horasPorDia ?? 0;
+  // Las horas salen del horario semanal cargado en Disponibilidad pública, que
+  // es el mismo que usa la reserva online. Es lo que pidió el salón: un solo
+  // lugar donde se declara la semana de cada persona.
+  //
+  // FALLBACK A LA FICHA, y no es cosmético: sin franjas cargadas la reserva
+  // entiende "disponible todo el día", así que interpretar la ausencia como
+  // "cero horas a pagar" convertiría un dato que hoy significa lo contrario en
+  // un sueldo en cero. Mientras no haya horario semanal se sigue usando
+  // horas_por_dia × días de trabajo, como hasta ahora.
+  const franjas = await db
+    .select()
+    .from(profesionalesHorariosTable)
+    .where(
+      and(
+        eq(profesionalesHorariosTable.empleadoId, args.empleadoId),
+        eq(profesionalesHorariosTable.sucursalId, args.sucursalId),
+      ),
+    );
+
   const horasSugeridas =
-    contarDiasLaborables(args.desde, args.hasta, diasTrabajo) * horasPorDia;
+    franjas.length > 0
+      ? horasDeFranjasEnRango(args.desde, args.hasta, franjas)
+      : contarDiasLaborables(
+          args.desde,
+          args.hasta,
+          empleado?.diasTrabajo ?? [],
+        ) * (empleado?.horasPorDia ?? 0);
 
   return {
     valorHora: empleado?.valorHora ?? 0,
