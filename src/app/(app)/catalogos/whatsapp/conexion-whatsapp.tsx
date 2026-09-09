@@ -146,8 +146,18 @@ export function ConexionWhatsapp({ sucursalId }: { sucursalId: string }) {
               </button>
             </div>
           ) : (
-            <div className="flex h-56 w-56 items-center justify-center rounded-lg border border-dashed border-border bg-card text-xs text-muted-foreground">
-              {err ?? "Generando QR…"}
+            <div className="flex h-56 w-56 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-card px-3 text-center text-xs text-muted-foreground">
+              <span>{err ?? "Generando QR…"}</span>
+              {/* El estado crudo del worker, cuando no es el normal de "esperando
+                  escaneo". Una sesión trabada en "connecting" nunca genera QR y
+                  desde acá se veía igual que "todavía se está generando": el
+                  cartel quedaba para siempre y no había forma de saber por qué.
+                  Con el estado a la vista se diagnostica sin entrar al servidor. */}
+              {status && status !== "qr" && (
+                <span className="text-[10px] uppercase tracking-wider opacity-70">
+                  estado del worker: {status}
+                </span>
+              )}
             </div>
           )}
         </div>
